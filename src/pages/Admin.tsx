@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Layout from "@/components/Layout";
 import { trpc } from "@/providers/trpc";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Shield,
   Users,
@@ -57,7 +58,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function Admin() {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [merchantSearch, setMerchantSearch] = useState("");
   const [jobSearch, setJobSearch] = useState("");
@@ -120,10 +121,6 @@ export default function Admin() {
   const updateUserRole = trpc.admin.updateUserRole.useMutation({
     onSuccess: () => refetchUsers(),
   });
-
-  // Admin page is now open for development - add auth later
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _isAdmin = true; // Allow all access for now
 
   return (
     <Layout>

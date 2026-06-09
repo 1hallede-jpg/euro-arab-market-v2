@@ -14,7 +14,7 @@ export function serveStaticFiles(app: App) {
   console.log("[DEBUG] Exists:", fs.existsSync(distPath));
 
   if (!fs.existsSync(distPath)) {
-    app.use("*", (c) => c.json({ 
+    app.use("*", async (c) => c.json({ 
       error: "dist/public not found",
       cwd: cwd,
       tried: distPath,
@@ -24,7 +24,7 @@ export function serveStaticFiles(app: App) {
   }
 
   // Serve assets
-  app.use("/assets/*", (c) => {
+  app.use("/assets/*", async (c) => {
     const file = path.basename(c.req.path);
     const filePath = path.join(distPath, "assets", file);
     if (!fs.existsSync(filePath)) return c.json({ error: "Not found" }, 404);
@@ -34,7 +34,7 @@ export function serveStaticFiles(app: App) {
   });
 
   // SPA fallback
-  app.use("*", (c) => {
+  app.use("*", async (c) => {
     const index = path.join(distPath, "index.html");
     if (fs.existsSync(index)) return c.html(fs.readFileSync(index, "utf-8"));
     return c.json({ error: "index.html missing", distPath }, 500);

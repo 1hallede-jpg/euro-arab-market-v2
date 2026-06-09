@@ -45,7 +45,7 @@ if (env.isProduction) {
 
   if (!publicPath) {
     console.error("[Static] ERROR: No public folder found!");
-    app.use("*", (c) => c.json({ 
+    app.use("*", async (c) => c.json({ 
       error: "public folder not found",
       cwd: process.cwd(),
       files: fs.existsSync(process.cwd()) ? fs.readdirSync(process.cwd()) : "N/A"
@@ -54,7 +54,7 @@ if (env.isProduction) {
     console.log("[Static] Serving from:", publicPath);
 
     // Serve assets
-    app.use("/assets/*", (c) => {
+    app.use("/assets/*", async (c) => {
       const file = path.basename(c.req.path);
       const filePath = path.join(publicPath, "assets", file);
       if (!fs.existsSync(filePath)) return c.json({ error: "Not found" }, 404);
@@ -71,7 +71,7 @@ if (env.isProduction) {
     });
 
     // SPA fallback
-    app.use("*", (c) => {
+    app.use("*", async (c) => {
       const indexPath = path.join(publicPath, "index.html");
       if (fs.existsSync(indexPath)) {
         return c.html(fs.readFileSync(indexPath, "utf-8"));

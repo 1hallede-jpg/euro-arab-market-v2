@@ -3,10 +3,9 @@ import { useNavigate } from "react-router";
 import { trpc } from "@/providers/trpc";
 import {
   LayoutDashboard, Store, Briefcase, Users, LogOut, Plus, Search,
-  Edit, Trash2, Save, X, Star, TrendingUp, MapPin, Phone, Globe,
-  CheckCircle, AlertCircle, Menu, ChevronDown, ChevronUp,
-  Clock, CreditCard, DollarSign, Crown, Image, Facebook, Instagram,
-  CreditCardIcon, BanknoteIcon, BadgeCheck, XCircle, Hand, Settings,
+  Edit, Trash2, Save, X, Star, MapPin, Phone, Globe,
+  CheckCircle, Menu, CreditCard, Image, Facebook, Instagram,
+  BadgeCheck, XCircle, Hand, Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,7 +70,6 @@ export default function AdminDashboard() {
 
   // Mutations
   const deleteMerchant = trpc.admin.deleteMerchant.useMutation({ onSuccess: () => refetchMerchants() });
-  const updateMerchantStatus = trpc.admin.updateMerchantStatus.useMutation({ onSuccess: () => refetchMerchants() });
   const deleteJob = trpc.admin.deleteJob.useMutation({ onSuccess: () => refetchJobs() });
   const approveClaim = trpc.claim.approve.useMutation({});
   const rejectClaim = trpc.claim.reject.useMutation({});

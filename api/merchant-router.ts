@@ -14,6 +14,7 @@ export const merchantRouter = createRouter({
         city: z.string().optional(),
         search: z.string().optional(),
         status: z.string().optional(),
+        featured: z.boolean().optional(),
         limit: z.number().min(1).max(100).default(20),
         offset: z.number().min(0).default(0),
       }).optional()
@@ -35,6 +36,9 @@ export const merchantRouter = createRouter({
         conditions.push(eq(merchants.status, input.status as any));
       } else {
         conditions.push(eq(merchants.status, "active"));
+      }
+      if (input?.featured) {
+        conditions.push(eq(merchants.isFeatured, true));
       }
       if (input?.search) {
         const searchTerm = `%${input.search}%`;

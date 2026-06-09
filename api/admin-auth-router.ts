@@ -1,8 +1,5 @@
 import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
-import { getDb } from "./queries/connection";
-import { users } from "@db/schema";
-import { eq } from "drizzle-orm";
 import * as jose from "jose";
 
 const JWT_SECRET = new TextEncoder().encode(
