@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { Navigate } from "react-router";
 import Layout from "@/components/Layout";
-import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
 import {
   Shield,
@@ -123,20 +121,9 @@ export default function Admin() {
     onSuccess: () => refetchUsers(),
   });
 
-  // Redirect non-admin users
-  if (!isLoading && (!user || user.role !== "admin")) {
-    return <Navigate to="/" replace />;
-  }
-
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <RefreshCw className="h-8 w-8 animate-spin text-emerald-500" />
-        </div>
-      </Layout>
-    );
-  }
+  // Admin page is now open for development - add auth later
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _isAdmin = true; // Allow all access for now
 
   return (
     <Layout>
