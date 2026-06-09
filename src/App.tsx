@@ -6,6 +6,7 @@ import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import Search from "./pages/Search";
 import Sindbad from "./pages/Sindbad";
+import Admin from "./pages/Admin";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -19,6 +20,7 @@ export default function App() {
       <Route path="/jobs/:id" element={<JobDetail />} />
       <Route path="/search" element={<Search />} />
       <Route path="/sindbad" element={<Sindbad />} />
+      <Route path="/admin" element={<Admin />} />
       <Route path="/login" element={<Login />} />
       <Route path="*" element={<NotFound />} />
     </Routes>

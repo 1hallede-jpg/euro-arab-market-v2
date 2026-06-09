@@ -3,6 +3,7 @@ import { merchantRouter } from "./merchant-router";
 import { jobRouter } from "./job-router";
 import { searchRouter } from "./search-router";
 import { sindbadRouter } from "./sindbad-router";
+import { adminRouter } from "./admin-router";
 import { createRouter, publicQuery } from "./middleware";
 
 export const appRouter = createRouter({
@@ -12,6 +13,7 @@ export const appRouter = createRouter({
   job: jobRouter,
   search: searchRouter,
   sindbad: sindbadRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;
