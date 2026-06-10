@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import ReviewsSection from "@/components/ReviewsSection";
 
 const categoryNamesAr: Record<string, string> = {
   restaurant: "مطاعم عربية",
@@ -129,35 +130,11 @@ export default function StoreDetail() {
             </p>
 
             {/* Reviews Section */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">
-                  التقييمات
-                </h3>
-                <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-emerald-600">
-                      {merchant.rating}
-                    </div>
-                    <div className="flex items-center gap-1 mt-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          className={`h-4 w-4 ${
-                            star <= Number(merchant.rating)
-                              ? "text-yellow-400 fill-yellow-400"
-                              : "text-gray-300"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {merchant.reviewCount} تقييم
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <ReviewsSection
+              merchantId={merchant.id}
+              merchantRating={merchant.rating}
+              merchantReviewCount={merchant.reviewCount}
+            />
           </div>
 
           {/* Sidebar */}
@@ -271,20 +248,53 @@ export default function StoreDetail() {
               </CardContent>
             </Card>
 
-            {/* Map Placeholder */}
+            {/* Google Maps */}
             <Card className="overflow-hidden">
-              <div className="h-48 bg-gray-100 flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">الموقع على الخريطة</p>
-                  <p className="text-xs text-gray-300">
-                    {merchant.latitude && merchant.longitude
-                      ? `${merchant.latitude}, ${merchant.longitude}`
-                      : "غير متوفر"}
-                  </p>
+              {merchant.latitude && merchant.longitude ? (
+                <a
+                  href={`https://www.google.com/maps?q=${merchant.latitude},${merchant.longitude}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <iframe
+                    width="100%"
+                    height="200"
+                    frameBorder="0"
+                    scrolling="no"
+                    marginHeight={0}
+                    marginWidth={0}
+                    src={`https://maps.google.com/maps?q=${merchant.latitude},${merchant.longitude}&z=15&output=embed`}
+                    className="grayscale hover:grayscale-0 transition-all"
+                  />
+                </a>
+              ) : (
+                <div className="h-48 bg-gray-100 flex items-center justify-center">
+                  <div className="text-center">
+                    <MapPin className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">الموقع غير متوفر</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </Card>
+
+            {/* WhatsApp CTA */}
+            {merchant.whatsapp && (
+              <a
+                href={`https://wa.me/${merchant.whatsapp}?text=مرحباً، تواصلت معك من يورو عرب ماركت`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
+              >
+                <Button
+                  className="w-full bg-green-500 hover:bg-green-600 text-white"
+                  size="lg"
+                >
+                  <MessageCircle className="h-5 w-5 ml-2" />
+                  تواصل عبر واتساب
+                </Button>
+              </a>
+            )}
           </div>
         </div>
       </div>

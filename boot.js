@@ -11,11 +11,11 @@ var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc7) => {
+var __copyProps = (to, from, except, desc8) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
       if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc7 = __getOwnPropDesc(from, key)) || desc7.enumerable });
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc8 = __getOwnPropDesc(from, key)) || desc8.enumerable });
   }
   return to;
 };
@@ -4818,9 +4818,9 @@ var seedRouter = createRouter({
   runSeed: publicQuery.mutation(async () => {
     const db = getDb();
     const existingCount = await db.select({ count: sql6`count(*)` }).from(merchants);
-    const count = existingCount[0]?.count || 0;
-    if (count >= 50) {
-      return { success: true, message: "Already seeded!", count, alreadySeeded: true };
+    const count2 = existingCount[0]?.count || 0;
+    if (count2 >= 50) {
+      return { success: true, message: "Already seeded!", count: count2, alreadySeeded: true };
     }
     let inserted = 0;
     for (const merchant of merchantsData) {
@@ -4958,6 +4958,76 @@ var migrateRouter = createRouter({
   })
 });
 
+// api/reviews-router.ts
+import { z as z9 } from "zod";
+import { eq as eq8, desc as desc7, sql as sql7, avg, count } from "drizzle-orm";
+var reviewsRouter = createRouter({
+  // Get reviews for a merchant
+  list: publicQuery.input(z9.object({ merchantId: z9.number() })).query(async ({ input }) => {
+    const db = getDb();
+    const items = await db.select().from(reviews).where(eq8(reviews.merchantId, input.merchantId)).orderBy(desc7(reviews.createdAt));
+    const stats = await db.select({
+      avgRating: avg(reviews.rating),
+      totalReviews: count(reviews.id)
+    }).from(reviews).where(eq8(reviews.merchantId, input.merchantId));
+    return {
+      items,
+      avgRating: stats[0]?.avgRating ? parseFloat(stats[0].avgRating).toFixed(1) : "0",
+      totalReviews: stats[0]?.totalReviews || 0
+    };
+  }),
+  // Create a review (requires auth)
+  create: authedQuery.input(
+    z9.object({
+      merchantId: z9.number(),
+      rating: z9.number().min(1).max(5),
+      comment: z9.string().min(1).max(1e3)
+    })
+  ).mutation(async ({ input, ctx }) => {
+    const db = getDb();
+    const userId = ctx.user.id;
+    const existing = await db.select().from(reviews).where(
+      sql7`${reviews.userId} = ${userId} AND ${reviews.merchantId} = ${input.merchantId}`
+    );
+    if (existing.length > 0) {
+      await db.update(reviews).set({
+        rating: input.rating,
+        comment: input.comment,
+        createdAt: /* @__PURE__ */ new Date()
+      }).where(eq8(reviews.id, existing[0].id));
+      return { success: true, message: "\u062A\u0645 \u062A\u062D\u062F\u064A\u062B \u0627\u0644\u062A\u0642\u064A\u064A\u0645" };
+    }
+    await db.insert(reviews).values({
+      userId,
+      merchantId: input.merchantId,
+      rating: input.rating,
+      comment: input.comment,
+      createdAt: /* @__PURE__ */ new Date()
+    });
+    return { success: true, message: "\u062A\u0645 \u0625\u0636\u0627\u0641\u0629 \u0627\u0644\u062A\u0642\u064A\u064A\u0645" };
+  }),
+  // Delete own review
+  delete: authedQuery.input(z9.object({ reviewId: z9.number() })).mutation(async ({ input, ctx }) => {
+    const db = getDb();
+    await db.delete(reviews).where(
+      sql7`${reviews.id} = ${input.reviewId} AND ${reviews.userId} = ${ctx.user.id}`
+    );
+    return { success: true };
+  }),
+  // Admin: verify a review
+  verify: authedQuery.input(z9.object({ reviewId: z9.number() })).mutation(async ({ input }) => {
+    const db = getDb();
+    await db.update(reviews).set({ isVerified: true }).where(eq8(reviews.id, input.reviewId));
+    return { success: true };
+  }),
+  // Admin: get all reviews
+  adminList: authedQuery.query(async () => {
+    const db = getDb();
+    const items = await db.select().from(reviews).orderBy(desc7(reviews.createdAt)).limit(100);
+    return items;
+  })
+});
+
 // api/router.ts
 var appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -4971,7 +5041,8 @@ var appRouter = createRouter({
   subscription: subscriptionRouter,
   claim: claimRouter,
   seed: seedRouter,
-  migrate: migrateRouter
+  migrate: migrateRouter,
+  reviews: reviewsRouter
 });
 
 // api/kimi/auth.ts
@@ -5044,9 +5115,9 @@ var users2 = {
 };
 
 // api/queries/users.ts
-import { eq as eq8 } from "drizzle-orm";
+import { eq as eq9 } from "drizzle-orm";
 async function findUserByUnionId(unionId) {
-  const rows = await getDb().select().from(users).where(eq8(users.unionId, unionId)).limit(1);
+  const rows = await getDb().select().from(users).where(eq9(users.unionId, unionId)).limit(1);
   return rows.at(0);
 }
 async function upsertUser(data) {

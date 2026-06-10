@@ -9,6 +9,7 @@ import { subscriptionRouter } from "./subscription-router";
 import { claimRouter } from "./claim-router";
 import { seedRouter } from "./seed-router";
 import { migrateRouter } from "./migrate-router";
+import { reviewsRouter } from "./reviews-router";
 import { createRouter, publicQuery } from "./middleware";
 
 export const appRouter = createRouter({
@@ -24,6 +25,7 @@ export const appRouter = createRouter({
   claim: claimRouter,
   seed: seedRouter,
   migrate: migrateRouter,
+  reviews: reviewsRouter,
 });
 
 export type AppRouter = typeof appRouter;
