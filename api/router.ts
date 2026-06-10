@@ -7,6 +7,7 @@ import { adminRouter } from "./admin-router";
 import { adminAuthRouter } from "./admin-auth-router";
 import { subscriptionRouter } from "./subscription-router";
 import { claimRouter } from "./claim-router";
+import { seedRouter } from "./seed-router";
 import { createRouter, publicQuery } from "./middleware";
 
 export const appRouter = createRouter({
@@ -20,6 +21,7 @@ export const appRouter = createRouter({
   adminAuth: adminAuthRouter,
   subscription: subscriptionRouter,
   claim: claimRouter,
+  seed: seedRouter,
 });
 
 export type AppRouter = typeof appRouter;
