@@ -10,7 +10,13 @@ let instance: ReturnType<typeof drizzle<typeof fullSchema>>;
 
 export function getDb() {
   if (!instance) {
-    const client = postgres(env.databaseUrl);
+    const isProduction = env.isProduction;
+    const client = postgres(env.databaseUrl, {
+      ssl: isProduction ? { rejectUnauthorized: false } : false,
+      max: 10,
+      idle_timeout: 30,
+      connect_timeout: 30,
+    });
     instance = drizzle(client, { schema: fullSchema });
   }
   return instance;
