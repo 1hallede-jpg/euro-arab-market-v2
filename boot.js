@@ -4845,6 +4845,28 @@ var seedRouter = createRouter({
   })
 });
 
+// api/migrate-router.ts
+import postgres2 from "postgres";
+var migrateRouter = createRouter({
+  fixUserId: publicQuery.mutation(async () => {
+    const client = postgres2(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1
+    });
+    try {
+      await client`ALTER TABLE merchants ADD COLUMN IF NOT EXISTS "userId" bigint`;
+      await client`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS "userId" bigint`;
+      await client`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS "userId" bigint`;
+      await client`ALTER TABLE claims ADD COLUMN IF NOT EXISTS "userId" bigint`;
+      await client.end();
+      return { success: true, message: "userId columns added successfully" };
+    } catch (error) {
+      await client.end();
+      return { success: false, message: error?.message || "Unknown error" };
+    }
+  })
+});
+
 // api/router.ts
 var appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -4857,7 +4879,8 @@ var appRouter = createRouter({
   adminAuth: adminAuthRouter,
   subscription: subscriptionRouter,
   claim: claimRouter,
-  seed: seedRouter
+  seed: seedRouter,
+  migrate: migrateRouter
 });
 
 // api/kimi/auth.ts
