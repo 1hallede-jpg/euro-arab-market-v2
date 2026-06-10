@@ -1,509 +1,519 @@
-import { Link } from "react-router";
+import { useState, useRef, useEffect } from "react";
+import { Link, useNavigate } from "react-router";
 import { trpc } from "@/providers/trpc";
-import Layout from "@/components/Layout";
 import {
   Search,
-  Store,
   MapPin,
-  Star,
-  UtensilsCrossed,
-  ShoppingCart,
-  CakeSlice,
+  Store,
+  Utensils,
+  ShoppingBag,
   Scissors,
-  Beef,
   Coffee,
-  Shirt,
-  Smartphone,
-  Pill,
-  Sparkles,
-  Briefcase,
-  ChevronLeft,
+  Star,
   TrendingUp,
-  Globe,
-  Users,
   Building2,
+  ArrowLeft,
+  Sparkles,
+  X,
+  Send,
+  User,
+  Loader2,
+  Globe,
+  Plus,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 
+// Categories
 const categories = [
-  { id: "restaurant", name: "مطاعم عربية", icon: UtensilsCrossed, color: "bg-amber-50 text-amber-600" },
-  { id: "supermarket", name: "سوبرماركت حلال", icon: ShoppingCart, color: "bg-emerald-50 text-emerald-600" },
-  { id: "sweets", name: "حلويات شرقية", icon: CakeSlice, color: "bg-pink-50 text-pink-600" },
-  { id: "barber", name: "صالونات حلاقة", icon: Scissors, color: "bg-blue-50 text-blue-600" },
-  { id: "butcher", name: "جزار حلال", icon: Beef, color: "bg-red-50 text-red-600" },
-  { id: "bakery", name: "مخابز", icon: Coffee, color: "bg-orange-50 text-orange-600" },
-  { id: "cafe", name: "مقاهي", icon: Coffee, color: "bg-yellow-50 text-yellow-600" },
-  { id: "clothing", name: "ملابس", icon: Shirt, color: "bg-purple-50 text-purple-600" },
-  { id: "electronics", name: "إلكترونيات", icon: Smartphone, color: "bg-cyan-50 text-cyan-600" },
-  { id: "pharmacy", name: "صيدليات", icon: Pill, color: "bg-green-50 text-green-600" },
+  { id: "restaurant", label: "مطاعم عربية", icon: <Utensils className="h-5 w-5" /> },
+  { id: "supermarket", label: "سوبرماركت حلال", icon: <ShoppingBag className="h-5 w-5" /> },
+  { id: "barber", label: "صالونات حلاقة", icon: <Scissors className="h-5 w-5" /> },
+  { id: "sweets", label: "حلويات شرقية", icon: <Coffee className="h-5 w-5" /> },
+  { id: "butcher", label: "جزار حلال", icon: <Store className="h-5 w-5" /> },
+  { id: "bakery", label: "مخابز", icon: <Store className="h-5 w-5" /> },
+  { id: "cafe", label: "مقاهي", icon: <Coffee className="h-5 w-5" /> },
+  { id: "mosque", label: "مساجد", icon: <Building2 className="h-5 w-5" /> },
 ];
 
-const featuredCities = [
-  { name: "باريس", country: "فرنسا", stores: 12, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=400&h=300&fit=crop" },
-  { name: "برلين", country: "ألمانيا", stores: 10, image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?w=400&h=300&fit=crop" },
-  { name: "لندن", country: "بريطانيا", stores: 8, image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400&h=300&fit=crop" },
-  { name: "أمستردام", country: "هولندا", stores: 6, image: "https://images.unsplash.com/photo-1512470876302-972faa2aa9a2?w=400&h=300&fit=crop" },
-  { name: "فيينا", country: "النمسا", stores: 5, image: "https://images.unsplash.com/photo-1516550893923-42d28e5677af?w=400&h=300&fit=crop" },
-  { name: "بروكسل", country: "بلجيكا", stores: 4, image: "https://images.unsplash.com/photo-1583422409516-2895a77efded?w=400&h=300&fit=crop" },
+const cities = [
+  "باريس", "لندن", "برلين", "أمستردام", "بروكسل",
+  "فيينا", "مدريد", "روما", "ستوكهولم", "كوبنهاغن",
 ];
 
-const howItWorks = [
-  { icon: Search, title: "ابحث", desc: "ابحث عن المتاجر والخدمات العربية في مدينتك" },
-  { icon: MapPin, title: "اكتشف", desc: "تصفح التفاصيل والتقييمات والموقع على الخريطة" },
-  { icon: Store, title: "تصفح", desc: "شاهد الصور وساعات العمل وطرق الدفع المتاحة" },
-  { icon: Globe, title: "تواصل", desc: "اتصل مباشرة أو تواصل عبر واتساب" },
-];
+// Sindbad Chat Component
+function SindbadChat({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const [messages, setMessages] = useState<
+    { role: "user" | "assistant"; content: string }[]
+  >([
+    {
+      role: "assistant",
+      content:
+        "مرحباً! أنا سندباد، دليلك الذكي لعالم العرب في أوروبا.\n\nاسألني عن أي شيء:\n• وين ألقى مطعم سوري في باريس؟\n• جزار حلال قريب مني\n• أفضل مقهى عربي في برلين\n• محلات تمور في لندن",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { data: merchantData } = trpc.merchant.list.useQuery(
+    { status: "active", limit: 100 },
+    { enabled: isOpen }
+  );
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMessage = input.trim();
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setIsLoading(true);
+
+    // Simple local search in merchants
+    const searchTerms = userMessage.toLowerCase();
+    const matches =
+      merchantData?.items.filter((m) => {
+        const text = `${m.businessNameAr} ${m.businessName} ${m.category} ${m.city} ${m.country} ${m.tags}`.toLowerCase();
+        return searchTerms.split(" ").some((term) => text.includes(term));
+      }) || [];
+
+    setTimeout(() => {
+      let response = "";
+
+      if (matches.length > 0) {
+        response = `وجدت ${matches.length} نتيجة:\n\n`;
+        matches.slice(0, 5).forEach((m, i) => {
+          response += `${i + 1}. **${m.businessNameAr || m.businessName}** - ${m.city}`;
+          if (m.rating) response += ` ⭐${m.rating}`;
+          if (m.address) response += `\n   📍 ${m.address}`;
+          if (m.phone) response += `\n   📞 ${m.phone}`;
+          response += "\n\n";
+        });
+      } else {
+        response =
+          "عذراً، لم أجد نتائج مباشرة.\n\nجرب البحث عن:\n• مطاعم عربية في [مدينتك]\n• جزار حلال\n• صالون حلاقة\n• سوبرماركت عربي\n\nأو تصفح جميع المتاجر من القائمة الرئيسية.";
+      }
+
+      setMessages((prev) => [...prev, { role: "assistant", content: response }]);
+      setIsLoading(false);
+    }, 800);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-2xl h-[80vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b bg-gradient-to-r from-emerald-500 to-teal-600 text-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">سندباد</h3>
+              <p className="text-xs text-emerald-100">دليلك الذكي للعالم العربي</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-full transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50">
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  msg.role === "assistant"
+                    ? "bg-gradient-to-br from-emerald-400 to-teal-500"
+                    : "bg-gray-200"
+                }`}
+              >
+                {msg.role === "assistant" ? (
+                  <Sparkles className="h-4 w-4 text-white" />
+                ) : (
+                  <User className="h-4 w-4 text-gray-600" />
+                )}
+              </div>
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-line ${
+                  msg.role === "assistant"
+                    ? "bg-white shadow-sm text-gray-800 border border-gray-100"
+                    : "bg-emerald-500 text-white"
+                }`}
+              >
+                {msg.content}
+              </div>
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <div className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
+                <Loader2 className="h-5 w-5 text-emerald-500 animate-spin" />
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <form onSubmit={handleSubmit} className="p-4 border-t bg-white">
+          <div className="flex items-center gap-3 bg-gray-100 rounded-full px-4 py-2">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="اسأل سندباد عن أي متجر عربي..."
+              className="border-0 bg-transparent focus-visible:ring-0 text-right"
+              dir="rtl"
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="p-2 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Main Home Page
 export default function Home() {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSindbad, setShowSindbad] = useState(false);
 
   const { data: featuredData } = trpc.merchant.list.useQuery({
+    status: "active",
     featured: true,
-    limit: 8,
-    offset: 0,
+    limit: 6,
   });
 
   const { data: recentData } = trpc.merchant.list.useQuery({
-    limit: 4,
-    offset: 0,
+    status: "active",
+    limit: 8,
   });
 
-  const { data: jobData } = trpc.job.list.useQuery({
-    limit: 4,
-    offset: 0,
-  });
-
-  const featuredStores = featuredData?.items || [];
-  const recentStores = recentData?.items || [];
-  const jobs = jobData?.items || [];
-
-  const categoryNamesAr: Record<string, string> = {
-    restaurant: "مطاعم عربية",
-    supermarket: "سوبرماركت حلال",
-    sweets: "حلويات شرقية",
-    barber: "صالونات حلاقة",
-    butcher: "جزار حلال",
-    bakery: "مخابز",
-    cafe: "مقاهي",
-    clothing: "ملابس",
-    electronics: "إلكترونيات",
-    pharmacy: "صيدليات",
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
   };
 
   return (
-    <Layout>
-      {/* ====== HERO SECTION ====== */}
-      <section className="relative bg-emerald-600 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1485182708500-e8f1f318ba72?w=1200&q=80')] bg-cover bg-center opacity-20"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-600/90 to-emerald-700/95"></div>
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-          <div className="text-center max-w-3xl mx-auto">
-            <Badge className="bg-white/20 text-white border-0 mb-4 text-sm px-4 py-1.5 backdrop-blur-sm">
-              <Sparkles className="h-3.5 w-3.5 mr-1" />
-              أكبر دليل عربي في أوروبا
-            </Badge>
-            <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 leading-tight">
-              اكتشف عالمك العربي في{" "}
-              <span className="text-emerald-200">أوروبا</span>
-            </h1>
-            <p className="text-lg md:text-xl text-emerald-100 mb-8 leading-relaxed max-w-2xl mx-auto">
-              مطاعم، متاجر، حلاقين، جزارين حلال وكل ما يحتاجه العرب في أوروبا في
-              مكان واحد
-            </p>
-
-            {/* Search Bar */}
-            <div className="max-w-2xl mx-auto">
-              <div className="bg-white rounded-2xl p-2 shadow-2xl flex flex-col sm:flex-row gap-2">
-                <div className="flex-1 relative">
-                  <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="ابحث عن مطعم، متجر، خدمة..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pr-12 pl-4 py-3.5 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-right"
-                    dir="rtl"
-                  />
-                </div>
-                <Link to={searchQuery ? `/search?q=${encodeURIComponent(searchQuery)}` : "/search"} className="shrink-0">
-                  <Button className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-6 rounded-xl text-base font-semibold">
-                    <Search className="h-5 w-5 ml-2" />
-                    بحث
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            {/* Stats */}
-            <div className="flex flex-wrap justify-center gap-6 mt-10">
-              <div className="flex items-center gap-2 text-white">
-                <Building2 className="h-5 w-5 text-emerald-300" />
-                <span className="font-bold">50+</span>
-                <span className="text-emerald-200 text-sm">متجر</span>
-              </div>
-              <div className="flex items-center gap-2 text-white">
-                <MapPin className="h-5 w-5 text-emerald-300" />
-                <span className="font-bold">15+</span>
-                <span className="text-emerald-200 text-sm">مدينة</span>
-              </div>
-              <div className="flex items-center gap-2 text-white">
-                <Users className="h-5 w-5 text-emerald-300" />
-                <span className="font-bold">6</span>
-                <span className="text-emerald-200 text-sm">دول أوروبية</span>
-              </div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-white" dir="rtl">
+      {/* Simple Top Bar */}
+      <nav className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center gap-2">
+          <Globe className="h-5 w-5 text-emerald-500" />
+          <span className="font-bold text-gray-800 hidden sm:inline">يورو عرب ماركت</span>
         </div>
-
-        {/* Wave Separator */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 80" fill="none" className="w-full">
-            <path d="M0 80V40C240 80 480 0 720 0C960 0 1200 80 1440 40V80H0Z" fill="#f9fafb"/>
-          </svg>
+        <div className="flex items-center gap-4 text-sm">
+          <Link to="/stores" className="text-gray-600 hover:text-emerald-600 transition-colors">
+            المتاجر
+          </Link>
+          <Link to="/jobs" className="text-gray-600 hover:text-emerald-600 transition-colors">
+            المهن
+          </Link>
+          <Link
+            to="#"
+            onClick={(e) => { e.preventDefault(); setShowSindbad(true); }}
+            className="text-emerald-600 font-medium hover:text-emerald-700 transition-colors flex items-center gap-1"
+          >
+            <Sparkles className="h-4 w-4" />
+            سندباد
+          </Link>
+          <Link to="/admin" className="text-gray-400 hover:text-gray-600 transition-colors text-xs">
+            إدارة
+          </Link>
         </div>
-      </section>
+      </nav>
 
-      {/* ====== CATEGORIES BAR ====== */}
-      <section className="bg-gray-50 py-8 -mt-1">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-            {categories.map((cat) => {
-              const Icon = cat.icon;
-              return (
-                <Link
-                  key={cat.id}
-                  to={`/stores?category=${cat.id}`}
-                  className="flex flex-col items-center gap-2 min-w-[80px] group"
-                >
-                  <div className={`w-14 h-14 rounded-2xl ${cat.color} flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm`}>
-                    <Icon className="h-6 w-6" />
+      {/* Hero - Google Style */}
+      <div className="flex flex-col items-center justify-center pt-16 pb-8 px-4">
+        {/* Sindbad Logo */}
+        <div className="mb-6">
+          <img
+            src="/sindbad-logo.png"
+            alt="سندباد"
+            className="h-32 w-auto mx-auto"
+            onError={(e) => {
+              // Fallback if image doesn't exist
+              const target = e.target as HTMLImageElement;
+              target.style.display = "none";
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = `
+                  <div class="h-32 w-32 mx-auto rounded-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center">
+                    <span class="text-5xl">🧞‍♂️</span>
                   </div>
-                  <span className="text-xs font-medium text-gray-700 whitespace-nowrap">
-                    {cat.name}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
+                `;
+              }
+            }}
+          />
         </div>
-      </section>
 
-      {/* ====== FEATURED STORES ====== */}
-      {featuredStores.length > 0 && (
-        <section className="py-12 bg-gray-50">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">متاجر مميزة</h2>
-                <p className="text-gray-500 mt-1">أفضل المتاجر العربية الموصى بها</p>
-              </div>
-              <Link to="/stores">
-                <Button variant="outline" className="flex items-center gap-1">
-                  عرض الكل
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2 text-center">
+          يورو عرب ماركت
+        </h1>
+        <p className="text-gray-500 text-lg mb-8 text-center">
+          محرك البحث للعالم العربي في أوروبا
+        </p>
+
+        {/* Search Box - Google Style */}
+        <form onSubmit={handleSearch} className="w-full max-w-2xl mb-4">
+          <div className="relative flex items-center bg-white border border-gray-200 rounded-full shadow-sm hover:shadow-md transition-shadow px-6 py-3">
+            <Search className="h-5 w-5 text-gray-400 ml-3 shrink-0" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ابحث عن مطاعم، متاجر، خدمات عربية..."
+              className="border-0 bg-transparent focus-visible:ring-0 text-right text-lg"
+              dir="rtl"
+            />
+            <button
+              type="button"
+              onClick={() => setShowSindbad(true)}
+              className="mr-2 p-2 text-emerald-500 hover:bg-emerald-50 rounded-full transition-colors"
+              title="اسأل سندباد"
+            >
+              <Sparkles className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <Button
+              type="submit"
+              className="bg-emerald-500 hover:bg-emerald-600 rounded-full px-8"
+            >
+              بحث
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowSindbad(true)}
+              className="rounded-full px-8 border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+            >
+              <Sparkles className="h-4 w-4 ml-2" />
+              اسأل سندباد
+            </Button>
+          </div>
+        </form>
+
+        {/* Stats Bar */}
+        <div className="flex items-center gap-8 mt-4 text-sm text-gray-500">
+          <span className="flex items-center gap-1">
+            <Store className="h-4 w-4 text-emerald-500" />
+            58+ متجر عربي
+          </span>
+          <span className="flex items-center gap-1">
+            <MapPin className="h-4 w-4 text-emerald-500" />
+            15+ دولة أوروبية
+          </span>
+          <span className="flex items-center gap-1">
+            <Star className="h-4 w-4 text-emerald-500" />
+            10+ تصنيفات
+          </span>
+        </div>
+      </div>
+
+      {/* Quick Categories */}
+      <div className="max-w-5xl mx-auto px-4 py-8">
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-12">
+          {categories.map((cat) => (
+            <Link
+              key={cat.id}
+              to={`/stores?category=${cat.id}`}
+              className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-full px-5 py-2.5 hover:border-emerald-300 hover:bg-emerald-50 transition-all text-sm"
+            >
+              {cat.icon}
+              <span>{cat.label}</span>
+            </Link>
+          ))}
+        </div>
+
+        {/* Popular Cities */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-12">
+          {cities.map((city) => (
+            <Link
+              key={city}
+              to={`/city/${city}`}
+              className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline px-2"
+            >
+              {city}
+            </Link>
+          ))}
+          <Link to="/stores" className="text-sm text-gray-400 hover:text-gray-600 px-2 flex items-center gap-1">
+            عرض الكل <ArrowLeft className="h-3 w-3" />
+          </Link>
+        </div>
+
+        {/* Featured Merchants - Magazine Style */}
+        {featuredData?.items && featuredData.items.length > 0 && (
+          <div className="mb-16">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <TrendingUp className="h-6 w-6 text-emerald-500" />
+                المتاجر المميزة
+              </h2>
+              <Link to="/stores" className="text-emerald-600 text-sm hover:underline">
+                عرض الكل
               </Link>
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {featuredStores.map((store: any) => (
-                <Link key={store.id} to={`/stores/${store.slug}`} className="group">
-                  <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-sm h-full">
-                    <div className="relative h-48 bg-gray-200 overflow-hidden">
-                      {store.coverImage ? (
-                        <img
-                          src={store.coverImage}
-                          alt={store.businessName}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
-                          <Store className="h-12 w-12 text-white/50" />
-                        </div>
-                      )}
-                      {store.isFeatured && (
-                        <Badge className="absolute top-3 left-3 bg-emerald-500 text-white">
-                          <Star className="h-3 w-3 mr-1 fill-white" />
-                          مميز
-                        </Badge>
-                      )}
-                      <div className="absolute top-3 right-3">
-                        <Badge className="bg-white/90 text-gray-700 text-xs backdrop-blur-sm">
-                          {categoryNamesAr[store.category] || store.category}
-                        </Badge>
-                      </div>
-                    </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-emerald-600 transition-colors">
-                        {store.businessNameAr || store.businessName}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                        {store.descriptionAr || store.description}
-                      </p>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4 text-gray-400" />
-                          {store.city}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                          <span className="font-medium">{store.rating}</span>
-                          <span className="text-gray-400">({store.reviewCount})</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredData.items.map((merchant) => (
+                <MerchantCard key={merchant.id} merchant={merchant} />
               ))}
             </div>
           </div>
-        </section>
-      )}
+        )}
 
-      {/* ====== RECENTLY ADDED ====== */}
-      {recentStores.length > 0 && (
-        <section className="py-12 bg-white">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">إضافات حديثة</h2>
-                <p className="text-gray-500 mt-1">أحدث المتاجر المضافة للدليل</p>
-              </div>
-              <Link to="/stores">
-                <Button variant="outline" className="flex items-center gap-1">
-                  عرض الكل
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {recentStores.map((store: any) => (
-                <Link key={store.id} to={`/stores/${store.slug}`} className="group">
-                  <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-sm h-full">
-                    <div className="relative h-48 bg-gray-200 overflow-hidden">
-                      {store.coverImage ? (
-                        <img
-                          src={store.coverImage}
-                          alt={store.businessName}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-slate-300 to-slate-400 flex items-center justify-center">
-                          <Store className="h-12 w-12 text-white/50" />
-                        </div>
-                      )}
-                      <div className="absolute top-3 right-3">
-                        <Badge className="bg-white/90 text-gray-700 text-xs backdrop-blur-sm">
-                          {categoryNamesAr[store.category] || store.category}
-                        </Badge>
-                      </div>
-                    </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-emerald-600 transition-colors">
-                        {store.businessNameAr || store.businessName}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                        {store.descriptionAr || store.description}
-                      </p>
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4 text-gray-400" />
-                          {store.city}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                          <span className="font-medium">{store.rating}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ====== CITIES GRID ====== */}
-      <section className="py-12 bg-gray-50">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-              استكشف حسب المدينة
+        {/* Recently Added - Magazine Style */}
+        {recentData?.items && recentData.items.length > 0 && (
+          <div className="mb-16">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <Store className="h-6 w-6 text-emerald-500" />
+              أحدث المتاجر
             </h2>
-            <p className="text-gray-500 max-w-xl mx-auto">
-              اعثر على المتاجر العربية في أكبر المدن الأوروبية
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {featuredCities.map((city) => (
-              <Link
-                key={city.name}
-                to={`/stores?city=${city.name}`}
-                className="group relative h-48 rounded-2xl overflow-hidden"
-              >
-                <img
-                  src={city.image}
-                  alt={city.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
-                <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
-                  <h3 className="text-xl font-bold mb-1">{city.name}</h3>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-white/80">{city.country}</span>
-                    <span className="text-sm bg-white/20 backdrop-blur-sm px-2 py-0.5 rounded-full">
-                      {city.stores} متجر
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ====== HOW IT WORKS ====== */}
-      <section className="py-16 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-              كيف يعمل يورو عرب ماركت؟
-            </h2>
-            <p className="text-gray-500 max-w-xl mx-auto">
-              ثلاث خطوات بسيطة للعثور على كل ما تحتاجه
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {howItWorks.map((step, i) => {
-              const Icon = step.icon;
-              return (
-                <div key={step.title} className="text-center group">
-                  <div className="relative inline-block mb-4">
-                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300 shadow-sm">
-                      <Icon className="h-7 w-7" />
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-emerald-500 text-white flex items-center justify-center text-sm font-bold">
-                      {i + 1}
-                    </div>
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">{step.title}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">{step.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ====== JOBS SECTION ====== */}
-      {jobs.length > 0 && (
-        <section className="py-12 bg-gray-50">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">وظائف عربية</h2>
-                <p className="text-gray-500 mt-1">فرص عمل للعرب في أوروبا</p>
-              </div>
-              <Link to="/jobs">
-                <Button variant="outline" className="flex items-center gap-1">
-                  عرض الكل
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {jobs.map((job: any) => (
-                <Link key={job.id} to={`/jobs/${job.id}`} className="group">
-                  <Card className="hover:shadow-lg transition-all border-0 shadow-sm h-full">
-                    <CardContent className="p-5">
-                      <Badge variant="outline" className="mb-3 text-xs">
-                        {job.category}
-                      </Badge>
-                      <h3 className="font-semibold text-gray-900 mb-2 group-hover:text-emerald-600 transition-colors">
-                        {job.titleAr || job.title}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                        {job.descriptionAr || job.description}
-                      </p>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {job.city}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Briefcase className="h-3.5 w-3.5" />
-                          {job.type === "full_time" ? "دوام كامل" :
-                           job.type === "part_time" ? "دوام جزئي" :
-                           job.type === "freelance" ? "حر" : "عقد"}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {recentData.items.slice(0, 8).map((merchant) => (
+                <MerchantCardCompact key={merchant.id} merchant={merchant} />
               ))}
             </div>
           </div>
-        </section>
-      )}
+        )}
 
-      {/* ====== SINDBAD CTA ====== */}
-      <section className="py-16 bg-slate-900 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=1200&q=80')] bg-cover bg-center opacity-10"></div>
-        <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-4xl mx-auto mb-6 shadow-2xl shadow-emerald-500/30">
-            🧞‍♂️
-          </div>
-          <h2 className="text-3xl font-bold text-white mb-4">
-            سندباد - مساعدك الذكي
-          </h2>
-          <p className="text-slate-300 text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
-            اسأل سندباد عن أي شيء! هو يعرف كل المتاجر العربية في أوروبا ويساعدك
-            في إيجاد ما تحتاجه بسرعة. لديك 3 أمنيات يومياً!
+        {/* Add Store CTA */}
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-8 text-center border border-emerald-100 mb-12">
+          <Store className="h-12 w-12 text-emerald-500 mx-auto mb-4" />
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">
+            هل تملك متجر عربي في أوروبا؟
+          </h3>
+          <p className="text-gray-600 mb-6 max-w-lg mx-auto">
+            انضم لأكبر دليل عربي في أوروبا. سجّل متجرك الآن ووصل لآلاف العملاء العرب
           </p>
-          <Link to="/sindbad">
-            <Button className="bg-emerald-500 hover:bg-emerald-600 text-white px-10 py-6 text-lg rounded-xl shadow-lg shadow-emerald-500/30">
-              <Sparkles className="h-5 w-5 ml-2" />
-              تحدث مع سندباد
+          <Link to="/add-store">
+            <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 rounded-full px-8">
+              <Plus className="h-5 w-5 ml-2" />
+              أضف متجرك
             </Button>
           </Link>
         </div>
-      </section>
+      </div>
 
-      {/* ====== SOCIAL PROOF / STATS ====== */}
-      <section className="py-16 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="text-center p-6 rounded-2xl bg-emerald-50">
-              <Store className="h-8 w-8 text-emerald-600 mx-auto mb-3" />
-              <div className="text-3xl font-bold text-gray-900 mb-1">50+</div>
-              <div className="text-sm text-gray-500">متجر عربي</div>
-            </div>
-            <div className="text-center p-6 rounded-2xl bg-blue-50">
-              <MapPin className="h-8 w-8 text-blue-600 mx-auto mb-3" />
-              <div className="text-3xl font-bold text-gray-900 mb-1">15+</div>
-              <div className="text-sm text-gray-500">مدينة أوروبية</div>
-            </div>
-            <div className="text-center p-6 rounded-2xl bg-amber-50">
-              <TrendingUp className="h-8 w-8 text-amber-600 mx-auto mb-3" />
-              <div className="text-3xl font-bold text-gray-900 mb-1">10+</div>
-              <div className="text-sm text-gray-500">تصنيف مختلف</div>
-            </div>
-            <div className="text-center p-6 rounded-2xl bg-purple-50">
-              <Users className="h-8 w-8 text-purple-600 mx-auto mb-3" />
-              <div className="text-3xl font-bold text-gray-900 mb-1">6</div>
-              <div className="text-sm text-gray-500">دول أوروبية</div>
-            </div>
+      {/* Simple Footer */}
+      <footer className="border-t bg-gray-50 py-8 px-4">
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            <span>يورو عرب ماركت © 2026</span>
+          </div>
+          <div className="flex items-center gap-6">
+            <Link to="/stores" className="hover:text-gray-700">المتاجر</Link>
+            <Link to="/jobs" className="hover:text-gray-700">المهن</Link>
+            <Link to="/add-store" className="hover:text-gray-700">أضف متجرك</Link>
+            <a href="mailto:info@euroarabmarket.com" className="hover:text-gray-700">تواصل معنا</a>
           </div>
         </div>
-      </section>
-    </Layout>
+      </footer>
+
+      {/* Sindbad Chat Modal */}
+      <SindbadChat isOpen={showSindbad} onClose={() => setShowSindbad(false)} />
+    </div>
+  );
+}
+
+// Merchant Card (Magazine Style)
+function MerchantCard({ merchant }: { merchant: any }) {
+  return (
+    <Link to={`/stores/${merchant.slug}`} className="group">
+      <Card className="overflow-hidden hover:shadow-lg transition-all border-gray-200 h-full">
+        <div className="relative h-48 bg-gray-100 overflow-hidden">
+          {merchant.coverImage ? (
+            <img
+              src={merchant.coverImage}
+              alt={merchant.businessNameAr || merchant.businessName}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center">
+              <Store className="h-16 w-16 text-white/40" />
+            </div>
+          )}
+          {merchant.isFeatured && (
+            <div className="absolute top-3 right-3 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              ⭐ مميز
+            </div>
+          )}
+        </div>
+        <CardContent className="p-4">
+          <h3 className="font-bold text-lg text-gray-900 group-hover:text-emerald-600 transition-colors mb-1">
+            {merchant.businessNameAr || merchant.businessName}
+          </h3>
+          <p className="text-sm text-gray-500 mb-3 line-clamp-2">
+            {merchant.shortDescription || merchant.description?.slice(0, 100) || ""}
+          </p>
+          <div className="flex items-center justify-between text-sm">
+            <span className="flex items-center gap-1 text-gray-600">
+              <MapPin className="h-4 w-4" />
+              {merchant.city}
+            </span>
+            {merchant.rating && (
+              <span className="flex items-center gap-1 text-yellow-600">
+                <Star className="h-4 w-4 fill-current" />
+                {merchant.rating}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+// Compact Merchant Card
+function MerchantCardCompact({ merchant }: { merchant: any }) {
+  return (
+    <Link to={`/stores/${merchant.slug}`} className="group">
+      <div className="bg-white border border-gray-100 rounded-xl overflow-hidden hover:shadow-md transition-all">
+        <div className="h-32 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center relative">
+          {merchant.logo ? (
+            <img src={merchant.logo} alt="" className="h-16 w-16 object-contain" />
+          ) : (
+            <Store className="h-10 w-10 text-gray-400" />
+          )}
+          <div className="absolute top-2 right-2">
+            <span className="text-[10px] bg-white/90 px-2 py-0.5 rounded-full text-gray-600">
+              {merchant.city}
+            </span>
+          </div>
+        </div>
+        <div className="p-3">
+          <h4 className="font-bold text-sm text-gray-900 group-hover:text-emerald-600 transition-colors truncate">
+            {merchant.businessNameAr || merchant.businessName}
+          </h4>
+          <p className="text-xs text-gray-500 mt-1 line-clamp-1">
+            {merchant.shortDescription || ""}
+          </p>
+        </div>
+      </div>
+    </Link>
   );
 }

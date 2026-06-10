@@ -10,6 +10,7 @@ import Login from './pages/Login'
 import AdminLogin from './pages/AdminLogin'
 import AdminDashboard from './pages/AdminDashboard'
 import CityPage from './pages/CityPage'
+import AddStore from './pages/AddStore'
 import NotFound from './pages/NotFound'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="/city/:citySlug" element={<CityPage />} />
+      <Route path="/add-store" element={<AddStore />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   )

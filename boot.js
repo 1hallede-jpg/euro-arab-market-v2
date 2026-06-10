@@ -3797,6 +3797,46 @@ var merchantRouter = createRouter({
       count: sql`count(*)`
     }).from(merchants).where(eq(merchants.status, "active")).groupBy(merchants.city, merchants.country).orderBy(desc(sql`count(*)`));
     return result;
+  }),
+  // Submit store request (no auth required - public)
+  submitRequest: publicQuery.input(
+    z.object({
+      businessNameAr: z.string().min(1),
+      businessName: z.string().optional(),
+      category: z.string().min(1),
+      description: z.string().min(1),
+      country: z.string().min(1),
+      city: z.string().min(1),
+      address: z.string().optional(),
+      phone: z.string().optional(),
+      whatsapp: z.string().optional(),
+      email: z.string().email().optional(),
+      contactName: z.string().optional()
+    })
+  ).mutation(async ({ input }) => {
+    const db = getDb();
+    const baseSlug = (input.businessName || input.businessNameAr).toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").replace(/(^-|-$)/g, "");
+    const slug = `${baseSlug}-${Date.now()}-${Math.floor(Math.random() * 1e3)}`;
+    await db.insert(merchants).values({
+      businessName: input.businessName || input.businessNameAr,
+      businessNameAr: input.businessNameAr,
+      shortDescription: input.description.slice(0, 160),
+      description: input.description,
+      descriptionAr: input.description,
+      category: input.category,
+      country: input.country,
+      city: input.city,
+      address: input.address,
+      phone: input.phone,
+      whatsapp: input.whatsapp,
+      email: input.email,
+      status: "pending",
+      // Needs admin approval
+      slug,
+      createdAt: /* @__PURE__ */ new Date(),
+      updatedAt: /* @__PURE__ */ new Date()
+    });
+    return { success: true, message: "\u062A\u0645 \u0627\u0633\u062A\u0644\u0627\u0645 \u0627\u0644\u0637\u0644\u0628 \u0648\u0633\u064A\u062A\u0645 \u0627\u0644\u0645\u0631\u0627\u062C\u0639\u0629" };
   })
 });
 

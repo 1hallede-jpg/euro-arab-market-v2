@@ -227,4 +227,53 @@ export const merchantRouter = createRouter({
 
     return result;
   }),
+
+  // Submit store request (no auth required - public)
+  submitRequest: publicQuery
+    .input(
+      z.object({
+        businessNameAr: z.string().min(1),
+        businessName: z.string().optional(),
+        category: z.string().min(1),
+        description: z.string().min(1),
+        country: z.string().min(1),
+        city: z.string().min(1),
+        address: z.string().optional(),
+        phone: z.string().optional(),
+        whatsapp: z.string().optional(),
+        email: z.string().email().optional(),
+        contactName: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+
+      // Generate slug
+      const baseSlug = (input.businessName || input.businessNameAr)
+        .toLowerCase()
+        .replace(/[^a-z0-9\u0600-\u06FF]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+      const slug = `${baseSlug}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
+      await db.insert(merchants).values({
+        businessName: input.businessName || input.businessNameAr,
+        businessNameAr: input.businessNameAr,
+        shortDescription: input.description.slice(0, 160),
+        description: input.description,
+        descriptionAr: input.description,
+        category: input.category as any,
+        country: input.country,
+        city: input.city,
+        address: input.address,
+        phone: input.phone,
+        whatsapp: input.whatsapp,
+        email: input.email,
+        status: "pending" as any, // Needs admin approval
+        slug,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      return { success: true, message: "تم استلام الطلب وسيتم المراجعة" };
+    }),
 });
