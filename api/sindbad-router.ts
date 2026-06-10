@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
-import { chatMessages } from "@db/schema";
+import { chatMessages } from "../db/schema";
 import { eq, and, sql } from "drizzle-orm";
 
 // Helper to create a session ID
