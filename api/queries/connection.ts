@@ -23,13 +23,15 @@ function needsSsl(url: string): boolean {
 export function getDb() {
   if (!instance) {
     const useSsl = needsSsl(env.databaseUrl);
-    console.log("[DB] Connecting to database, SSL:", useSsl);
+    console.log("[DB] DATABASE_URL:", env.databaseUrl.substring(0, 30) + "...");
+    console.log("[DB] SSL enabled:", useSsl);
     const client = postgres(env.databaseUrl, {
       ssl: useSsl ? { rejectUnauthorized: false } : false,
-      max: 10,
-      idle_timeout: 30,
-      connect_timeout: 30,
-      onnotice: () => {}, // Suppress notices
+      max: 5,
+      idle_timeout: 20,
+      connect_timeout: 15,
+      onnotice: () => {},
+      onparameter: () => {},
     });
     instance = drizzle(client, { schema: fullSchema });
   }

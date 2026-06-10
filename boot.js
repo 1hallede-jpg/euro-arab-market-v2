@@ -3253,10 +3253,16 @@ import "dotenv/config";
 function getEnv(name, defaultValue = "") {
   return process.env[name] ?? defaultValue;
 }
+function detectIsProduction() {
+  if (process.env.NODE_ENV === "production") return true;
+  if (process.env.PORT) return true;
+  if (process.env.RENDER) return true;
+  return false;
+}
 var env = {
   appId: getEnv("APP_ID", "euro-arab-market"),
   appSecret: getEnv("APP_SECRET", "sk-euro-arab-secret-2024"),
-  isProduction: process.env.NODE_ENV === "production",
+  isProduction: detectIsProduction(),
   databaseUrl: getEnv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/euroarabmarket"),
   kimiAuthUrl: getEnv("KIMI_AUTH_URL", ""),
   kimiOpenUrl: getEnv("KIMI_OPEN_URL", ""),
@@ -3614,15 +3620,17 @@ function needsSsl(url) {
 function getDb() {
   if (!instance) {
     const useSsl = needsSsl(env.databaseUrl);
-    console.log("[DB] Connecting to database, SSL:", useSsl);
+    console.log("[DB] DATABASE_URL:", env.databaseUrl.substring(0, 30) + "...");
+    console.log("[DB] SSL enabled:", useSsl);
     const client = postgres(env.databaseUrl, {
       ssl: useSsl ? { rejectUnauthorized: false } : false,
-      max: 10,
-      idle_timeout: 30,
-      connect_timeout: 30,
+      max: 5,
+      idle_timeout: 20,
+      connect_timeout: 15,
       onnotice: () => {
+      },
+      onparameter: () => {
       }
-      // Suppress notices
     });
     instance = drizzle(client, { schema: fullSchema });
   }
