@@ -272,6 +272,59 @@ export const adminRouter = createRouter({
     };
   }),
 
+  // Update merchant (full edit)
+  updateMerchant: adminQuery
+    .input(
+      z.object({
+        id: z.number(),
+        businessName: z.string().optional(),
+        businessNameAr: z.string().optional(),
+        shortDescription: z.string().optional(),
+        description: z.string().optional(),
+        descriptionAr: z.string().optional(),
+        category: z.string().optional(),
+        subcategory: z.string().optional(),
+        country: z.string().optional(),
+        city: z.string().optional(),
+        address: z.string().optional(),
+        addressAr: z.string().optional(),
+        neighborhood: z.string().optional(),
+        postalCode: z.string().optional(),
+        phone: z.string().optional(),
+        whatsapp: z.string().optional(),
+        email: z.string().optional(),
+        website: z.string().optional(),
+        facebookUrl: z.string().optional(),
+        instagramUrl: z.string().optional(),
+        youtubeUrl: z.string().optional(),
+        latitude: z.string().optional(),
+        longitude: z.string().optional(),
+        googleMapsUrl: z.string().optional(),
+        priceRange: z.string().optional(),
+        isFeatured: z.boolean().optional(),
+        acceptsCash: z.boolean().optional(),
+        acceptsCard: z.boolean().optional(),
+        isOpen24Hours: z.boolean().optional(),
+        logo: z.string().optional(),
+        coverImage: z.string().optional(),
+        galleryImages: z.any().optional(),
+        amenities: z.any().optional(),
+        features: z.any().optional(),
+        tags: z.string().optional(),
+        metaTitle: z.string().optional(),
+        metaDescription: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      const db = getDb();
+      await db
+        .update(merchants)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(merchants.id, id));
+      return { success: true };
+    }),
+
   // Get search analytics
   searchAnalytics: adminQuery.query(async () => {
     const db = getDb();

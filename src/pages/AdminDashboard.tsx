@@ -5,12 +5,14 @@ import {
   LayoutDashboard, Store, Briefcase, Users, LogOut, Plus, Search,
   Edit, Trash2, Save, X, Star, MapPin, Phone, Globe,
   CheckCircle, Menu, CreditCard, Image, Facebook, Instagram,
-  BadgeCheck, XCircle, Hand, Settings,
+  BadgeCheck, XCircle, Hand, Settings, ChevronDown, ChevronUp,
+  Clock, TrendingUp, Eye, Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ==================== CATEGORY LABELS ====================
 const categoryNamesAr: Record<string, string> = {
@@ -30,10 +32,11 @@ const statusColors: Record<string, string> = {
   active: "bg-emerald-100 text-emerald-700",
   pending: "bg-amber-100 text-amber-700",
   suspended: "bg-red-100 text-red-700",
+  rejected: "bg-gray-100 text-gray-500",
   claimed: "bg-purple-100 text-purple-700",
 };
 
-type Section = "dashboard" | "stores" | "jobs" | "claims" | "subscriptions" | "users";
+type Section = "dashboard" | "stores" | "pending" | "jobs" | "claims" | "subscriptions" | "users";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -43,51 +46,76 @@ export default function AdminDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [storeFilter, setStoreFilter] = useState<string>("all");
 
   // Auth check
   useEffect(() => {
     const token = localStorage.getItem("admin_token");
-    if (!token) navigate("/admin");
+    if (!token) navigate("/admin/login");
   }, [navigate]);
 
   const logout = () => {
     localStorage.removeItem("admin_token");
-    navigate("/admin");
+    navigate("/admin/login");
   };
 
   // Queries
   const { data: stats } = trpc.admin.stats.useQuery(undefined, { retry: false });
   const { data: merchantData, refetch: refetchMerchants } = trpc.admin.merchants.useQuery(
-    { search: search || undefined, limit: 100 }, { retry: false });
+    { search: search || undefined, status: storeFilter !== "all" ? storeFilter : undefined, limit: 100 }, 
+    { retry: false }
+  );
+  const { data: pendingData, refetch: refetchPending } = trpc.admin.merchants.useQuery(
+    { status: "pending", limit: 100 }, { retry: false, enabled: section === "pending" }
+  );
   const { data: jobData, refetch: refetchJobs } = trpc.admin.jobs.useQuery(
     { search: search || undefined, limit: 100 }, { retry: false });
-  const { data: claimsData } = trpc.claim.list.useQuery(
+  const { data: claimsData, refetch: refetchClaims } = trpc.claim.list.useQuery(
     { status: "pending" }, { retry: false });
   const { data: subscriptionsData } = trpc.subscription.list.useQuery(
     undefined, { retry: false });
   const { data: userData } = trpc.admin.users.useQuery(
     { limit: 100 }, { retry: false });
+  const { data: recentActivity } = trpc.admin.recentActivity.useQuery(
+    undefined, { retry: false }
+  );
 
   // Mutations
   const deleteMerchant = trpc.admin.deleteMerchant.useMutation({ onSuccess: () => refetchMerchants() });
   const deleteJob = trpc.admin.deleteJob.useMutation({ onSuccess: () => refetchJobs() });
-  const approveClaim = trpc.claim.approve.useMutation({});
-  const rejectClaim = trpc.claim.reject.useMutation({});
+  const updateMerchantStatus = trpc.admin.updateMerchantStatus.useMutation({ 
+    onSuccess: () => { refetchMerchants(); refetchPending(); }
+  });
+  const approveClaim = trpc.claim.approve.useMutation({ onSuccess: () => refetchClaims() });
+  const rejectClaim = trpc.claim.reject.useMutation({ onSuccess: () => refetchClaims() });
   const cancelSubscription = trpc.subscription.cancel.useMutation({});
 
   const sidebarItems = [
     { id: "dashboard" as Section, label: "لوحة المعلومات", icon: LayoutDashboard },
-    { id: "stores" as Section, label: "المتاجر", icon: Store, badge: stats?.pendingMerchants },
+    { id: "stores" as Section, label: "المتاجر", icon: Store, badge: stats?.merchants },
+    { id: "pending" as Section, label: "بانتظار القبول", icon: Clock, badge: stats?.pendingMerchants, alert: true },
     { id: "jobs" as Section, label: "الوظائف", icon: Briefcase },
     { id: "claims" as Section, label: "طلبات المطالبة", icon: Hand, badge: claimsData?.length },
     { id: "subscriptions" as Section, label: "الاشتراكات", icon: CreditCard },
     { id: "users" as Section, label: "المستخدمين", icon: Users },
   ];
 
+  const handleApproveMerchant = (id: number) => {
+    if (confirm("قبول هذا المتجر؟")) {
+      updateMerchantStatus.mutate({ id, status: "active" });
+    }
+  };
+
+  const handleRejectMerchant = (id: number) => {
+    if (confirm("رفض هذا المتجر؟")) {
+      updateMerchantStatus.mutate({ id, status: "rejected" });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex" dir="rtl">
       {/* Sidebar */}
-      <div className={`${sidebarOpen ? "w-72" : "w-16"} bg-slate-900 text-white transition-all duration-300 flex flex-col`}>
+      <div className={`${sidebarOpen ? "w-72" : "w-16"} bg-slate-900 text-white transition-all duration-300 flex flex-col flex-shrink-0`}>
         <div className="p-4 flex items-center justify-between border-b border-slate-700">
           {sidebarOpen && (
             <div>
@@ -112,7 +140,7 @@ export default function AdminDashboard() {
                   <>
                     <span className="text-sm font-medium flex-1 text-right">{item.label}</span>
                     {item.badge ? (
-                      <Badge className="bg-red-500 text-white text-xs px-1.5">{item.badge}</Badge>
+                      <Badge className={`${item.alert ? "bg-red-500" : "bg-slate-600"} text-white text-xs px-1.5`}>{item.badge}</Badge>
                     ) : null}
                   </>
                 )}
@@ -130,7 +158,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto min-w-0">
         <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
           <h2 className="text-xl font-bold text-slate-800">
             {sidebarItems.find((i) => i.id === section)?.label}
@@ -141,7 +169,7 @@ export default function AdminDashboard() {
               <Input placeholder="بحث..." value={search} onChange={(e) => setSearch(e.target.value)}
                 className="pr-10 w-64" />
             </div>
-            {section === "stores" && (
+            {(section === "stores" || section === "pending") && (
               <Button onClick={() => { setEditingItem(null); setShowForm(true); }}
                 className="bg-emerald-600 hover:bg-emerald-700">
                 <Plus className="h-4 w-4 ml-1" />إضافة متجر
@@ -154,6 +182,7 @@ export default function AdminDashboard() {
           {/* ============ DASHBOARD ============ */}
           {section === "dashboard" && (
             <div className="space-y-6">
+              {/* Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {[
                   { label: "المستخدمين", value: stats?.users || 0, icon: Users, color: "bg-blue-500", sub: "مستخدم نشط" },
@@ -163,7 +192,12 @@ export default function AdminDashboard() {
                 ].map((stat) => {
                   const Icon = stat.icon;
                   return (
-                    <Card key={stat.label} className="hover:shadow-md transition-shadow">
+                    <Card key={stat.label} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
+                      if (stat.label === "المتاجر") setSection("stores");
+                      if (stat.label === "المستخدمين") setSection("users");
+                      if (stat.label === "الوظائف") setSection("jobs");
+                      if (stat.label === "طلبات المطالبة") setSection("claims");
+                    }}>
                       <CardContent className="p-5">
                         <div className="flex items-center justify-between">
                           <div>
@@ -180,6 +214,68 @@ export default function AdminDashboard() {
                   );
                 })}
               </div>
+
+              {/* Pending Alert */}
+              {(stats?.pendingMerchants || 0) > 0 && (
+                <Card className="border-amber-300 bg-amber-50 cursor-pointer" onClick={() => setSection("pending")}>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-6 w-6 text-amber-600" />
+                      <div>
+                        <p className="font-bold text-amber-800">{stats?.pendingMerchants} متجر بانتظار الموافقة</p>
+                        <p className="text-sm text-amber-600">انقر لمراجعة المتاجر المعلقة</p>
+                      </div>
+                    </div>
+                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700">مراجعة</Button>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Recent Activity */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-emerald-500" />آخر المتاجر المضافة
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {recentActivity?.merchants?.slice(0, 5).map((m: any) => (
+                      <div key={m.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                        <div>
+                          <p className="font-medium text-sm">{m.businessNameAr || m.businessName}</p>
+                          <p className="text-xs text-slate-400">{m.city}</p>
+                        </div>
+                        <Badge className={statusColors[m.status] || "bg-gray-100 text-gray-600"}>
+                          {m.status === "active" ? "نشط" : m.status === "pending" ? "معلق" : m.status}
+                        </Badge>
+                      </div>
+                    )) || <p className="text-sm text-slate-400">لا توجد بيانات</p>}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Users className="h-4 w-4 text-blue-500" />آخر المستخدمين
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {recentActivity?.users?.slice(0, 5).map((u: any) => (
+                      <div key={u.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                        <div className="flex items-center gap-2">
+                          {u.avatar ? <img src={u.avatar} alt="" className="w-7 h-7 rounded-full" /> :
+                            <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center"><Users className="h-3 w-3 text-slate-500" /></div>}
+                          <p className="font-medium text-sm">{u.name || "بدون اسم"}</p>
+                        </div>
+                        <Badge className={u.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}>
+                          {u.role === "admin" ? "أدمن" : "مستخدم"}
+                        </Badge>
+                      </div>
+                    )) || <p className="text-sm text-slate-400">لا توجد بيانات</p>}
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           )}
 
@@ -190,6 +286,18 @@ export default function AdminDashboard() {
                 <MerchantForm onClose={() => { setShowForm(false); setEditingItem(null); }}
                   editingItem={editingItem} onSuccess={() => { refetchMerchants(); setShowForm(false); }} />
               )}
+
+              {/* Filters */}
+              <Tabs value={storeFilter} onValueChange={setStoreFilter} className="mb-4">
+                <TabsList>
+                  <TabsTrigger value="all">الكل</TabsTrigger>
+                  <TabsTrigger value="active">نشط</TabsTrigger>
+                  <TabsTrigger value="pending">معلق</TabsTrigger>
+                  <TabsTrigger value="suspended">موقوف</TabsTrigger>
+                  <TabsTrigger value="claimed">مطالب</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
               <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b border-slate-200">
@@ -207,7 +315,14 @@ export default function AdminDashboard() {
                         <tr key={m.id} className="hover:bg-slate-50 cursor-pointer"
                           onClick={() => setExpandedRow(expandedRow === m.id ? null : m.id)}>
                           <td className="px-4 py-3">
-                            <div className="font-medium text-slate-900">{m.businessNameAr || m.businessName}</div>
+                            <div className="flex items-center gap-2">
+                              {m.logo ? <img src={m.logo} alt="" className="w-8 h-8 rounded-lg object-cover" /> :
+                                <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center"><Store className="h-4 w-4 text-slate-400" /></div>}
+                              <div>
+                                <div className="font-medium text-slate-900">{m.businessNameAr || m.businessName}</div>
+                                {m.isFeatured && <Badge className="bg-yellow-100 text-yellow-700 text-[10px] mt-0.5"><Star className="h-2 w-2 mr-0.5" />مميز</Badge>}
+                              </div>
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <Badge variant="outline" className="border-emerald-200 text-emerald-700 text-xs">
@@ -217,7 +332,7 @@ export default function AdminDashboard() {
                           <td className="px-4 py-3 text-slate-600">{m.city}</td>
                           <td className="px-4 py-3">
                             <Badge className={`${statusColors[m.status]} text-xs`}>
-                              {m.status === "active" ? "نشط" : m.status === "pending" ? "معلق" : m.status === "claimed" ? "مطالب" : "موقوف"}
+                              {m.status === "active" ? "نشط" : m.status === "pending" ? "معلق" : m.status === "claimed" ? "مطالب" : m.status === "suspended" ? "موقوف" : "مرفوض"}
                             </Badge>
                           </td>
                           <td className="px-4 py-3">
@@ -244,7 +359,7 @@ export default function AdminDashboard() {
                                 {m.website && <div className="flex items-center gap-1"><Globe className="h-4 w-4 text-blue-500" /><a href={m.website} target="_blank" rel="noopener noreferrer" className="text-blue-600">{m.website}</a></div>}
                                 {m.facebookUrl && <div className="flex items-center gap-1"><Facebook className="h-4 w-4 text-blue-600" /><span>فيسبوك</span></div>}
                                 {m.instagramUrl && <div className="flex items-center gap-1"><Instagram className="h-4 w-4 text-pink-500" /><span>انستغرام</span></div>}
-                                {m.isFeatured && <Badge className="bg-yellow-100 text-yellow-700 w-fit"><Star className="h-3 w-3 mr-1" />مميز</Badge>}
+                                {m.rating && <div><Star className="h-4 w-4 text-yellow-500 inline" /> {m.rating} ({m.reviewCount} تقييم)</div>}
                               </div>
                             </td>
                           </tr>
@@ -260,6 +375,97 @@ export default function AdminDashboard() {
                     <Button onClick={() => setShowForm(true)} variant="outline" className="mt-3">
                       <Plus className="h-4 w-4 ml-1" />أضف أول متجر
                     </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ============ PENDING MERCHANTS ============ */}
+          {section === "pending" && (
+            <div className="space-y-4">
+              {showForm && (
+                <MerchantForm onClose={() => { setShowForm(false); setEditingItem(null); }}
+                  editingItem={editingItem} onSuccess={() => { refetchPending(); setShowForm(false); }} />
+              )}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                <p className="text-amber-800 font-medium">📋 المتاجر التالية بانتظار مراجعتك وموافقتك لتظهر على الموقع</p>
+              </div>
+
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3 text-right font-semibold text-slate-600">المتجر</th>
+                      <th className="px-4 py-3 text-right font-semibold text-slate-600">التصنيف</th>
+                      <th className="px-4 py-3 text-right font-semibold text-slate-600">المدينة</th>
+                      <th className="px-4 py-3 text-right font-semibold text-slate-600">التاريخ</th>
+                      <th className="px-4 py-3 text-right font-semibold text-slate-600 w-40">إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {pendingData?.items.map((m: any) => (
+                      <>
+                        <tr key={m.id} className="hover:bg-slate-50 cursor-pointer"
+                          onClick={() => setExpandedRow(expandedRow === m.id ? null : m.id)}>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {m.logo ? <img src={m.logo} alt="" className="w-8 h-8 rounded-lg object-cover" /> :
+                                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center"><Clock className="h-4 w-4 text-amber-500" /></div>}
+                              <div>
+                                <div className="font-medium text-slate-900">{m.businessNameAr || m.businessName}</div>
+                                {m.phone && <div className="text-xs text-slate-400">{m.phone}</div>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge variant="outline" className="border-amber-200 text-amber-700 text-xs">
+                              {categoryNamesAr[m.category] || m.category}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-slate-600">{m.city}</td>
+                          <td className="px-4 py-3 text-slate-500">
+                            {m.createdAt ? new Date(m.createdAt).toLocaleDateString("ar-SA") : "-"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8"
+                                onClick={() => handleApproveMerchant(m.id)}
+                                disabled={updateMerchantStatus.isPending}>
+                                <CheckCircle className="h-4 w-4 ml-1" />قبول
+                              </Button>
+                              <Button size="sm" variant="outline" className="text-red-600 border-red-200 h-8"
+                                onClick={() => handleRejectMerchant(m.id)}
+                                disabled={updateMerchantStatus.isPending}>
+                                <XCircle className="h-4 w-4 ml-1" />رفض
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                        {expandedRow === m.id && (
+                          <tr className="bg-slate-50">
+                            <td colSpan={5} className="px-6 py-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                {m.descriptionAr && <div><span className="text-slate-500">الوصف:</span> <span className="text-slate-800">{m.descriptionAr}</span></div>}
+                                {m.description && <div><span className="text-slate-500">Description:</span> <span className="text-slate-800">{m.description}</span></div>}
+                                {m.address && <div className="flex items-center gap-1"><MapPin className="h-4 w-4 text-slate-400" /><span>{m.address}</span></div>}
+                                {m.email && <div className="flex items-center gap-1"><Globe className="h-4 w-4 text-slate-400" /><span>{m.email}</span></div>}
+                                {m.whatsapp && <div className="flex items-center gap-1"><Phone className="h-4 w-4 text-green-500" /><span>واتساب: {m.whatsapp}</span></div>}
+                                {m.website && <div className="flex items-center gap-1"><Globe className="h-4 w-4 text-blue-500" /><a href={m.website} target="_blank" className="text-blue-600">{m.website}</a></div>}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    ))}
+                  </tbody>
+                </table>
+                {(!pendingData?.items || pendingData.items.length === 0) && (
+                  <div className="text-center py-16 text-slate-400">
+                    <CheckCircle className="h-12 w-12 mx-auto mb-3 text-emerald-400" />
+                    <p className="font-medium">لا توجد متاجر معلقة!</p>
+                    <p className="text-sm">جميع المتاجر تمت مراجعتها</p>
                   </div>
                 )}
               </div>
@@ -406,7 +612,7 @@ export default function AdminDashboard() {
                             {s.status === "active" ? "نشط" : s.status === "expired" ? "منتهي" : s.status}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3">€{s.price}</td>
+                        <td className="px-4 py-3">&euro;{s.price}</td>
                         <td className="px-4 py-3 text-slate-500">
                           {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString("ar-SA") : "-"}
                         </td>
@@ -504,7 +710,6 @@ function MerchantForm({ onClose, editingItem, onSuccess }: { onClose: () => void
     acceptsCash: editingItem?.acceptsCash ?? true,
     acceptsCard: editingItem?.acceptsCard || false,
     isOpen24Hours: editingItem?.isOpen24Hours || false,
-    openingHours: editingItem?.openingHours || {},
     logo: editingItem?.logo || "",
     coverImage: editingItem?.coverImage || "",
     galleryImages: editingItem?.galleryImages || [],
@@ -516,10 +721,15 @@ function MerchantForm({ onClose, editingItem, onSuccess }: { onClose: () => void
   });
 
   const createMerchant = trpc.merchant.create.useMutation({ onSuccess });
+  const updateMerchant = trpc.admin.updateMerchant.useMutation({ onSuccess });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createMerchant.mutate(form);
+    if (editingItem) {
+      updateMerchant.mutate({ id: editingItem.id, ...form });
+    } else {
+      createMerchant.mutate(form);
+    }
   };
 
   const handleAmenityToggle = (amenity: string) => {
@@ -538,8 +748,10 @@ function MerchantForm({ onClose, editingItem, onSuccess }: { onClose: () => void
     setForm({ ...form, features: updated });
   };
 
+  const isSubmitting = createMerchant.isPending || updateMerchant.isPending;
+
   return (
-    <Card className="border-emerald-200 shadow-lg">
+    <Card className="border-emerald-200 shadow-lg mb-6">
       <CardHeader className="flex flex-row items-center justify-between pb-2 bg-emerald-50 rounded-t-lg">
         <CardTitle className="text-lg text-emerald-800">
           {editingItem ? "تعديل متجر" : "إضافة متجر جديد"}
@@ -798,9 +1010,9 @@ function MerchantForm({ onClose, editingItem, onSuccess }: { onClose: () => void
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={onClose} size="lg">إلغاء</Button>
             <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" size="lg"
-              disabled={createMerchant.isPending}>
+              disabled={isSubmitting}>
               <Save className="h-5 w-5 ml-2" />
-              {createMerchant.isPending ? "جاري الحفظ..." : (editingItem ? "حفظ التعديلات" : "إضافة المتجر")}
+              {isSubmitting ? "جاري الحفظ..." : (editingItem ? "حفظ التعديلات" : "إضافة المتجر")}
             </Button>
           </div>
         </form>

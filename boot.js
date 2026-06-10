@@ -3604,14 +3604,25 @@ var favoritesRelations = relations(favorites, ({ one }) => ({
 // api/queries/connection.ts
 var fullSchema = { ...schema_exports, ...relations_exports };
 var instance;
+function needsSsl(url) {
+  if (url.includes("render.com")) return true;
+  if (url.includes("amazonaws.com")) return true;
+  if (url.includes("supabase.co")) return true;
+  if (url.includes("localhost") || url.includes("127.0.0.1")) return false;
+  return env.isProduction;
+}
 function getDb() {
   if (!instance) {
-    const isProduction = env.isProduction;
+    const useSsl = needsSsl(env.databaseUrl);
+    console.log("[DB] Connecting to database, SSL:", useSsl);
     const client = postgres(env.databaseUrl, {
-      ssl: isProduction ? { rejectUnauthorized: false } : false,
+      ssl: useSsl ? { rejectUnauthorized: false } : false,
       max: 10,
       idle_timeout: 30,
-      connect_timeout: 30
+      connect_timeout: 30,
+      onnotice: () => {
+      }
+      // Suppress notices
     });
     instance = drizzle(client, { schema: fullSchema });
   }
@@ -4472,6 +4483,53 @@ var adminRouter = createRouter({
       users: recentUsers,
       reviews: recentReviews
     };
+  }),
+  // Update merchant (full edit)
+  updateMerchant: adminQuery.input(
+    z5.object({
+      id: z5.number(),
+      businessName: z5.string().optional(),
+      businessNameAr: z5.string().optional(),
+      shortDescription: z5.string().optional(),
+      description: z5.string().optional(),
+      descriptionAr: z5.string().optional(),
+      category: z5.string().optional(),
+      subcategory: z5.string().optional(),
+      country: z5.string().optional(),
+      city: z5.string().optional(),
+      address: z5.string().optional(),
+      addressAr: z5.string().optional(),
+      neighborhood: z5.string().optional(),
+      postalCode: z5.string().optional(),
+      phone: z5.string().optional(),
+      whatsapp: z5.string().optional(),
+      email: z5.string().optional(),
+      website: z5.string().optional(),
+      facebookUrl: z5.string().optional(),
+      instagramUrl: z5.string().optional(),
+      youtubeUrl: z5.string().optional(),
+      latitude: z5.string().optional(),
+      longitude: z5.string().optional(),
+      googleMapsUrl: z5.string().optional(),
+      priceRange: z5.string().optional(),
+      isFeatured: z5.boolean().optional(),
+      acceptsCash: z5.boolean().optional(),
+      acceptsCard: z5.boolean().optional(),
+      isOpen24Hours: z5.boolean().optional(),
+      logo: z5.string().optional(),
+      coverImage: z5.string().optional(),
+      galleryImages: z5.any().optional(),
+      amenities: z5.any().optional(),
+      features: z5.any().optional(),
+      tags: z5.string().optional(),
+      metaTitle: z5.string().optional(),
+      metaDescription: z5.string().optional()
+    })
+  ).mutation(async ({ input }) => {
+    const { id, ...data } = input;
+    const db = getDb();
+    await db.update(merchants).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where(eq5(merchants.id, id));
+    return { success: true };
   }),
   // Get search analytics
   searchAnalytics: adminQuery.query(async () => {

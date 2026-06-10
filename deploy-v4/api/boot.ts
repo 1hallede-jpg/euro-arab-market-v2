@@ -1,0 +1,90 @@
+import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import type { HttpBindings } from "@hono/node-server";
+import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
+import { appRouter } from "./router";
+import { createContext } from "./context";
+import { env } from "./lib/env";
+import { createOAuthCallbackHandler } from "./kimi/auth";
+import { Paths } from "../contracts/constants";
+import fs from "fs";
+import path from "path";
+
+const app = new Hono<{ Bindings: HttpBindings }>();
+
+app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
+app.get(Paths.oauthCallback, createOAuthCallbackHandler());
+app.use("/api/trpc/*", async (c) => {
+  return fetchRequestHandler({
+    endpoint: "/api/trpc",
+    req: c.req.raw,
+    router: appRouter,
+    createContext,
+  });
+});
+app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
+
+// Static files for production
+if (env.isProduction) {
+  // Try multiple paths to find public folder
+  const possiblePaths = [
+    path.join(process.cwd(), "dist", "public"),
+    path.join(process.cwd(), "public"),
+    "/opt/render/project/src/public",
+    "/opt/render/project/public",
+  ];
+
+  let publicPath = "";
+  for (const p of possiblePaths) {
+    console.log("[Static] Checking:", p, "exists:", fs.existsSync(p));
+    if (fs.existsSync(p)) {
+      publicPath = p;
+      break;
+    }
+  }
+
+  if (!publicPath) {
+    console.error("[Static] ERROR: No public folder found!");
+    app.use("*", async (c) => c.json({ 
+      error: "public folder not found",
+      cwd: process.cwd(),
+      files: fs.existsSync(process.cwd()) ? fs.readdirSync(process.cwd()) : "N/A"
+    }, 500));
+  } else {
+    console.log("[Static] Serving from:", publicPath);
+
+    // Serve assets
+    app.use("/assets/*", async (c) => {
+      const file = path.basename(c.req.path);
+      const filePath = path.join(publicPath, "assets", file);
+      if (!fs.existsSync(filePath)) return c.json({ error: "Not found" }, 404);
+      const ext = path.extname(filePath);
+      const mime: Record<string, string> = {
+        ".js": "application/javascript",
+        ".css": "text/css",
+        ".png": "image/png",
+        ".svg": "image/svg+xml",
+      };
+      return new Response(fs.readFileSync(filePath), {
+        headers: { "Content-Type": mime[ext] || "text/plain" },
+      });
+    });
+
+    // SPA fallback
+    app.use("*", async (c) => {
+      const indexPath = path.join(publicPath, "index.html");
+      if (fs.existsSync(indexPath)) {
+        return c.html(fs.readFileSync(indexPath, "utf-8"));
+      }
+      return c.json({ error: "index.html missing", publicPath }, 500);
+    });
+  }
+
+  const { serve } = await import("@hono/node-server");
+  const port = parseInt(process.env.PORT || "3000");
+  serve({ fetch: app.fetch, port }, () => {
+    console.log(`Server running on http://localhost:${port}/`);
+  });
+}
+
+export default app;
