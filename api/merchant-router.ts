@@ -20,59 +20,63 @@ export const merchantRouter = createRouter({
       }).optional()
     )
     .query(async ({ input }) => {
-      const db = getDb();
-      const conditions = [];
-      
-      if (input?.category) {
-        conditions.push(eq(merchants.category, input.category as any));
-      }
-      if (input?.country) {
-        conditions.push(eq(merchants.country, input.country));
-      }
-      if (input?.city) {
-        conditions.push(eq(merchants.city, input.city));
-      }
-      if (input?.status) {
-        conditions.push(eq(merchants.status, input.status as any));
-      } else {
-        conditions.push(eq(merchants.status, "active"));
-      }
-      if (input?.featured) {
-        conditions.push(eq(merchants.isFeatured, true));
-      }
-      if (input?.search) {
-        const searchTerm = `%${input.search}%`;
-        conditions.push(
-          or(
-            like(merchants.businessName, searchTerm),
-            like(merchants.businessNameAr, searchTerm),
-            like(merchants.description, searchTerm),
-            like(merchants.descriptionAr, searchTerm),
-            like(merchants.tags, searchTerm)
-          )
-        );
-      }
+      try {
+        const db = getDb();
+        let query = db.select().from(merchants);
 
-      const where = conditions.length > 0 ? and(...conditions) : undefined;
+        // Build where conditions using sql
+        const conditions: any[] = [];
 
-      const [items, countResult] = await Promise.all([
-        db
-          .select()
-          .from(merchants)
+        // Status filter (default to active)
+        const targetStatus = input?.status || "active";
+        conditions.push(sql`${merchants.status} = ${targetStatus}`);
+
+        if (input?.category) {
+          conditions.push(sql`${merchants.category} = ${input.category}`);
+        }
+        if (input?.country) {
+          conditions.push(sql`${merchants.country} = ${input.country}`);
+        }
+        if (input?.city) {
+          conditions.push(sql`${merchants.city} = ${input.city}`);
+        }
+        if (input?.featured) {
+          conditions.push(sql`${merchants.isFeatured} = true`);
+        }
+        if (input?.search) {
+          const term = `%${input.search}%`;
+          conditions.push(sql`(
+            ${merchants.businessName} ILIKE ${term} OR
+            ${merchants.businessNameAr} ILIKE ${term} OR
+            ${merchants.description} ILIKE ${term} OR
+            ${merchants.descriptionAr} ILIKE ${term} OR
+            ${merchants.tags} ILIKE ${term}
+          )`);
+        }
+
+        const where = conditions.length > 1
+          ? and(...conditions)
+          : conditions[0];
+
+        const items = await query
           .where(where)
           .limit(input?.limit || 20)
           .offset(input?.offset || 0)
-          .orderBy(desc(merchants.createdAt)),
-        db
+          .orderBy(desc(merchants.id));
+
+        const countResult = await db
           .select({ count: sql<number>`count(*)` })
           .from(merchants)
-          .where(where),
-      ]);
+          .where(where);
 
-      return {
-        items,
-        total: countResult[0]?.count || 0,
-      };
+        return {
+          items,
+          total: countResult[0]?.count || 0,
+        };
+      } catch (error: any) {
+        console.error("[merchant.list] Error:", error?.message || error);
+        return { items: [], total: 0, error: error?.message };
+      }
     }),
 
   // Get single merchant by ID

@@ -3638,7 +3638,7 @@ function getDb() {
 }
 
 // api/merchant-router.ts
-import { eq, and, like, or, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 var merchantRouter = createRouter({
   // Get all merchants with optional filters
   list: publicQuery.input(
@@ -3653,46 +3653,45 @@ var merchantRouter = createRouter({
       offset: z.number().min(0).default(0)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb();
-    const conditions = [];
-    if (input?.category) {
-      conditions.push(eq(merchants.category, input.category));
+    try {
+      const db = getDb();
+      let query = db.select().from(merchants);
+      const conditions = [];
+      const targetStatus = input?.status || "active";
+      conditions.push(sql`${merchants.status} = ${targetStatus}`);
+      if (input?.category) {
+        conditions.push(sql`${merchants.category} = ${input.category}`);
+      }
+      if (input?.country) {
+        conditions.push(sql`${merchants.country} = ${input.country}`);
+      }
+      if (input?.city) {
+        conditions.push(sql`${merchants.city} = ${input.city}`);
+      }
+      if (input?.featured) {
+        conditions.push(sql`${merchants.isFeatured} = true`);
+      }
+      if (input?.search) {
+        const term = `%${input.search}%`;
+        conditions.push(sql`(
+            ${merchants.businessName} ILIKE ${term} OR
+            ${merchants.businessNameAr} ILIKE ${term} OR
+            ${merchants.description} ILIKE ${term} OR
+            ${merchants.descriptionAr} ILIKE ${term} OR
+            ${merchants.tags} ILIKE ${term}
+          )`);
+      }
+      const where = conditions.length > 1 ? and(...conditions) : conditions[0];
+      const items = await query.where(where).limit(input?.limit || 20).offset(input?.offset || 0).orderBy(desc(merchants.id));
+      const countResult = await db.select({ count: sql`count(*)` }).from(merchants).where(where);
+      return {
+        items,
+        total: countResult[0]?.count || 0
+      };
+    } catch (error) {
+      console.error("[merchant.list] Error:", error?.message || error);
+      return { items: [], total: 0, error: error?.message };
     }
-    if (input?.country) {
-      conditions.push(eq(merchants.country, input.country));
-    }
-    if (input?.city) {
-      conditions.push(eq(merchants.city, input.city));
-    }
-    if (input?.status) {
-      conditions.push(eq(merchants.status, input.status));
-    } else {
-      conditions.push(eq(merchants.status, "active"));
-    }
-    if (input?.featured) {
-      conditions.push(eq(merchants.isFeatured, true));
-    }
-    if (input?.search) {
-      const searchTerm = `%${input.search}%`;
-      conditions.push(
-        or(
-          like(merchants.businessName, searchTerm),
-          like(merchants.businessNameAr, searchTerm),
-          like(merchants.description, searchTerm),
-          like(merchants.descriptionAr, searchTerm),
-          like(merchants.tags, searchTerm)
-        )
-      );
-    }
-    const where = conditions.length > 0 ? and(...conditions) : void 0;
-    const [items, countResult] = await Promise.all([
-      db.select().from(merchants).where(where).limit(input?.limit || 20).offset(input?.offset || 0).orderBy(desc(merchants.createdAt)),
-      db.select({ count: sql`count(*)` }).from(merchants).where(where)
-    ]);
-    return {
-      items,
-      total: countResult[0]?.count || 0
-    };
   }),
   // Get single merchant by ID
   getById: publicQuery.input(z.object({ id: z.number() })).query(async ({ input }) => {
