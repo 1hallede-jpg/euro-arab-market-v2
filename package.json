@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "NODE_ENV=production tsx api/boot.ts",
+    "start": "APP_SECRET=sk-euro-arab-secret-2024 NODE_ENV=production tsx api/boot.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
