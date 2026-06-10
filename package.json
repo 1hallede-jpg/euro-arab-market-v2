@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "APP_SECRET=sk-euro-arab-secret-2024 NODE_ENV=production tsx api/boot.ts",
+    "start": "KIMI_OPEN_URL=https://kimi.moonshot.cn KIMI_AUTH_URL=https://kimi.moonshot.cn VITE_KIMI_AUTH_URL=https://kimi.moonshot.cn VITE_OPEN_URL=https://kimi.moonshot.cn VITE_APP_ID=euro-arab-market API_SECRET=sk-euro-arab-2024-secret APP_SECRET=sk-euro-arab-secret-2024 NODE_ENV=production node boot.js",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
