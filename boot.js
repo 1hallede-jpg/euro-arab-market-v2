@@ -33225,7 +33225,7 @@ var migrateRouter = createRouter({
         const slug = `${slugBase}-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
         const rating = (3.5 + Math.random() * 1.5).toFixed(1);
         const reviews2 = Math.floor(Math.random() * 40) + 5;
-        await client.unsafe(`INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES ('${name}', '${nameAr}', '${shortDesc}', '${desc2}', '${desc2}', '${m.category}', '${m.country}', '${m.city}', '${addr}', '${phone}', null, 'active', '${slug}', false, true, '${rating}', ${reviews2}, '${desc2.substring(0, 200)}', NOW(), NOW()) ON CONFLICT DO NOTHING`);
+        await client.unsafe(`INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, phone, website, status, slug, is_featured, is_verified, rating, tags, created_at, updated_at) VALUES ('${name}', '${nameAr}', '${shortDesc}', '${desc2}', '${desc2}', '${m.category}', '${m.country}', '${m.city}', '${addr}', '${phone}', null, 'active', '${slug}', false, true, '${rating}', '${desc2.substring(0, 200)}', NOW(), NOW()) ON CONFLICT DO NOTHING`);
         inserted++;
       }
       await client.end();
