@@ -57,15 +57,18 @@ if (!publicPath) {
   console.log("[Static] Serving from:", publicPath);
 
   // Direct search page (bypasses React SPA to avoid cache issues)
-  app.use("/search", async (c) => {
+  app.use("/search", async (c, next) => {
     const indexPath = path.join(publicPath, "search.html");
     if (fs.existsSync(indexPath)) {
-      return c.html(fs.readFileSync(indexPath, "utf-8"));
+      return c.html(fs.readFileSync(indexPath, "utf-8"), 200, {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      });
     }
-    // Fallback: serve search-static.html
     const staticPath = path.join(publicPath, "search-static.html");
     if (fs.existsSync(staticPath)) {
-      return c.html(fs.readFileSync(staticPath, "utf-8"));
+      return c.html(fs.readFileSync(staticPath, "utf-8"), 200, {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+      });
     }
     await next();
   });
@@ -91,7 +94,11 @@ if (!publicPath) {
   app.use("*", async (c) => {
     const indexPath = path.join(publicPath, "index.html");
     if (fs.existsSync(indexPath)) {
-      return c.html(fs.readFileSync(indexPath, "utf-8"));
+      return c.html(fs.readFileSync(indexPath, "utf-8"), 200, {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      });
     }
     return c.json({ error: "index.html missing", publicPath }, 500);
   });

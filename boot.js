@@ -1346,7 +1346,7 @@ var init_dist = __esm({
 
 // node_modules/hono/dist/compose.js
 var compose = (middleware, onError, onNotFound) => {
-  return (context, next2) => {
+  return (context, next) => {
     let index = -1;
     return dispatch(0);
     async function dispatch(i) {
@@ -1361,7 +1361,7 @@ var compose = (middleware, onError, onNotFound) => {
         handler = middleware[i][0][0];
         context.req.routeIndex = i;
       } else {
-        handler = i === middleware.length && next2 || void 0;
+        handler = i === middleware.length && next || void 0;
       }
       if (handler) {
         try {
@@ -1531,16 +1531,16 @@ var replaceGroupMarks = (paths, groups) => {
   return paths;
 };
 var patternCache = {};
-var getPattern = (label, next2) => {
+var getPattern = (label, next) => {
   if (label === "*") {
     return "*";
   }
   const match2 = label.match(/^\:([^\{\}]+)(?:\{(.+)\})?$/);
   if (match2) {
-    const cacheKey2 = `${label}#${next2}`;
+    const cacheKey2 = `${label}#${next}`;
     if (!patternCache[cacheKey2]) {
       if (match2[2]) {
-        patternCache[cacheKey2] = next2 && next2[0] !== ":" && next2[0] !== "*" ? [cacheKey2, match2[1], new RegExp(`^${match2[2]}(?=/${next2})`)] : [label, match2[1], new RegExp(`^${match2[2]}$`)];
+        patternCache[cacheKey2] = next && next[0] !== ":" && next[0] !== "*" ? [cacheKey2, match2[1], new RegExp(`^${match2[2]}(?=/${next})`)] : [label, match2[1], new RegExp(`^${match2[2]}$`)];
       } else {
         patternCache[cacheKey2] = [label, match2[1], true];
       }
@@ -2555,7 +2555,7 @@ var Hono = class _Hono {
       if (app2.errorHandler === errorHandler) {
         handler = r.handler;
       } else {
-        handler = async (c, next2) => (await compose([], app2.errorHandler)(c, () => r.handler(c, next2))).res;
+        handler = async (c, next) => (await compose([], app2.errorHandler)(c, () => r.handler(c, next))).res;
         handler[COMPOSED_HANDLER] = r.handler;
       }
       subApp.#addRoute(r.method, r.path, handler, r.basePath);
@@ -2686,12 +2686,12 @@ var Hono = class _Hono {
         return new Request(url2, request);
       };
     })();
-    const handler = async (c, next2) => {
+    const handler = async (c, next) => {
       const res = await applicationHandler(replaceRequest(c.req.raw), ...getOptions(c));
       if (res) {
         return res;
       }
-      await next2();
+      await next();
     };
     this.#addRoute(METHOD_NAME_ALL, mergePath(path2, "*"), handler);
     return this;
@@ -3460,15 +3460,15 @@ var bodyLimit = (options) => {
     throw new HTTPException(413, { res });
   });
   const maxSize = options.maxSize;
-  return async function bodyLimit2(c, next2) {
+  return async function bodyLimit2(c, next) {
     if (!c.req.raw.body) {
-      return next2();
+      return next();
     }
     const hasTransferEncoding = c.req.raw.headers.has("transfer-encoding");
     const hasContentLength = c.req.raw.headers.has("content-length");
     if (hasContentLength && !hasTransferEncoding) {
       const contentLength = parseInt(c.req.raw.headers.get("content-length") || "0", 10);
-      return contentLength > maxSize ? onError(c) : next2();
+      return contentLength > maxSize ? onError(c) : next();
     }
     let size2 = 0;
     const chunks = [];
@@ -3496,7 +3496,7 @@ var bodyLimit = (options) => {
       duplex: "half"
     };
     c.req.raw = new Request(c.req.raw, requestInit);
-    return next2();
+    return next();
   };
 };
 
@@ -3531,7 +3531,7 @@ var cors = (options) => {
       return () => [];
     }
   })(opts.allowMethods);
-  return async function cors2(c, next2) {
+  return async function cors2(c, next) {
     function set2(key, value) {
       c.res.headers.set(key, value);
     }
@@ -3575,7 +3575,7 @@ var cors = (options) => {
         statusText: "No Content"
       });
     }
-    await next2();
+    await next();
     if (opts.origin !== "*") {
       c.header("Vary", "Origin", { append: true });
     }
@@ -4701,12 +4701,12 @@ var require_usingCtx = __commonJS2({ "../../node_modules/.pnpm/@oxc-project+runt
       a: using.bind(null, true),
       d: function d() {
         var o, t2 = this.e, s = 0;
-        function next2() {
+        function next() {
           for (; o = n.pop(); ) try {
-            if (!o.a && 1 === s) return s = 0, n.push(o), Promise.resolve().then(next2);
+            if (!o.a && 1 === s) return s = 0, n.push(o), Promise.resolve().then(next);
             if (o.d) {
               var r$1 = o.d.call(o.v);
-              if (o.a) return s |= 2, Promise.resolve(r$1).then(next2, err);
+              if (o.a) return s |= 2, Promise.resolve(r$1).then(next, err);
             } else s |= 1;
           } catch (r$2) {
             return err(r$2);
@@ -4715,9 +4715,9 @@ var require_usingCtx = __commonJS2({ "../../node_modules/.pnpm/@oxc-project+runt
           if (t2 !== e) throw t2;
         }
         function err(n$1) {
-          return t2 = t2 !== e ? new r(n$1, t2) : n$1, next2();
+          return t2 = t2 !== e ? new r(n$1, t2) : n$1, next();
         }
-        return next2();
+        return next();
       }
     };
   }
@@ -4872,8 +4872,8 @@ function createManagedIterator(iterable, onResult) {
   function pull() {
     if (state !== "idle") return;
     state = "pending";
-    const next2 = iterator.next();
-    next2.then((result) => {
+    const next = iterator.next();
+    next.then((result) => {
       if (result.done) {
         state = "done";
         onResult({
@@ -5073,7 +5073,7 @@ var require_asyncIterator = __commonJS2({ "../../node_modules/.pnpm/@oxc-project
     }, AsyncFromSyncIterator.prototype = {
       s: null,
       n: null,
-      next: function next2() {
+      next: function next() {
         return AsyncFromSyncIteratorContinuation(this.n.apply(this.s, arguments));
       },
       "return": function _return(r$1) {
@@ -5141,11 +5141,11 @@ function _createBatchStreamProducer() {
             promise2 = Promise.reject(error48);
           }
           try {
-            const next2 = yield (0, import_awaitAsyncGenerator$1.default)(promise2);
+            const next = yield (0, import_awaitAsyncGenerator$1.default)(promise2);
             yield [
               idx,
               PROMISE_STATUS_FULFILLED,
-              encode5(next2, path2)
+              encode5(next, path2)
             ];
           } catch (cause) {
             var _opts$onError2, _opts$formatError;
@@ -5178,19 +5178,19 @@ function _createBatchStreamProducer() {
             const iterator = _usingCtx$1.a(iteratorResource(iterable$1));
             try {
               while (true) {
-                const next2 = yield (0, import_awaitAsyncGenerator$1.default)(iterator.next());
-                if (next2.done) {
+                const next = yield (0, import_awaitAsyncGenerator$1.default)(iterator.next());
+                if (next.done) {
                   yield [
                     idx,
                     ASYNC_ITERABLE_STATUS_RETURN,
-                    encode5(next2.value, path2)
+                    encode5(next.value, path2)
                   ];
                   break;
                 }
                 yield [
                   idx,
                   ASYNC_ITERABLE_STATUS_YIELD,
-                  encode5(next2.value, path2)
+                  encode5(next.value, path2)
                 ];
               }
             } catch (cause) {
@@ -5983,8 +5983,8 @@ function createInputMiddleware(parse7) {
   return inputMiddleware;
 }
 function createOutputMiddleware(parse7) {
-  const outputMiddleware = async function outputValidatorMiddleware({ next: next2 }) {
-    const result = await next2();
+  const outputMiddleware = async function outputValidatorMiddleware({ next }) {
+    const result = await next();
     if (!result.ok) return result;
     try {
       const data = await parse7(result.data);
@@ -7062,25 +7062,25 @@ var t = initTRPC.context().create({
 var createRouter = t.router;
 var publicQuery = t.procedure;
 var requireAuth = t.middleware(async (opts) => {
-  const { ctx, next: next2 } = opts;
+  const { ctx, next } = opts;
   if (!ctx.user) {
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message: ErrorMessages.unauthenticated
     });
   }
-  return next2({ ctx: { ...ctx, user: ctx.user } });
+  return next({ ctx: { ...ctx, user: ctx.user } });
 });
 function requireRole(role) {
   return t.middleware(async (opts) => {
-    const { ctx, next: next2 } = opts;
+    const { ctx, next } = opts;
     if (!ctx.user || ctx.user.role !== role) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: ErrorMessages.insufficientRole
       });
     }
-    return next2({ ctx: { ...ctx, user: ctx.user } });
+    return next({ ctx: { ...ctx, user: ctx.user } });
   });
 }
 var authedQuery = t.procedure.use(requireAuth);
@@ -11069,12 +11069,12 @@ var $ZodPipe = /* @__PURE__ */ $constructor("$ZodPipe", (inst, def) => {
     return handlePipeResult(left, def.out, ctx);
   };
 });
-function handlePipeResult(left, next2, ctx) {
+function handlePipeResult(left, next, ctx) {
   if (left.issues.length) {
     left.aborted = true;
     return left;
   }
-  return next2._zod.run({ value: left.value, issues: left.issues }, ctx);
+  return next._zod.run({ value: left.value, issues: left.issues }, ctx);
 }
 var $ZodCodec = /* @__PURE__ */ $constructor("$ZodCodec", (inst, def) => {
   $ZodType.init(inst, def);
@@ -34461,14 +34461,18 @@ if (!publicPath) {
   }, 500));
 } else {
   console.log("[Static] Serving from:", publicPath);
-  app.use("/search", async (c) => {
+  app.use("/search", async (c, next) => {
     const indexPath = path.join(publicPath, "search.html");
     if (fs2.existsSync(indexPath)) {
-      return c.html(fs2.readFileSync(indexPath, "utf-8"));
+      return c.html(fs2.readFileSync(indexPath, "utf-8"), 200, {
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      });
     }
     const staticPath = path.join(publicPath, "search-static.html");
     if (fs2.existsSync(staticPath)) {
-      return c.html(fs2.readFileSync(staticPath, "utf-8"));
+      return c.html(fs2.readFileSync(staticPath, "utf-8"), 200, {
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      });
     }
     await next();
   });
@@ -34490,7 +34494,11 @@ if (!publicPath) {
   app.use("*", async (c) => {
     const indexPath = path.join(publicPath, "index.html");
     if (fs2.existsSync(indexPath)) {
-      return c.html(fs2.readFileSync(indexPath, "utf-8"));
+      return c.html(fs2.readFileSync(indexPath, "utf-8"), 200, {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0"
+      });
     }
     return c.json({ error: "index.html missing", publicPath }, 500);
   });
