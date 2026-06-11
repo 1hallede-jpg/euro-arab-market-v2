@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import sindbadImg from "@/assets/sindbad.png";
 
 /* ─── particles ─── */
 function ParticlesBg() {
@@ -139,7 +140,7 @@ function SindbadChat({
         {/* header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-amber-500/15 bg-[#16162a]">
           <div className="flex items-center gap-3">
-            <img src="/sindbad-icon.png" className="w-9 h-9" alt="" />
+            <img src={sindbadImg} className="w-9 h-9" alt="" />
             <div>
               <h3 className="font-bold text-amber-400">سندباد</h3>
               <p className="text-[10px] text-amber-400/40">
@@ -259,7 +260,7 @@ export default function Home() {
       >
         <Link to="/" className="flex items-center gap-2.5 group">
           <img
-            src="/sindbad-icon.png"
+            src={sindbadImg}
             className="w-7 h-7 group-hover:scale-110 transition-transform"
             alt=""
           />
@@ -298,7 +299,7 @@ export default function Home() {
         {/* Lamp Image - BIG */}
         <div className="mb-2 animate-fade-in">
           <img
-            src="/sindbad-icon.png"
+            src={sindbadImg}
             alt="سندباد"
             className="w-36 h-36 md:w-44 md:h-44 drop-shadow-2xl"
             style={{
