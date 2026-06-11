@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router";
 import Layout from "@/components/Layout";
 import {
   Search, MapPin, Star, Phone, MessageCircle,
-  BadgeCheck, Globe, X, Filter, Store, Sparkles,
+  Globe, X, Filter, Store, Sparkles,
   Shield, Heart, Flame, Landmark, Plane, CreditCard,
   AlertTriangle, ChevronDown, ChevronUp, Navigation, Clock,
 } from "lucide-react";
@@ -38,31 +38,10 @@ const emergencyTypeAr: Record<string, { name: string; color: string; bg: string;
 const cities = ["باريس", "لندن", "برلين", "مدريد", "برشلونة", "روما", "ميلان", "أمستردام", "بروكسل", "فيينا", "كوبنهاغن", "ستوكهولم", "أوسلو", "زيورخ", "بودابست"];
 
 function getDisplayName(m: any): string {
-  if (m.shortDescription && m.shortDescription.length < 50) return m.shortDescription;
-  if (m.businessNameAr) return m.businessNameAr;
+  if (m.businessNameAr && m.businessNameAr.length < 60 && !m.businessNameAr.startsWith('خطبة')) return m.businessNameAr;
+  if (m.shortDescription && m.shortDescription.length < 60) return m.shortDescription;
   if (m.businessName) return m.businessName;
   return `${categoryNamesAr[m.category] || m.category || 'متجر'} - ${m.city || ''}`;
-}
-
-// Fetch merchants directly via GET
-async function fetchMerchants(): Promise<any[]> {
-  try {
-    const input = encodeURIComponent(JSON.stringify({ json: { status: "active", limit: 100 } }));
-    const res = await fetch(`${API_URL}/merchant.list?input=${input}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data?.result?.data?.json?.items || [];
-  } catch { return []; }
-}
-
-async function fetchEmergency(): Promise<any[]> {
-  try {
-    const input = encodeURIComponent(JSON.stringify({ json: { limit: 100 } }));
-    const res = await fetch(`${API_URL}/emergency.list?input=${input}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data?.result?.data?.json?.items || [];
-  } catch { return []; }
 }
 
 export default function SearchPage() {
@@ -79,42 +58,47 @@ export default function SearchPage() {
   const [showEmergency, setShowEmergency] = useState(true);
   const [showStores, setShowStores] = useState(true);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    const [mItems, eItems] = await Promise.all([fetchMerchants(), fetchEmergency()]);
-    setMerchants(mItems);
-    setEmergencyContacts(eItems);
-    setLoading(false);
-  }, []);
+  // Load data from API
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true);
+      try {
+        // Build search params
+        const params: any = { json: { status: "active", limit: 100 } };
+        if (query) params.json.search = query;
+        if (selectedCity) params.json.city = selectedCity;
+        if (selectedCategory) params.json.category = selectedCategory;
 
-  useEffect(() => { loadData(); }, [loadData]);
+        const input = encodeURIComponent(JSON.stringify(params));
+        const res = await fetch(`${API_URL}/merchant.list?input=${input}`);
+        if (res.ok) {
+          const data = await res.json();
+          const items = data?.result?.data?.json?.items || [];
+          setMerchants(items);
+        }
 
-  let filteredMerchants = [...merchants];
-  let filteredEmergency = [...emergencyContacts];
+        // Load emergency contacts
+        const eInput = encodeURIComponent(JSON.stringify({ json: { limit: 100 } }));
+        const eRes = await fetch(`${API_URL}/emergency.list?input=${eInput}`);
+        if (eRes.ok) {
+          const eData = await eRes.json();
+          const eItems = eData?.result?.data?.json?.items || [];
+          setEmergencyContacts(eItems);
+        }
+      } catch (e) {
+        console.error("Load error:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, [query, selectedCity, selectedCategory]);
 
-  if (selectedCity) {
-    filteredMerchants = filteredMerchants.filter(m => m.city === selectedCity);
-    filteredEmergency = filteredEmergency.filter(e => e.city === selectedCity);
-  }
-  if (selectedCategory) {
-    filteredMerchants = filteredMerchants.filter(m => m.category === selectedCategory);
-  }
-  if (query.trim()) {
+  const filteredEmergency = emergencyContacts.filter((e: any) => {
+    if (!query) return true;
     const q = query.toLowerCase();
-    filteredMerchants = filteredMerchants.filter(m => {
-      const text = `${m.businessNameAr || ''} ${m.businessName || ''} ${m.category || ''} ${m.city || ''} ${m.country || ''} ${m.shortDescription || ''} ${m.description || ''}`.toLowerCase();
-      return text.includes(q);
-    });
-    filteredEmergency = filteredEmergency.filter(e => {
-      const text = `${e.name || ''} ${e.nameAr || ''} ${e.type || ''} ${e.city || ''} ${e.country || ''}`.toLowerCase();
-      return text.includes(q);
-    });
-  }
-
-  const sortedMerchants = filteredMerchants.sort((a, b) => {
-    if (a.isFeatured && !b.isFeatured) return -1;
-    if (!a.isFeatured && b.isFeatured) return 1;
-    return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0);
+    const text = `${e.name || ''} ${e.nameAr || ''} ${e.city || ''} ${e.country || ''}`.toLowerCase();
+    return text.includes(q);
   });
 
   const emergencyByType: Record<string, any[]> = {};
@@ -124,7 +108,7 @@ export default function SearchPage() {
   }
 
   const clearFilters = () => { setSelectedCity(""); setSelectedCategory(""); setQuery(""); };
-  const totalResults = sortedMerchants.length + filteredEmergency.length;
+  const totalResults = merchants.length + filteredEmergency.length;
 
   return (
     <Layout>
@@ -143,7 +127,6 @@ export default function SearchPage() {
                 <Input placeholder="ابحث عن مطعم، متجر، سفارة، مستشفى..." value={query} onChange={(e) => setQuery(e.target.value)}
                   className="pr-12 py-6 text-right bg-white/10 border-white/10 text-white placeholder:text-gray-500 rounded-xl" dir="rtl" />
               </div>
-              <Button className="bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-black font-bold px-6 rounded-xl"><Search className="h-5 w-5" /></Button>
             </div>
 
             <div className="mt-4 flex items-center gap-3 flex-wrap">
@@ -204,7 +187,7 @@ export default function SearchPage() {
                                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div className="flex-1">
                                       <h3 className="font-bold text-gray-900 text-sm">{e.nameAr || e.name}</h3>
-                                      {e.address && <p className="text-xs text-gray-500 mt-0.5"><MapPin className="h-3 w-3 inline ml-1" />{e.city ? `${e.city}، ` : ""}{e.country}{e.address ? ` - ${e.address}` : ""}</p>}
+                                      <p className="text-xs text-gray-500 mt-0.5"><MapPin className="h-3 w-3 inline ml-1" />{e.city ? `${e.city}، ` : ""}{e.country}</p>
                                     </div>
                                     {e.phone && <a href={`tel:${e.phone}`} className="flex items-center gap-1 text-sm bg-red-50 hover:bg-red-100 text-red-700 px-3 py-2 rounded-lg transition border border-red-100 font-bold"><Phone className="h-4 w-4" /><span dir="ltr">{e.phone}</span></a>}
                                   </div>
@@ -219,16 +202,16 @@ export default function SearchPage() {
                 </div>
               )}
 
-              {sortedMerchants.length > 0 && (
+              {merchants.length > 0 && (
                 <div className="mb-8">
                   <button onClick={() => setShowStores(!showStores)} className="flex items-center gap-2 mb-4 w-full">
                     <Store className="h-5 w-5 text-amber-500" />
-                    <h2 className="text-lg font-bold text-gray-900">المتاجر والمحلات <Badge className="mr-2 bg-amber-100 text-amber-700">{sortedMerchants.length}</Badge></h2>
+                    <h2 className="text-lg font-bold text-gray-900">المتاجر والمحلات <Badge className="mr-2 bg-amber-100 text-amber-700">{merchants.length}</Badge></h2>
                     {showStores ? <ChevronUp className="h-5 w-5 text-gray-400 mr-auto" /> : <ChevronDown className="h-5 w-5 text-gray-400 mr-auto" />}
                   </button>
                   {showStores && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {sortedMerchants.map(m => <MerchantCard key={m.id} merchant={m} />)}
+                      {merchants.map(m => <MerchantCard key={m.id} merchant={m} />)}
                     </div>
                   )}
                 </div>
@@ -238,7 +221,7 @@ export default function SearchPage() {
                 <div className="text-center py-16">
                   <Search className="h-16 w-16 text-gray-200 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد نتائج</h3>
-                  <p className="text-gray-500 text-sm mb-4">جرب تغيير معايير البحث</p>
+                  <p className="text-gray-500 text-sm mb-4">جرب تغيير كلمة البحث</p>
                   <Button onClick={clearFilters} variant="outline" className="rounded-full"><X className="h-4 w-4 ml-2" />مسح الفلاتر</Button>
                 </div>
               )}
@@ -253,12 +236,12 @@ export default function SearchPage() {
 function MerchantCard({ merchant: m }: { merchant: any }) {
   const detailUrl = `/stores/${m.id}`;
   const displayName = getDisplayName(m);
-  const displayDesc = m.shortDescription || m.descriptionAr || m.description || "";
-  const displayAddress = [m.address, m.city, m.country].filter(Boolean).join(", ");
+  const displayDesc = m.shortDescription || "";
+  const displayAddress = [m.city, m.country].filter(Boolean).join(", ");
   const catName = categoryNamesAr[m.category] || m.category || "متجر";
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 hover:border-amber-300 hover:shadow-md transition-all overflow-hidden group">
+    <div className="bg-white rounded-xl border border-gray-200 hover:border-amber-300 hover:shadow-md transition-all overflow-hidden">
       {m.isFeatured && <div className="bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-1.5 flex items-center gap-1"><Sparkles className="h-3 w-3 text-black" /><span className="text-black text-xs font-bold">إعلان مميز</span></div>}
       <div className="p-4 md:p-5">
         <div className="flex items-start justify-between mb-2">
@@ -267,14 +250,13 @@ function MerchantCard({ merchant: m }: { merchant: any }) {
         </div>
         {displayDesc && <p className="text-xs text-gray-500 mb-3 line-clamp-2">{displayDesc}</p>}
         <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
-          <div className="flex items-center gap-1"><MapPin className="h-3 w-3" />{m.city}{m.country ? `، ${m.country}` : ''}</div>
-          {m.rating && <div className="flex items-center gap-1"><Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />{m.rating}{m.reviewCount ? <span className="text-gray-400">({m.reviewCount})</span> : null}</div>}
+          <div className="flex items-center gap-1"><MapPin className="h-3 w-3" />{displayAddress}</div>
+          {m.rating && <div className="flex items-center gap-1"><Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />{m.rating}</div>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {m.phone && <a href={`tel:${m.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg transition border border-gray-100"><Phone className="h-4 w-4" /><span className="font-medium" dir="ltr">{m.phone}</span></a>}
-          {m.whatsapp && <a href={`https://wa.me/${m.whatsapp}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-sm bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded-lg transition border border-green-100"><MessageCircle className="h-4 w-4" /> واتساب</a>}
-          {m.website && <a href={m.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg transition border border-blue-100"><Globe className="h-4 w-4" /> موقع</a>}
-          {displayAddress && <a href={`https://www.google.com/maps/search/${encodeURIComponent(displayName + " " + displayAddress)}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-sm bg-amber-50 hover:bg-amber-100 text-amber-700 px-3 py-2 rounded-lg transition border border-amber-100"><MapPin className="h-4 w-4" /> الخريطة</a>}
+          {m.phone && <a href={`tel:${m.phone}`} className="flex items-center gap-1.5 text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg transition border border-gray-100"><Phone className="h-4 w-4" /><span className="font-medium" dir="ltr">{m.phone}</span></a>}
+          {m.whatsapp && <a href={`https://wa.me/${m.whatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded-lg transition border border-green-100"><MessageCircle className="h-4 w-4" /> واتساب</a>}
+          {m.website && <a href={m.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg transition border border-blue-100"><Globe className="h-4 w-4" /> موقع</a>}
           <Link to={detailUrl} className="flex items-center gap-1 text-sm text-amber-600 hover:text-amber-700 px-2 py-2 transition ml-auto font-medium">التفاصيل ←</Link>
         </div>
       </div>

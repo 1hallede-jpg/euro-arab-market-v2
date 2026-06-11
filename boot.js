@@ -33200,7 +33200,7 @@ var migrateRouter = createRouter({
       return { success: false, message: error48?.message };
     }
   }),
-  // Fix missing business names - copy description to businessNameAr and generate slugs
+  // Fix missing business names - generate proper names and slugs
   fixNames: publicQuery.mutation(async () => {
     const client = src_default(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
@@ -33210,24 +33210,54 @@ var migrateRouter = createRouter({
       const r1 = await client.unsafe(`
         UPDATE merchants 
         SET "businessNameAr" = CASE 
-          WHEN description IS NOT NULL AND length(description) > 0 
-          THEN substring(description from 1 for 40)
-          ELSE '\u0645\u062A\u062C\u0631 \u0639\u0631\u0628\u064A #' || id::text
+          WHEN "businessNameAr" IS NOT NULL AND length("businessNameAr") > 0 AND "businessNameAr" NOT LIKE '\u062E\u0637\u0628\u0629%' THEN "businessNameAr"
+          WHEN description IS NOT NULL AND length(description) > 0 AND description NOT LIKE '\u062E\u0637\u0628\u0629%' THEN substring(description from 1 for 40)
+          WHEN category = 'mosque' THEN '\u0645\u0633\u062C\u062F ' || city
+          WHEN category = 'restaurant' THEN '\u0645\u0637\u0639\u0645 ' || city
+          WHEN category = 'supermarket' THEN '\u0633\u0648\u0628\u0631\u0645\u0627\u0631\u0643\u062A ' || city
+          WHEN category = 'cafe' THEN '\u0645\u0642\u0647\u0649 ' || city
+          WHEN category = 'barber' THEN '\u0635\u0627\u0644\u0648\u0646 \u062D\u0644\u0627\u0642\u0629 ' || city
+          WHEN category = 'butcher' THEN '\u062C\u0632\u0627\u0631 ' || city
+          WHEN category = 'bakery' THEN '\u0645\u062E\u0628\u0632 ' || city
+          WHEN category = 'pharmacy' THEN '\u0635\u064A\u062F\u0644\u064A\u0629 ' || city
+          WHEN category = 'sweets' THEN '\u062D\u0644\u0648\u064A\u0627\u062A ' || city
+          ELSE coalesce(category, '\u0645\u062A\u062C\u0631') || ' ' || coalesce(city, '')
         END,
         "businessName" = CASE 
-          WHEN description IS NOT NULL AND length(description) > 0 
-          THEN substring(description from 1 for 40)
-          ELSE 'Arab Store #' || id::text
+          WHEN "businessName" IS NOT NULL AND length("businessName") > 0 AND "businessName" NOT LIKE '\u062E\u0637\u0628\u0629%' THEN "businessName"
+          WHEN description IS NOT NULL AND length(description) > 0 AND description NOT LIKE '\u062E\u0637\u0628\u0629%' THEN substring(description from 1 for 40)
+          WHEN category = 'mosque' THEN 'Mosque ' || city
+          WHEN category = 'restaurant' THEN 'Restaurant ' || city
+          WHEN category = 'supermarket' THEN 'Supermarket ' || city
+          ELSE coalesce(category, 'store') || ' ' || coalesce(city, '')
         END
-        WHERE "businessNameAr" IS NULL OR "businessNameAr" = ''
       `);
       const r2 = await client.unsafe(`
         UPDATE merchants 
-        SET slug = lower(regexp_replace(
-          coalesce("businessNameAr", 'store-' || id::text), 
-          '[^a-zA-Z0-9\\u0600-\\u06FF]+', '-', 'g'
-        )) || '-' || id::text || '-' || extract(epoch from now())::bigint::text
-        WHERE slug IS NULL
+        SET slug = 
+          CASE category
+            WHEN 'mosque' THEN 'mosque'
+            WHEN 'restaurant' THEN 'restaurant'
+            WHEN 'supermarket' THEN 'supermarket'
+            WHEN 'cafe' THEN 'cafe'
+            WHEN 'barber' THEN 'barber'
+            WHEN 'butcher' THEN 'butcher'
+            WHEN 'bakery' THEN 'bakery'
+            WHEN 'pharmacy' THEN 'pharmacy'
+            WHEN 'sweets' THEN 'sweets'
+            WHEN 'clothing' THEN 'clothing'
+            WHEN 'electronics' THEN 'electronics'
+            WHEN 'shisha_lounge' THEN 'shisha'
+            WHEN 'halal_grocery' THEN 'grocery'
+            WHEN 'travel_agency' THEN 'travel'
+            WHEN 'money_transfer' THEN 'money'
+            WHEN 'cultural_center' THEN 'cultural'
+            WHEN 'car_dealer' THEN 'cars'
+            WHEN 'repair_shop' THEN 'repair'
+            ELSE 'store'
+          END 
+          || '-' || lower(regexp_replace(coalesce(city, 'city'), '[^a-zA-Z]', '-', 'g'))
+          || '-' || id::text
       `);
       const r3 = await client.unsafe(`
         UPDATE merchants 

@@ -157,37 +157,68 @@ export const migrateRouter = createRouter({
     }
   }),
 
-  // Fix missing business names - copy description to businessNameAr and generate slugs
+  // Fix missing business names - generate proper names and slugs
   fixNames: publicQuery.mutation(async () => {
     const client = postgres(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1,
     });
     try {
-      // 1. Copy description to businessNameAr where businessNameAr is null
+      // 1. Fix businessNameAr for entries that start with "خطبة" or are empty
+      // Use city + category instead of raw description
       const r1 = await client.unsafe(`
         UPDATE merchants 
         SET "businessNameAr" = CASE 
-          WHEN description IS NOT NULL AND length(description) > 0 
-          THEN substring(description from 1 for 40)
-          ELSE 'متجر عربي #' || id::text
+          WHEN "businessNameAr" IS NOT NULL AND length("businessNameAr") > 0 AND "businessNameAr" NOT LIKE 'خطبة%' THEN "businessNameAr"
+          WHEN description IS NOT NULL AND length(description) > 0 AND description NOT LIKE 'خطبة%' THEN substring(description from 1 for 40)
+          WHEN category = 'mosque' THEN 'مسجد ' || city
+          WHEN category = 'restaurant' THEN 'مطعم ' || city
+          WHEN category = 'supermarket' THEN 'سوبرماركت ' || city
+          WHEN category = 'cafe' THEN 'مقهى ' || city
+          WHEN category = 'barber' THEN 'صالون حلاقة ' || city
+          WHEN category = 'butcher' THEN 'جزار ' || city
+          WHEN category = 'bakery' THEN 'مخبز ' || city
+          WHEN category = 'pharmacy' THEN 'صيدلية ' || city
+          WHEN category = 'sweets' THEN 'حلويات ' || city
+          ELSE coalesce(category, 'متجر') || ' ' || coalesce(city, '')
         END,
         "businessName" = CASE 
-          WHEN description IS NOT NULL AND length(description) > 0 
-          THEN substring(description from 1 for 40)
-          ELSE 'Arab Store #' || id::text
+          WHEN "businessName" IS NOT NULL AND length("businessName") > 0 AND "businessName" NOT LIKE 'خطبة%' THEN "businessName"
+          WHEN description IS NOT NULL AND length(description) > 0 AND description NOT LIKE 'خطبة%' THEN substring(description from 1 for 40)
+          WHEN category = 'mosque' THEN 'Mosque ' || city
+          WHEN category = 'restaurant' THEN 'Restaurant ' || city
+          WHEN category = 'supermarket' THEN 'Supermarket ' || city
+          ELSE coalesce(category, 'store') || ' ' || coalesce(city, '')
         END
-        WHERE "businessNameAr" IS NULL OR "businessNameAr" = ''
       `);
 
-      // 2. Generate slugs for merchants with null slug
+      // 2. Regenerate all slugs from clean names (not descriptions)
       const r2 = await client.unsafe(`
         UPDATE merchants 
-        SET slug = lower(regexp_replace(
-          coalesce("businessNameAr", 'store-' || id::text), 
-          '[^a-zA-Z0-9\\u0600-\\u06FF]+', '-', 'g'
-        )) || '-' || id::text || '-' || extract(epoch from now())::bigint::text
-        WHERE slug IS NULL
+        SET slug = 
+          CASE category
+            WHEN 'mosque' THEN 'mosque'
+            WHEN 'restaurant' THEN 'restaurant'
+            WHEN 'supermarket' THEN 'supermarket'
+            WHEN 'cafe' THEN 'cafe'
+            WHEN 'barber' THEN 'barber'
+            WHEN 'butcher' THEN 'butcher'
+            WHEN 'bakery' THEN 'bakery'
+            WHEN 'pharmacy' THEN 'pharmacy'
+            WHEN 'sweets' THEN 'sweets'
+            WHEN 'clothing' THEN 'clothing'
+            WHEN 'electronics' THEN 'electronics'
+            WHEN 'shisha_lounge' THEN 'shisha'
+            WHEN 'halal_grocery' THEN 'grocery'
+            WHEN 'travel_agency' THEN 'travel'
+            WHEN 'money_transfer' THEN 'money'
+            WHEN 'cultural_center' THEN 'cultural'
+            WHEN 'car_dealer' THEN 'cars'
+            WHEN 'repair_shop' THEN 'repair'
+            ELSE 'store'
+          END 
+          || '-' || lower(regexp_replace(coalesce(city, 'city'), '[^a-zA-Z]', '-', 'g'))
+          || '-' || id::text
       `);
 
       // 3. Generate shortDescription from city + category
