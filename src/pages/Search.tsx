@@ -47,7 +47,7 @@ function getDisplayName(m: any): string {
 // Fetch merchants directly via GET
 async function fetchMerchants(): Promise<any[]> {
   try {
-    const input = encodeURIComponent(JSON.stringify({ json: { status: "active", limit: 500 } }));
+    const input = encodeURIComponent(JSON.stringify({ json: { status: "active", limit: 100 } }));
     const res = await fetch(`${API_URL}/merchant.list?input=${input}`);
     if (!res.ok) return [];
     const data = await res.json();
@@ -57,7 +57,7 @@ async function fetchMerchants(): Promise<any[]> {
 
 async function fetchEmergency(): Promise<any[]> {
   try {
-    const input = encodeURIComponent(JSON.stringify({ json: { limit: 200 } }));
+    const input = encodeURIComponent(JSON.stringify({ json: { limit: 100 } }));
     const res = await fetch(`${API_URL}/emergency.list?input=${input}`);
     if (!res.ok) return [];
     const data = await res.json();
