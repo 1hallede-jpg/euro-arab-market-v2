@@ -37,14 +37,17 @@ const categoryNamesAr: Record<string, string> = {
   other: "أخرى",
 };
 
-// Extract a short name from description
+// Extract a short name from merchant data
 function getDisplayName(m: any): string {
-  if (m.businessNameAr) return m.businessNameAr;
-  if (m.businessName) return m.businessName;
-  if (m.description) {
-    const desc = m.description.replace(/^يقدم\s+/g, '');
-    return desc.length > 40 ? desc.substring(0, 40) + '...' : desc;
-  }
+  // Use shortDescription first (contains "Category in City" in Arabic)
+  if (m.shortDescription && m.shortDescription.length < 60) return m.shortDescription;
+  // Use businessNameAr if it's short enough
+  if (m.businessNameAr && m.businessNameAr.length < 50) return m.businessNameAr;
+  // Use businessNameAr truncated
+  if (m.businessNameAr) return m.businessNameAr.substring(0, 45) + '...';
+  // Use businessName
+  if (m.businessName && m.businessName.length < 50) return m.businessName;
+  // Fallback to category + city
   return `${categoryNamesAr[m.category] || m.category || 'متجر'} - ${m.city || ''}`;
 }
 
