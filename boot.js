@@ -33355,15 +33355,21 @@ var migrateRouter = createRouter({
         const tagsVal = m.description?.substring(0, 200) || "";
         await db.insert(merchants).values({
           businessName: name,
+          business_name: name,
+          // Set both columns
           businessNameAr: m.businessNameAr,
+          business_name_ar: m.businessNameAr,
           shortDescription: shortDesc,
+          short_description: shortDesc,
           description: desc2,
           descriptionAr: desc2,
+          description_ar: desc2,
           category: m.category,
           country: m.country,
           city: m.city,
           address: addr,
           addressAr: addr,
+          address_ar: addr,
           phone: phoneVal || null,
           website: m.website || null,
           status: "active",
@@ -33372,6 +33378,7 @@ var migrateRouter = createRouter({
           isVerified: true,
           rating,
           reviewCount: reviews2,
+          review_count: reviews2,
           tags: tagsVal,
           createdAt: /* @__PURE__ */ new Date(),
           updatedAt: /* @__PURE__ */ new Date()

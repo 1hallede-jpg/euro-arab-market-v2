@@ -328,15 +328,20 @@ export const migrateRouter = createRouter({
           
           await db.insert(merchants).values({
             businessName: name,
+            business_name: name,  // Set both columns
             businessNameAr: m.businessNameAr,
+            business_name_ar: m.businessNameAr,
             shortDescription: shortDesc,
+            short_description: shortDesc,
             description: desc,
             descriptionAr: desc,
+            description_ar: desc,
             category: m.category,
             country: m.country,
             city: m.city,
             address: addr,
             addressAr: addr,
+            address_ar: addr,
             phone: phoneVal || null,
             website: m.website || null,
             status: 'active',
@@ -345,6 +350,7 @@ export const migrateRouter = createRouter({
             isVerified: true,
             rating: rating,
             reviewCount: reviews,
+            review_count: reviews,
             tags: tagsVal,
             createdAt: new Date(),
             updatedAt: new Date(),
