@@ -34425,10 +34425,10 @@ import path from "path";
 var app = new Hono2();
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
 app.use("/api/trpc/*", cors({
-  origin: ["https://dloeo5t7m45ae.kimi.page", "https://euro-arab-market.onrender.com", "https://euroarabmarket.com", "https://www.euroarabmarket.com", "http://localhost:5173"],
+  origin: "*",
   allowMethods: ["GET", "POST", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+  credentials: false
 }));
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
 app.use("/api/trpc/*", async (c) => {

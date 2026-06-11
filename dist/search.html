@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بحث - يورو عرب ماركت</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; }
+.header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 2rem 1rem; text-align: center; }
+.header h1 { font-size: 1.3rem; margin-bottom: 0.5rem; }
+.header p { color: #aaa; font-size: 0.85rem; }
+.search-box { max-width: 600px; margin: 1.5rem auto; display: flex; gap: 0.5rem; padding: 0 1rem; }
+.search-box input { flex: 1; padding: 0.8rem 1rem; border: none; border-radius: 12px; background: rgba(255,255,255,0.1); color: white; font-size: 1rem; text-align: right; }
+.search-box input::placeholder { color: #888; }
+.search-box button { padding: 0.8rem 1.5rem; background: linear-gradient(135deg, #fbbf24, #d97706); color: black; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; }
+.filters { max-width: 600px; margin: 0 auto; padding: 0 1rem 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.filter-btn { padding: 0.4rem 0.8rem; background: rgba(255,255,255,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); border-radius: 20px; font-size: 0.75rem; cursor: pointer; }
+.filter-btn.active { background: #fbbf24; color: black; }
+.results { max-width: 900px; margin: 0 auto; padding: 1rem; }
+.section-title { font-size: 1.1rem; font-weight: bold; margin: 1rem 0 0.5rem; color: #333; display: flex; align-items: center; gap: 0.5rem; }
+.count { background: #e5e7eb; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; color: #666; }
+.card { background: white; border-radius: 12px; padding: 1rem; margin-bottom: 0.75rem; border: 1px solid #e5e7eb; transition: all 0.2s; }
+.card:hover { border-color: #fbbf24; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+.card-name { font-weight: bold; color: #111; font-size: 1rem; }
+.card-category { font-size: 0.7rem; padding: 0.2rem 0.5rem; background: #fef3c7; color: #d97706; border-radius: 6px; white-space: nowrap; }
+.card-desc { color: #666; font-size: 0.8rem; margin-bottom: 0.5rem; }
+.card-meta { display: flex; justify-content: space-between; color: #999; font-size: 0.75rem; }
+.card-phone { display: inline-block; margin-top: 0.5rem; padding: 0.3rem 0.8rem; background: #fee2e2; color: #dc2626; border-radius: 8px; font-size: 0.8rem; text-decoration: none; font-weight: bold; }
+.loading { text-align: center; padding: 3rem; }
+.spinner { width: 40px; height: 40px; border: 3px solid #fbbf24; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty { text-align: center; padding: 3rem; color: #999; }
+.error { text-align: center; padding: 2rem; color: #dc2626; background: #fee2e2; border-radius: 12px; margin: 1rem; }
+.navbar { background: white; padding: 0.75rem 1rem; display: flex; justify-content: center; gap: 1rem; border-bottom: 1px solid #e5e7eb; }
+.navbar a { color: #666; text-decoration: none; font-size: 0.85rem; }
+.navbar a:hover { color: #d97706; }
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <a href="/">الرئيسية</a>
+  <a href="/stores">المتاجر</a>
+  <a href="/search">البحث</a>
+  <a href="/sindbad">سندباد</a>
+</div>
+
+<div class="header">
+  <h1 id="title">جميع المتاجر العربية</h1>
+  <p>دليل المتاجر العربية في أوروبا + أرقام الطوارئ</p>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="ابحث عن مطعم، متجر، سفارة، مستشفى..." value="">
+    <button onclick="doSearch()">بحث</button>
+  </div>
+  <div class="filters" id="cityFilters"></div>
+</div>
+
+<div class="results" id="results">
+  <div class="loading"><div class="spinner"></div></div>
+</div>
+
+<script>
+const API = "/api/trpc";
+const CATEGORIES = {
+  restaurant: "مطاعم عربية", supermarket: "سوبرماركت حلال", sweets: "حلويات شرقية",
+  barber: "صالونات حلاقة", butcher: "جزار حلال", bakery: "مخابز",
+  cafe: "مقاهي", clothing: "ملابس", electronics: "إلكترونيات",
+  pharmacy: "صيدليات", halal_grocery: "بقالة حلال", shisha_lounge: "مقاهي شيشة",
+  travel_agency: "وكالات سفر", money_transfer: "تحويل أموال", mosque: "مساجد",
+  cultural_center: "مراكز ثقافية", car_dealer: "سيارات", repair_shop: "ورش إصلاح", other: "أخرى"
+};
+const CITIES = ["باريس", "لندن", "برلين", "مدريد", "برشلونة", "روما", "ميلان", "أمستردام", "بروكسل", "فيينا", "كوبنهاغن", "ستوكهولم", "أوسلو", "زيورخ", "بودابست"];
+
+let allMerchants = [];
+let allEmergency = [];
+let currentQuery = "";
+let currentCity = "";
+
+// Build city filter buttons
+const cityFilters = document.getElementById('cityFilters');
+CITIES.forEach(city => {
+  const btn = document.createElement('button');
+  btn.className = 'filter-btn';
+  btn.textContent = city;
+  btn.onclick = () => toggleCity(city, btn);
+  cityFilters.appendChild(btn);
+});
+
+function toggleCity(city, btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  if (currentCity === city) {
+    currentCity = "";
+  } else {
+    currentCity = city;
+    btn.classList.add('active');
+  }
+  filterAndRender();
+}
+
+// Search on Enter
+const searchInput = document.getElementById('searchInput');
+searchInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') doSearch(); });
+searchInput.addEventListener('input', (e) => { currentQuery = e.target.value; filterAndRender(); });
+
+function doSearch() {
+  currentQuery = searchInput.value;
+  filterAndRender();
+}
+
+// Load data
+async function loadData() {
+  try {
+    // Load merchants
+    const input = encodeURIComponent(JSON.stringify({ json: { status: "active", limit: 100 } }));
+    const mRes = await fetch(`${API}/merchant.list?input=${input}`);
+    if (mRes.ok) {
+      const mData = await mRes.json();
+      allMerchants = mData?.result?.data?.json?.items || [];
+    }
+
+    // Load emergency
+    const eInput = encodeURIComponent(JSON.stringify({ json: { limit: 100 } }));
+    const eRes = await fetch(`${API}/emergency.list?input=${eInput}`);
+    if (eRes.ok) {
+      const eData = await eRes.json();
+      allEmergency = eData?.result?.data?.json?.items || [];
+    }
+
+    filterAndRender();
+  } catch (err) {
+    document.getElementById('results').innerHTML = `<div class="error">خطأ في تحميل البيانات: ${err.message}</div>`;
+  }
+}
+
+function filterAndRender() {
+  let merchants = [...allMerchants];
+  let emergency = [...allEmergency];
+
+  // Filter by city
+  if (currentCity) {
+    merchants = merchants.filter(m => m.city === currentCity);
+    emergency = emergency.filter(e => e.city === currentCity || e.country?.includes(currentCity));
+  }
+
+  // Filter by query
+  if (currentQuery) {
+    const q = currentQuery.toLowerCase();
+    merchants = merchants.filter(m => {
+      const text = `${m.businessNameAr || ''} ${m.businessName || ''} ${m.category || ''} ${m.city || ''} ${m.country || ''} ${m.shortDescription || ''}`.toLowerCase();
+      return text.includes(q);
+    });
+    emergency = emergency.filter(e => {
+      const text = `${e.name || ''} ${e.nameAr || ''} ${e.type || ''} ${e.city || ''} ${e.country || ''}`.toLowerCase();
+      return text.includes(q);
+    });
+  }
+
+  // Update title
+  document.getElementById('title').textContent = currentQuery 
+    ? `${merchants.length + emergency.length} نتيجة لـ "${currentQuery}"`
+    : currentCity
+    ? `متاجر ${currentCity} (${merchants.length})`
+    : `جميع المتاجر العربية (${allMerchants.length})`;
+
+  render(merchants, emergency);
+}
+
+function render(merchants, emergency) {
+  const results = document.getElementById('results');
+  let html = '';
+
+  // Emergency section
+  if (emergency.length > 0) {
+    html += `<div class="section-title">أرقام الطوارئ <span class="count">${emergency.length}</span></div>`;
+    emergency.forEach(e => {
+      html += `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-name">${e.nameAr || e.name}</span>
+            <span class="card-category">${e.type === 'embassy' ? 'سفارة' : e.type === 'hospital' ? 'مستشفى' : e.type === 'police' ? 'شرطة' : e.type === 'fire' ? 'إطفاء' : 'طوارئ'}</span>
+          </div>
+          <div class="card-desc">${e.city ? e.city + '، ' : ''}${e.country || ''}${e.address ? ' - ' + e.address : ''}</div>
+          ${e.phone ? `<a href="tel:${e.phone}" class="card-phone">📞 ${e.phone}</a>` : ''}
+        </div>`;
+    });
+  }
+
+  // Merchants section
+  if (merchants.length > 0) {
+    html += `<div class="section-title">المتاجر والمحلات <span class="count">${merchants.length}</span></div>`;
+    merchants.forEach(m => {
+      const name = (m.shortDescription && m.shortDescription.length < 50) ? m.shortDescription : (m.businessNameAr || m.businessName || 'متجر');
+      const cat = CATEGORIES[m.category] || m.category || 'متجر';
+      const desc = m.shortDescription || '';
+      const city = m.city || '';
+      const country = m.country || '';
+      const rating = m.rating || '';
+      const phone = m.phone || '';
+
+      html += `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-name">${name}</span>
+            <span class="card-category">${cat}</span>
+          </div>
+          ${desc ? `<div class="card-desc">${desc}</div>` : ''}
+          <div class="card-meta">
+            <span>📍 ${city}${country ? '، ' + country : ''}</span>
+            ${rating ? `<span>⭐ ${rating}</span>` : ''}
+          </div>
+          ${phone ? `<a href="tel:${phone}" class="card-phone">📞 ${phone}</a>` : ''}
+        </div>`;
+    });
+  }
+
+  if (merchants.length === 0 && emergency.length === 0) {
+    html = `<div class="empty">
+      <h3>لا توجد نتائج</h3>
+      <p>جرب تغيير كلمة البحث أو المدينة</p>
+    </div>`;
+  }
+
+  results.innerHTML = html;
+}
+
+// Load on page load
+loadData();
+</script>
+</body>
+</html>
