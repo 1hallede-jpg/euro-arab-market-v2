@@ -4,14 +4,14 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   Search,
   Store,
-  Briefcase,
   Sparkles,
   Home,
+  Shield,
+  Phone,
   Menu,
   X,
   User,
   LogOut,
-  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +25,7 @@ import {
 const navLinks = [
   { href: "/", label: "الرئيسية", icon: Home },
   { href: "/stores", label: "المتاجر", icon: Store },
+  { href: "/search", label: "البحث", icon: Search },
   { href: "/sindbad", label: "سندباد", icon: Sparkles },
 ];
 

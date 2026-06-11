@@ -242,8 +242,8 @@ export default function Stores() {
                   <h3 className="font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors text-base leading-snug line-clamp-2">
                     {getDisplayName(merchant)}
                   </h3>
-                  <p className="text-xs text-gray-500 mb-3 line-clamp-2">
-                    {categoryNamesAr[merchant.category] || merchant.category || "متجر"} • {merchant.city}{merchant.country ? `، ${merchant.country}` : ''}
+                  <p className="text-xs text-gray-500 mb-3">
+                    {merchant.city}{merchant.country ? `، ${merchant.country}` : ''} • ⭐{merchant.rating}
                   </p>
                   <div className="flex items-center justify-between text-xs text-gray-400">
                     <div className="flex items-center gap-1">
