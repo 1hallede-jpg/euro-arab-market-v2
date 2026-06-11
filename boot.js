@@ -4908,6 +4908,7 @@ var seedRouter = createRouter({
 });
 
 // api/migrate-router.ts
+import { z as z9 } from "zod";
 import postgres2 from "postgres";
 var migrateRouter = createRouter({
   // Show table columns
@@ -5033,6 +5034,47 @@ var migrateRouter = createRouter({
       return { success: false, message: error?.message };
     }
   }),
+  // Batch insert merchants
+  batchInsert: publicQuery.input(z9.object({
+    merchants: z9.array(z9.object({
+      businessNameAr: z9.string(),
+      businessName: z9.string().optional(),
+      category: z9.string(),
+      description: z9.string(),
+      country: z9.string(),
+      city: z9.string(),
+      address: z9.string().optional(),
+      phone: z9.string().optional(),
+      website: z9.string().optional()
+    }))
+  })).mutation(async ({ input }) => {
+    const client = postgres2(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1
+    });
+    let inserted = 0;
+    try {
+      for (const m of input.merchants) {
+        const slug = `${m.businessNameAr.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").substring(0, 40)}-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+        await client`
+            INSERT INTO merchants ("businessName", "businessNameAr", "shortDescription", "description", "descriptionAr",
+              "category", "country", "city", "address", "addressAr", "phone", "website",
+              "status", "slug", "isFeatured", "isVerified", "rating", "reviewCount", "createdAt", "updatedAt")
+            VALUES (${m.businessName || m.businessNameAr}, ${m.businessNameAr}, ${m.description?.substring(0, 160)}, ${m.description}, ${m.description},
+              ${m.category}, ${m.country}, ${m.city}, ${m.address || m.city}, ${m.address || m.city},
+              ${m.phone || null}, ${m.website || null},
+              'active', ${slug}, false, true, ${(3.5 + Math.random() * 1.5).toFixed(1)}, ${Math.floor(Math.random() * 40) + 5}, NOW(), NOW())
+            ON CONFLICT DO NOTHING
+          `;
+        inserted++;
+      }
+      await client.end();
+      return { success: true, inserted };
+    } catch (error) {
+      await client.end();
+      return { success: false, message: error?.message, inserted };
+    }
+  }),
   // Original fixUserId
   fixUserId: publicQuery.mutation(async () => {
     const client = postgres2(env.databaseUrl, {
@@ -5051,11 +5093,11 @@ var migrateRouter = createRouter({
 });
 
 // api/reviews-router.ts
-import { z as z9 } from "zod";
+import { z as z10 } from "zod";
 import { eq as eq8, desc as desc7, sql as sql7, avg, count } from "drizzle-orm";
 var reviewsRouter = createRouter({
   // Get reviews for a merchant
-  list: publicQuery.input(z9.object({ merchantId: z9.number() })).query(async ({ input }) => {
+  list: publicQuery.input(z10.object({ merchantId: z10.number() })).query(async ({ input }) => {
     const db = getDb();
     const items = await db.select().from(reviews).where(eq8(reviews.merchantId, input.merchantId)).orderBy(desc7(reviews.createdAt));
     const stats = await db.select({
@@ -5070,10 +5112,10 @@ var reviewsRouter = createRouter({
   }),
   // Create a review (requires auth)
   create: authedQuery.input(
-    z9.object({
-      merchantId: z9.number(),
-      rating: z9.number().min(1).max(5),
-      comment: z9.string().min(1).max(1e3)
+    z10.object({
+      merchantId: z10.number(),
+      rating: z10.number().min(1).max(5),
+      comment: z10.string().min(1).max(1e3)
     })
   ).mutation(async ({ input, ctx }) => {
     const db = getDb();
@@ -5099,7 +5141,7 @@ var reviewsRouter = createRouter({
     return { success: true, message: "\u062A\u0645 \u0625\u0636\u0627\u0641\u0629 \u0627\u0644\u062A\u0642\u064A\u064A\u0645" };
   }),
   // Delete own review
-  delete: authedQuery.input(z9.object({ reviewId: z9.number() })).mutation(async ({ input, ctx }) => {
+  delete: authedQuery.input(z10.object({ reviewId: z10.number() })).mutation(async ({ input, ctx }) => {
     const db = getDb();
     await db.delete(reviews).where(
       sql7`${reviews.id} = ${input.reviewId} AND ${reviews.userId} = ${ctx.user.id}`
@@ -5107,7 +5149,7 @@ var reviewsRouter = createRouter({
     return { success: true };
   }),
   // Admin: verify a review
-  verify: authedQuery.input(z9.object({ reviewId: z9.number() })).mutation(async ({ input }) => {
+  verify: authedQuery.input(z10.object({ reviewId: z10.number() })).mutation(async ({ input }) => {
     const db = getDb();
     await db.update(reviews).set({ isVerified: true }).where(eq8(reviews.id, input.reviewId));
     return { success: true };
@@ -5121,7 +5163,7 @@ var reviewsRouter = createRouter({
 });
 
 // api/featured-router.ts
-import { z as z10 } from "zod";
+import { z as z11 } from "zod";
 import { eq as eq9, desc as desc8, sql as sql8, and as and8, like as like5, or as or5 } from "drizzle-orm";
 var featuredRouter = createRouter({
   /**
@@ -5129,12 +5171,12 @@ var featuredRouter = createRouter({
    * Public endpoint — no auth required
    */
   search: publicQuery.input(
-    z10.object({
-      q: z10.string().min(1),
-      city: z10.string().optional(),
-      country: z10.string().optional(),
-      category: z10.string().optional(),
-      limit: z10.number().min(1).max(50).default(20)
+    z11.object({
+      q: z11.string().min(1),
+      city: z11.string().optional(),
+      country: z11.string().optional(),
+      category: z11.string().optional(),
+      limit: z11.number().min(1).max(50).default(20)
     })
   ).query(async ({ input }) => {
     const db = getDb();
@@ -5189,7 +5231,7 @@ var featuredRouter = createRouter({
   /**
    * Get featured merchants for a city
    */
-  byCity: publicQuery.input(z10.object({ city: z10.string(), limit: z10.number().default(10) })).query(async ({ input }) => {
+  byCity: publicQuery.input(z11.object({ city: z11.string(), limit: z11.number().default(10) })).query(async ({ input }) => {
     const db = getDb();
     const featured = await db.select().from(merchants).where(
       and8(
@@ -5210,7 +5252,7 @@ var featuredRouter = createRouter({
   /**
    * Toggle featured status (admin only)
    */
-  toggle: publicQuery.input(z10.object({ id: z10.number(), featured: z10.boolean() })).mutation(async ({ input }) => {
+  toggle: publicQuery.input(z11.object({ id: z11.number(), featured: z11.boolean() })).mutation(async ({ input }) => {
     const db = getDb();
     await db.update(merchants).set({ isFeatured: input.featured }).where(eq9(merchants.id, input.id));
     return { success: true };

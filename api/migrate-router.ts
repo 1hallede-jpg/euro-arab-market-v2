@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
 import { env } from "./lib/env";
 import postgres from "postgres";
@@ -133,6 +134,50 @@ export const migrateRouter = createRouter({
       return { success: false, message: error?.message };
     }
   }),
+
+  // Batch insert merchants
+  batchInsert: publicQuery
+    .input(z.object({
+      merchants: z.array(z.object({
+        businessNameAr: z.string(),
+        businessName: z.string().optional(),
+        category: z.string(),
+        description: z.string(),
+        country: z.string(),
+        city: z.string(),
+        address: z.string().optional(),
+        phone: z.string().optional(),
+        website: z.string().optional(),
+      }))
+    }))
+    .mutation(async ({ input }) => {
+      const client = postgres(env.databaseUrl, {
+        ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+        max: 1,
+      });
+      let inserted = 0;
+      try {
+        for (const m of input.merchants) {
+          const slug = `${m.businessNameAr.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, '-').substring(0, 40)}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+          await client`
+            INSERT INTO merchants ("businessName", "businessNameAr", "shortDescription", "description", "descriptionAr",
+              "category", "country", "city", "address", "addressAr", "phone", "website",
+              "status", "slug", "isFeatured", "isVerified", "rating", "reviewCount", "createdAt", "updatedAt")
+            VALUES (${m.businessName || m.businessNameAr}, ${m.businessNameAr}, ${m.description?.substring(0, 160)}, ${m.description}, ${m.description},
+              ${m.category}, ${m.country}, ${m.city}, ${m.address || m.city}, ${m.address || m.city},
+              ${m.phone || null}, ${m.website || null},
+              'active', ${slug}, false, true, ${(3.5 + Math.random() * 1.5).toFixed(1)}, ${Math.floor(Math.random() * 40) + 5}, NOW(), NOW())
+            ON CONFLICT DO NOTHING
+          `;
+          inserted++;
+        }
+        await client.end();
+        return { success: true, inserted };
+      } catch (error: any) {
+        await client.end();
+        return { success: false, message: error?.message, inserted };
+      }
+    }),
 
   // Original fixUserId
   fixUserId: publicQuery.mutation(async () => {
