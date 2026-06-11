@@ -33056,6 +33056,41 @@ var migrateRouter = createRouter({
       return { success: false, error: error48?.message, results };
     }
   }),
+  // Create emergency_contacts table
+  createEmergencyTable: publicQuery.mutation(async () => {
+    const client = src_default(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1
+    });
+    try {
+      await client.unsafe(`
+        CREATE TABLE IF NOT EXISTS emergency_contacts (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          "nameAr" VARCHAR(255),
+          type VARCHAR(50) NOT NULL,
+          phone VARCHAR(50) NOT NULL,
+          "phoneSecondary" VARCHAR(50),
+          country VARCHAR(100) NOT NULL,
+          city VARCHAR(100),
+          address TEXT,
+          description TEXT,
+          "descriptionAr" TEXT,
+          "isActive" BOOLEAN DEFAULT true,
+          "createdAt" TIMESTAMP DEFAULT NOW(),
+          "updatedAt" TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      await client.unsafe(`CREATE INDEX IF NOT EXISTS idx_emergency_type ON emergency_contacts(type)`);
+      await client.unsafe(`CREATE INDEX IF NOT EXISTS idx_emergency_country ON emergency_contacts(country)`);
+      await client.unsafe(`CREATE INDEX IF NOT EXISTS idx_emergency_city ON emergency_contacts(city)`);
+      await client.end();
+      return { success: true, message: "emergency_contacts table created" };
+    } catch (error48) {
+      await client.end();
+      return { success: false, message: error48?.message };
+    }
+  }),
   // Create search_analytics table
   createAnalytics: publicQuery.mutation(async () => {
     const client = src_default(env.databaseUrl, {
