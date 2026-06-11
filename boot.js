@@ -33358,21 +33358,21 @@ var migrateRouter = createRouter({
         const tagsVal = m.description?.substring(0, 200) || "";
         await client`
             INSERT INTO merchants (
-              "businessName", business_name, "businessNameAr", business_name_ar,
-              "shortDescription", short_description, description, "descriptionAr", description_ar,
-              category, country, city, address, "addressAr", address_ar,
+              business_name, business_name_ar,
+              short_description, description, description_ar,
+              category, country, city, address, address_ar,
               phone, website, status, slug,
-              "isFeatured", is_featured, "isVerified", is_verified,
-              rating, "reviewCount", review_count, tags,
-              "createdAt", created_at, "updatedAt", updated_at
+              is_featured, is_verified,
+              rating, review_count, tags,
+              created_at, updated_at
             ) VALUES (
-              ${name}, ${name}, ${m.businessNameAr}, ${m.businessNameAr},
-              ${shortDesc}, ${shortDesc}, ${desc2}, ${desc2}, ${desc2},
-              ${m.category}, ${m.country}, ${m.city}, ${addr}, ${addr}, ${addr},
+              ${name}, ${m.businessNameAr},
+              ${shortDesc}, ${desc2}, ${desc2},
+              ${m.category}, ${m.country}, ${m.city}, ${addr}, ${addr},
               ${phoneVal}, ${m.website || null}, 'active', ${slug},
-              false, false, true, true,
-              ${rating}, ${reviews2}, ${reviews2}, ${tagsVal},
-              NOW(), NOW(), NOW(), NOW()
+              false, true,
+              ${rating}, ${reviews2}, ${tagsVal},
+              NOW(), NOW()
             ) ON CONFLICT DO NOTHING
           `;
         inserted++;
