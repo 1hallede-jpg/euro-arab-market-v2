@@ -3706,14 +3706,25 @@ var merchantRouter = createRouter({
       reviews: merchantReviews
     };
   }),
-  // Get merchant by slug
+  // Get merchant by slug or id
   getBySlug: publicQuery.input(z.object({ slug: z.string() })).query(async ({ input }) => {
-    const db = getDb();
-    const merchant = await db.select().from(merchants).where(eq(merchants.slug, input.slug)).limit(1);
-    if (!merchant[0]) {
-      throw new Error("Merchant not found");
+    try {
+      const db = getDb();
+      let result = await db.select().from(merchants).where(eq(merchants.slug, input.slug)).limit(1);
+      if (!result[0] && /^\d+$/.test(input.slug)) {
+        result = await db.select().from(merchants).where(eq(merchants.id, parseInt(input.slug))).limit(1);
+      }
+      if (!result[0]) {
+        result = await db.select().from(merchants).where(sql`${merchants.slug} ILIKE ${"%" + input.slug + "%"}`).limit(1);
+      }
+      if (!result[0]) {
+        return null;
+      }
+      return result[0];
+    } catch (error) {
+      console.error("[getBySlug] Error:", error?.message);
+      return null;
     }
-    return merchant[0];
   }),
   // Create merchant
   create: publicQuery.input(

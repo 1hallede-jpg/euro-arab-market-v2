@@ -107,22 +107,47 @@ export const merchantRouter = createRouter({
       };
     }),
 
-  // Get merchant by slug
+  // Get merchant by slug or id
   getBySlug: publicQuery
     .input(z.object({ slug: z.string() }))
     .query(async ({ input }) => {
-      const db = getDb();
-      const merchant = await db
-        .select()
-        .from(merchants)
-        .where(eq(merchants.slug, input.slug))
-        .limit(1);
+      try {
+        const db = getDb();
+        
+        // Try by slug first
+        let result = await db
+          .select()
+          .from(merchants)
+          .where(eq(merchants.slug, input.slug))
+          .limit(1);
 
-      if (!merchant[0]) {
-        throw new Error("Merchant not found");
+        // If not found and slug is numeric, try by id
+        if (!result[0] && /^\d+$/.test(input.slug)) {
+          result = await db
+            .select()
+            .from(merchants)
+            .where(eq(merchants.id, parseInt(input.slug)))
+            .limit(1);
+        }
+
+        // If still not found, try partial slug match
+        if (!result[0]) {
+          result = await db
+            .select()
+            .from(merchants)
+            .where(sql`${merchants.slug} ILIKE ${'%' + input.slug + '%'}`)
+            .limit(1);
+        }
+
+        if (!result[0]) {
+          return null;
+        }
+
+        return result[0];
+      } catch (error: any) {
+        console.error("[getBySlug] Error:", error?.message);
+        return null;
       }
-
-      return merchant[0];
     }),
 
   // Create merchant
