@@ -269,12 +269,6 @@ export default function Home() {
           </span>
         </Link>
         <div className="flex items-center gap-6 text-sm">
-          <Link
-            to="/stores"
-            className="text-gray-500 hover:text-amber-600 transition-colors"
-          >
-            المتاجر
-          </Link>
           <button
             onClick={() => setShowBot(true)}
             className="text-amber-600 font-semibold hover:text-amber-700 transition-colors flex items-center gap-1"
