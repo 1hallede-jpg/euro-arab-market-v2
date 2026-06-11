@@ -316,6 +316,7 @@ export const migrateRouter = createRouter({
       let inserted = 0;
       try {
         for (const m of input.merchants) {
+          console.log("[batchInsert] Processing:", m.businessNameAr, "| name:", m.businessName || m.businessNameAr);
           const slugBase = m.businessNameAr.toLowerCase()
             .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
             .substring(0, 40);
@@ -328,6 +329,8 @@ export const migrateRouter = createRouter({
           const rating = String((3.5 + Math.random() * 1.5).toFixed(1));
           const reviews = Math.floor(Math.random() * 40) + 5;
           const tagsVal = m.description?.substring(0, 200) || '';
+          
+          console.log("[batchInsert] name=", name, "desc=", desc.substring(0, 30));
           
           await client`
             INSERT INTO merchants (
