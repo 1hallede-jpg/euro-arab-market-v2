@@ -4,32 +4,47 @@ import Layout from "@/components/Layout";
 import { trpc } from "@/providers/trpc";
 import {
   Search, MapPin, Star, Phone, MessageCircle, Clock,
-  BadgeCheck, Globe, ArrowLeft, X, Filter, Store, Sparkles,
+  BadgeCheck, Globe, X, Filter, Store, Sparkles,
+  Shield, Heart, Flame, Landmark, Plane, CreditCard,
+  AlertTriangle, ChevronDown, ChevronUp, Navigation,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const categoryNamesAr: Record<string, string> = {
-  restaurant: "مطعم عربي",
+  restaurant: "مطاعم عربية",
   supermarket: "سوبرماركت حلال",
   sweets: "حلويات شرقية",
-  barber: "صالون حلاقة",
+  barber: "صالونات حلاقة",
   butcher: "جزار حلال",
-  bakery: "مخبز عربي",
-  cafe: "مقهى عربي",
+  bakery: "مخابز",
+  cafe: "مقاهي",
   clothing: "ملابس",
   electronics: "إلكترونيات",
-  pharmacy: "صيدلية",
+  pharmacy: "صيدليات",
   halal_grocery: "بقالة حلال",
-  shisha_lounge: "مقهى شيشة",
-  travel_agency: "وكالة سفر",
+  shisha_lounge: "مقاهي شيشة",
+  travel_agency: "وكالات سفر",
   money_transfer: "تحويل أموال",
-  mosque: "مسجد",
-  cultural_center: "مركز ثقافي",
+  mosque: "مساجد",
+  cultural_center: "مراكز ثقافية",
   car_dealer: "سيارات",
-  repair_shop: "إصلاح",
+  repair_shop: "ورش إصلاح",
   other: "أخرى",
+};
+
+const emergencyTypeAr: Record<string, { name: string; color: string; bg: string; border: string; icon: any }> = {
+  embassy: { name: "سفارة", color: "text-red-700", bg: "bg-red-50", border: "border-red-200", icon: Landmark },
+  hospital: { name: "مستشفى", color: "text-rose-700", bg: "bg-rose-50", border: "border-rose-200", icon: Heart },
+  police: { name: "شرطة", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200", icon: Shield },
+  fire: { name: "إطفاء", color: "text-orange-700", bg: "bg-orange-50", border: "border-orange-200", icon: Flame },
+  pharmacy_24h: { name: "صيدلية 24س", color: "text-green-700", bg: "bg-green-50", border: "border-green-200", icon: Clock },
+  tourist_police: { name: "شرطة سياحية", color: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-200", icon: Shield },
+  airport: { name: "مطار", color: "text-cyan-700", bg: "bg-cyan-50", border: "border-cyan-200", icon: Plane },
+  lost_card: { name: "حجز بطاقات", color: "text-violet-700", bg: "bg-violet-50", border: "border-violet-200", icon: CreditCard },
+  taxi: { name: "تاكسي", color: "text-yellow-700", bg: "bg-yellow-50", border: "border-yellow-200", icon: Navigation },
+  other: { name: "طوارئ", color: "text-gray-700", bg: "bg-gray-50", border: "border-gray-200", icon: AlertTriangle },
 };
 
 const cities = [
@@ -47,6 +62,8 @@ export default function SearchPage() {
   const [selectedCity, setSelectedCity] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showEmergency, setShowEmergency] = useState(true);
+  const [showStores, setShowStores] = useState(true);
 
   const { data: merchantsData, isLoading } = trpc.merchant.list.useQuery(
     {
@@ -58,8 +75,19 @@ export default function SearchPage() {
     { enabled: true }
   );
 
-  const merchants = merchantsData?.items || [];
+  // Fetch emergency contacts based on search
+  const { data: emergencyData } = trpc.emergency.list.useQuery(
+    {
+      city: selectedCity || undefined,
+      limit: 100,
+    },
+    { enabled: true }
+  );
 
+  const merchants = merchantsData?.items || [];
+  const emergencyContacts = emergencyData?.items || [];
+
+  // Filter merchants by search query (client-side)
   const filteredMerchants = hasSearched && query
     ? merchants.filter((m: any) => {
         const text = `${m.businessNameAr || ''} ${m.businessName || ''} ${m.category || ''} ${m.city || ''} ${m.country || ''} ${m.tags || ''} ${m.descriptionAr || ''} ${m.description || ''} ${m.address || ''}`.toLowerCase();
@@ -67,11 +95,26 @@ export default function SearchPage() {
       })
     : merchants;
 
+  // Filter emergency contacts by search query
+  const filteredEmergency = hasSearched && query
+    ? emergencyContacts.filter((e: any) => {
+        const text = `${e.name || ''} ${e.nameAr || ''} ${e.type || ''} ${e.city || ''} ${e.country || ''} ${e.address || ''} ${e.description || ''} ${e.phone || ''}`.toLowerCase();
+        return query.toLowerCase().split(/\s+/).some((term) => text.includes(term));
+      })
+    : emergencyContacts;
+
   const sortedMerchants = [...filteredMerchants].sort((a: any, b: any) => {
     if (a.isFeatured && !b.isFeatured) return -1;
     if (!a.isFeatured && b.isFeatured) return 1;
     return (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0);
   });
+
+  // Group emergency by type
+  const emergencyByType: Record<string, any[]> = {};
+  for (const e of filteredEmergency) {
+    if (!emergencyByType[e.type]) emergencyByType[e.type] = [];
+    emergencyByType[e.type].push(e);
+  }
 
   const handleSearch = () => { if (query.trim()) setHasSearched(true); };
   const handleKeyDown = (e: React.KeyboardEvent) => { if (e.key === "Enter") handleSearch(); };
@@ -80,6 +123,8 @@ export default function SearchPage() {
   useEffect(() => {
     if (initialQuery) { setQuery(initialQuery); setHasSearched(true); }
   }, [initialQuery]);
+
+  const totalResults = sortedMerchants.length + filteredEmergency.length;
 
   return (
     <Layout>
@@ -91,10 +136,10 @@ export default function SearchPage() {
               ← يورو عرب ماركت
             </Link>
             <h1 className="text-xl font-bold text-white mb-1">
-              {hasSearched ? `${sortedMerchants.length} نتيجة لـ "${query}"` : `جميع المتاجر العربية (${merchants.length})`}
+              {hasSearched ? `${totalResults} نتيجة لـ "${query}"` : `جميع المتاجر العربية (${merchants.length})`}
             </h1>
             <p className="text-gray-400 text-sm mb-5">
-              دليل المتاجر العربية في أوروبا
+              دليل المتاجر العربية في أوروبا + أرقام الطوارئ والسفارات
             </p>
 
             {/* Search Bar */}
@@ -102,7 +147,7 @@ export default function SearchPage() {
               <div className="flex-1 relative">
                 <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <Input
-                  placeholder="ابحث عن مطعم، متجر، خدمة..."
+                  placeholder="ابحث عن مطعم، متجر، سفارة، مستشفى..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -151,18 +196,110 @@ export default function SearchPage() {
             <div className="text-center py-16">
               <div className="animate-spin h-8 w-8 border-2 border-amber-500 border-t-transparent rounded-full mx-auto" />
             </div>
-          ) : sortedMerchants.length > 0 ? (
-            <div className="space-y-3">
-              {sortedMerchants.map((m: any) => (
-                <MerchantCard key={m.id} merchant={m} />
-              ))}
-            </div>
           ) : (
-            <div className="text-center py-16">
-              <Search className="h-16 w-16 text-gray-200 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد نتائج</h3>
-              <Button onClick={clearFilters} variant="outline" className="rounded-full"><X className="h-4 w-4 ml-2" />مسح</Button>
-            </div>
+            <>
+              {/* Emergency Contacts Section */}
+              {filteredEmergency.length > 0 && (
+                <div className="mb-8">
+                  <button 
+                    onClick={() => setShowEmergency(!showEmergency)}
+                    className="flex items-center gap-2 mb-4 w-full"
+                  >
+                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                    <h2 className="text-lg font-bold text-gray-900">
+                      أرقام الطوارئ والسفارات
+                      <Badge className="mr-2 bg-red-100 text-red-700">{filteredEmergency.length}</Badge>
+                    </h2>
+                    {showEmergency ? <ChevronUp className="h-5 w-5 text-gray-400 mr-auto" /> : <ChevronDown className="h-5 w-5 text-gray-400 mr-auto" />}
+                  </button>
+                  
+                  {showEmergency && (
+                    <div className="space-y-4">
+                      {Object.entries(emergencyByType).map(([type, contacts]) => {
+                        const typeInfo = emergencyTypeAr[type] || emergencyTypeAr.other;
+                        const TypeIcon = typeInfo.icon;
+                        return (
+                          <div key={type} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                            <div className={`${typeInfo.bg} ${typeInfo.border} border-b px-4 py-2 flex items-center gap-2`}>
+                              <TypeIcon className={`h-4 w-4 ${typeInfo.color}`} />
+                              <span className={`font-bold text-sm ${typeInfo.color}`}>{typeInfo.name}</span>
+                              <Badge variant="outline" className="text-xs mr-2">{contacts.length}</Badge>
+                            </div>
+                            <div className="divide-y divide-gray-100">
+                              {contacts.map((e: any) => (
+                                <div key={e.id} className="p-4 hover:bg-gray-50 transition">
+                                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div className="flex-1">
+                                      <h3 className="font-bold text-gray-900 text-sm">
+                                        {e.nameAr || e.name}
+                                      </h3>
+                                      {e.address && (
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                          <MapPin className="h-3 w-3 inline ml-1" />
+                                          {e.city ? `${e.city}، ` : ""}{e.country}
+                                          {e.address ? ` - ${e.address}` : ""}
+                                        </p>
+                                      )}
+                                      {e.descriptionAr && (
+                                        <p className="text-xs text-gray-400 mt-0.5">{e.descriptionAr}</p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {e.phone && (
+                                        <a href={`tel:${e.phone}`}
+                                          className="flex items-center gap-1 text-sm bg-red-50 hover:bg-red-100 text-red-700 px-3 py-2 rounded-lg transition border border-red-100 font-bold">
+                                          <Phone className="h-4 w-4" />
+                                          <span dir="ltr">{e.phone}</span>
+                                        </a>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Stores Section */}
+              {sortedMerchants.length > 0 && (
+                <div className="mb-8">
+                  <button 
+                    onClick={() => setShowStores(!showStores)}
+                    className="flex items-center gap-2 mb-4 w-full"
+                  >
+                    <Store className="h-5 w-5 text-amber-500" />
+                    <h2 className="text-lg font-bold text-gray-900">
+                      المتاجر والمحلات
+                      <Badge className="mr-2 bg-amber-100 text-amber-700">{sortedMerchants.length}</Badge>
+                    </h2>
+                    {showStores ? <ChevronUp className="h-5 w-5 text-gray-400 mr-auto" /> : <ChevronDown className="h-5 w-5 text-gray-400 mr-auto" />}
+                  </button>
+                  
+                  {showStores && (
+                    <div className="space-y-3">
+                      {sortedMerchants.map((m: any) => (
+                        <MerchantCard key={m.id} merchant={m} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* No Results */}
+              {totalResults === 0 && (
+                <div className="text-center py-16">
+                  <Search className="h-16 w-16 text-gray-200 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد نتائج</h3>
+                  <p className="text-gray-500 text-sm mb-4">جرب كلمة بحث مختلفة أو تحقق من إعدادات الفلاتر</p>
+                  <Button onClick={clearFilters} variant="outline" className="rounded-full"><X className="h-4 w-4 ml-2" />مسح الفلاتر</Button>
+                </div>
+              )}
+            </>
           )}
 
           {/* Bottom CTA */}
@@ -182,7 +319,6 @@ export default function SearchPage() {
 
 /* ─── Merchant Ad Card ─── */
 function MerchantCard({ merchant: m }: { merchant: any }) {
-  // Use ID-based URL - always works
   const detailUrl = `/stores/${m.id}`;
   const displayName = m.businessNameAr?.trim() || m.businessName?.trim() || `متجر #${m.id}`;
   const displayDesc = m.shortDescription?.trim() || m.descriptionAr?.trim() || m.description?.trim() || "";
@@ -190,7 +326,6 @@ function MerchantCard({ merchant: m }: { merchant: any }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 hover:border-amber-300 hover:shadow-md transition-all overflow-hidden group">
-      {/* Featured Badge */}
       {m.isFeatured && (
         <div className="bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-1.5 flex items-center gap-1">
           <Sparkles className="h-3 w-3 text-black" />
@@ -199,7 +334,6 @@ function MerchantCard({ merchant: m }: { merchant: any }) {
       )}
 
       <div className="p-4 md:p-5">
-        {/* Store Name - BIG and prominent */}
         <div className="mb-2">
           <Link to={detailUrl} className="group/name">
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 group-hover/name:text-amber-600 transition-colors leading-tight">
@@ -208,7 +342,6 @@ function MerchantCard({ merchant: m }: { merchant: any }) {
           </Link>
         </div>
 
-        {/* Category + Verified + Rating row */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <Badge variant="outline" className="text-xs border-gray-200 text-gray-500">
             {categoryNamesAr[m.category] || m.category || "متجر"}
@@ -229,14 +362,15 @@ function MerchantCard({ merchant: m }: { merchant: any }) {
               <Clock className="h-3 w-3 mr-0.5" />24h
             </Badge>
           )}
+          <Badge variant="outline" className="text-xs bg-gray-50">
+            <MapPin className="h-3 w-3 ml-0.5" />{m.city}
+          </Badge>
         </div>
 
-        {/* Description */}
         {displayDesc && (
           <p className="text-sm text-gray-500 mb-3 line-clamp-2">{displayDesc}</p>
         )}
 
-        {/* Address */}
         {displayAddress && (
           <div className="flex items-start gap-1.5 text-sm text-gray-400 mb-3">
             <MapPin className="h-4 w-4 shrink-0 mt-0.5" />
@@ -244,7 +378,6 @@ function MerchantCard({ merchant: m }: { merchant: any }) {
           </div>
         )}
 
-        {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           {m.phone && (
             <a href={`tel:${m.phone}`} onClick={(e) => e.stopPropagation()}
