@@ -293,7 +293,7 @@ export const migrateRouter = createRouter({
     }
   }),
 
-  // Batch insert merchants using direct SQL via db.execute
+  // Batch insert merchants using postgres client
   batchInsert: publicQuery
     .input(z.object({
       merchants: z.array(z.object({
@@ -309,7 +309,10 @@ export const migrateRouter = createRouter({
       }))
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const client = postgres(env.databaseUrl, {
+        ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+        max: 1,
+      });
       let inserted = 0;
       try {
         for (const m of input.merchants) {
@@ -317,24 +320,40 @@ export const migrateRouter = createRouter({
             .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
             .substring(0, 40);
           const slug = `${slugBase}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-          const name = (m.businessName || m.businessNameAr).replace(/'/g, "''");
-          const nameAr = m.businessNameAr.replace(/'/g, "''");
-          const desc = (m.description?.substring(0, 500) || nameAr).replace(/'/g, "''");
+          const name = m.businessName || m.businessNameAr;
+          const desc = m.description?.substring(0, 500) || name;
           const shortDesc = desc.substring(0, 160);
-          const addr = (m.address || m.city).replace(/'/g, "''");
-          const phoneVal = (m.phone || '').replace(/'/g, "''");
+          const addr = m.address || m.city;
+          const phoneVal = m.phone || '';
           const rating = String((3.5 + Math.random() * 1.5).toFixed(1));
           const reviews = Math.floor(Math.random() * 40) + 5;
-          const tagsVal = (m.description?.substring(0, 200) || '').replace(/'/g, "''");
-          const websiteVal = m.website ? `'${m.website.replace(/'/g, "''")}'` : 'null';
+          const tagsVal = m.description?.substring(0, 200) || '';
           
-          const query = `INSERT INTO merchants ("businessName", business_name, "businessNameAr", business_name_ar, "shortDescription", short_description, description, "descriptionAr", description_ar, category, country, city, address, "addressAr", address_ar, phone, website, status, slug, "isFeatured", is_featured, "isVerified", is_verified, rating, "reviewCount", review_count, tags, "createdAt", created_at, "updatedAt", updated_at) VALUES ('${name}', '${name}', '${nameAr}', '${nameAr}', '${shortDesc}', '${shortDesc}', '${desc}', '${desc}', '${desc}', '${m.category}', '${m.country}', '${m.city}', '${addr}', '${addr}', '${addr}', '${phoneVal}', ${websiteVal}, 'active', '${slug}', false, false, true, true, '${rating}', ${reviews}, ${reviews}, '${tagsVal}', NOW(), NOW(), NOW(), NOW()) ON CONFLICT DO NOTHING`;
-          
-          await db.execute(query);
+          await client`
+            INSERT INTO merchants (
+              "businessName", business_name, "businessNameAr", business_name_ar,
+              "shortDescription", short_description, description, "descriptionAr", description_ar,
+              category, country, city, address, "addressAr", address_ar,
+              phone, website, status, slug,
+              "isFeatured", is_featured, "isVerified", is_verified,
+              rating, "reviewCount", review_count, tags,
+              "createdAt", created_at, "updatedAt", updated_at
+            ) VALUES (
+              ${name}, ${name}, ${m.businessNameAr}, ${m.businessNameAr},
+              ${shortDesc}, ${shortDesc}, ${desc}, ${desc}, ${desc},
+              ${m.category}, ${m.country}, ${m.city}, ${addr}, ${addr}, ${addr},
+              ${phoneVal}, ${m.website || null}, 'active', ${slug},
+              false, false, true, true,
+              ${rating}, ${reviews}, ${reviews}, ${tagsVal},
+              NOW(), NOW(), NOW(), NOW()
+            ) ON CONFLICT DO NOTHING
+          `;
           inserted++;
         }
+        await client.end();
         return { success: true, inserted };
       } catch (error: any) {
+        await client.end();
         return { success: false, message: error?.message, inserted };
       }
     }),
