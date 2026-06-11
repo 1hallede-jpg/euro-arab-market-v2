@@ -33068,6 +33068,21 @@ var migrateRouter = createRouter({
       return { success: false, error: error48?.message, results };
     }
   }),
+  // Get table columns
+  getColumns: publicQuery.query(async () => {
+    const client = src_default(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1
+    });
+    try {
+      const cols = await client`SELECT column_name FROM information_schema.columns WHERE table_name = 'merchants' ORDER BY ordinal_position`;
+      await client.end();
+      return cols.map((c) => c.column_name);
+    } catch (e) {
+      await client.end();
+      return [];
+    }
+  }),
   // Create emergency_contacts table
   createEmergencyTable: publicQuery.mutation(async () => {
     const client = src_default(env.databaseUrl, {
