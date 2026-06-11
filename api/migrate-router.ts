@@ -326,7 +326,7 @@ export const migrateRouter = createRouter({
           const reviews = Math.floor(Math.random() * 40) + 5;
           const tags = m.description?.substring(0, 200) || '';
           
-          await db.execute(sql`INSERT INTO merchants ("businessName", "businessNameAr", "shortDescription", description, "descriptionAr", category, country, city, address, "addressAr", phone, website, status, slug, "isFeatured", "isVerified", rating, "reviewCount", tags, "createdAt", "updatedAt") VALUES (${name}, ${m.businessNameAr}, ${shortDesc}, ${desc}, ${desc}, ${m.category}, ${m.country}, ${m.city}, ${addr}, ${addr}, ${phone}, ${m.website || null}, 'active', ${slug}, false, true, ${rating}, ${reviews}, ${tags}, NOW(), NOW()) ON CONFLICT DO NOTHING`);
+          await db.execute(sql`INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, address_ar, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES (${name}, ${m.businessNameAr}, ${shortDesc}, ${desc}, ${desc}, ${m.category}, ${m.country}, ${m.city}, ${addr}, ${addr}, ${phone}, ${m.website || null}, 'active', ${slug}, false, true, ${rating}, ${reviews}, ${tags}, NOW(), NOW()) ON CONFLICT DO NOTHING`);
           inserted++;
         }
         return { success: true, inserted };
