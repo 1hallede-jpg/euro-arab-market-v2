@@ -35,11 +35,12 @@ const categoryNamesAr: Record<string, string> = {
 };
 
 export default function StoreDetail() {
-  const { slug } = useParams<{ slug: string }>();
+  const { id } = useParams<{ id: string }>();
+  const numericId = parseInt(id || "0");
 
-  const { data: merchant, isLoading } = trpc.merchant.getBySlug.useQuery(
-    { slug: slug || "" },
-    { enabled: !!slug }
+  const { data: merchant, isLoading } = trpc.merchant.getById.useQuery(
+    { id: numericId },
+    { enabled: numericId > 0 }
   );
 
   if (isLoading) {
