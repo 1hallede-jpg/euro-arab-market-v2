@@ -214,7 +214,7 @@ export const migrateRouter = createRouter({
           WHEN 'repair_shop' THEN 'ورشة إصلاح'
           ELSE 'متجر عربي'
         END || ' في ' || city
-        WHERE "shortDescription" IS NULL OR length("shortDescription") > 80
+        WHERE status = 'active'
       `);
 
       await client.end();

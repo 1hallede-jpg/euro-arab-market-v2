@@ -33170,7 +33170,7 @@ var migrateRouter = createRouter({
           WHEN 'repair_shop' THEN '\u0648\u0631\u0634\u0629 \u0625\u0635\u0644\u0627\u062D'
           ELSE '\u0645\u062A\u062C\u0631 \u0639\u0631\u0628\u064A'
         END || ' \u0641\u064A ' || city
-        WHERE "shortDescription" IS NULL OR length("shortDescription") > 80
+        WHERE status = 'active'
       `);
       await client.end();
       return {
