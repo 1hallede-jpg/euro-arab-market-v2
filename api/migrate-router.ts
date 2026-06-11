@@ -330,9 +330,15 @@ export const migrateRouter = createRouter({
           const reviews = Math.floor(Math.random() * 40) + 5;
           const tagsVal = m.description?.substring(0, 200) || '';
           
-          const sqlQuery = `INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, address_ar, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES ('${name.replace(/'/g, "''")}', '${m.businessNameAr.replace(/'/g, "''")}', '${shortDesc.replace(/'/g, "''")}', '${desc.replace(/'/g, "''")}', '${desc.replace(/'/g, "''")}', '${m.category}', '${m.country}', '${m.city}', '${addr.replace(/'/g, "''")}', '${addr.replace(/'/g, "''")}', '${phoneVal.replace(/'/g, "''")}', ${m.website ? "'" + m.website.replace(/'/g, "''") + "'" : 'null'}, 'active', '${slug}', false, true, '${rating}', ${reviews}, '${tagsVal.replace(/'/g, "''")}', NOW(), NOW()) ON CONFLICT DO NOTHING`;
+          // Use postgres template literals with explicit values
+          const values = [
+            name, m.businessNameAr, shortDesc, desc, desc,
+            m.category, m.country, m.city, addr, addr,
+            phoneVal, m.website || null, 'active', slug,
+            false, true, rating, reviews, tagsVal
+          ];
           
-          await client.unsafe(sqlQuery);
+          await client`INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, address_ar, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES (${values[0]}, ${values[1]}, ${values[2]}, ${values[3]}, ${values[4]}, ${values[5]}, ${values[6]}, ${values[7]}, ${values[8]}, ${values[9]}, ${values[10]}, ${values[11]}, ${values[12]}, ${values[13]}, ${values[14]}, ${values[15]}, ${values[16]}, ${values[17]}, ${values[18]}, NOW(), NOW()) ON CONFLICT DO NOTHING`;
           inserted++;
         }
         await client.end();
