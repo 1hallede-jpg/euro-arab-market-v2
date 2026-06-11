@@ -33194,7 +33194,7 @@ var migrateRouter = createRouter({
       return { success: false, message: error48?.message };
     }
   }),
-  // Batch insert merchants using Drizzle ORM
+  // Batch insert merchants using raw SQL
   batchInsert: publicQuery.input(external_exports.object({
     merchants: external_exports.array(external_exports.object({
       businessNameAr: external_exports.string(),
@@ -33214,31 +33214,15 @@ var migrateRouter = createRouter({
       for (const m of input.merchants) {
         const slugBase = m.businessNameAr.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").substring(0, 40);
         const slug = `${slugBase}-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-        await db.insert(merchants).values({
-          businessName: m.businessName || m.businessNameAr,
-          businessNameAr: m.businessNameAr,
-          business_name: m.businessName || m.businessNameAr,
-          business_name_ar: m.businessNameAr,
-          shortDescription: m.description?.substring(0, 160) || m.businessNameAr,
-          description: m.description,
-          descriptionAr: m.description,
-          category: m.category,
-          country: m.country,
-          city: m.city,
-          address: m.address || m.city,
-          addressAr: m.address || m.city,
-          phone: m.phone || null,
-          website: m.website || null,
-          status: "active",
-          slug,
-          isFeatured: false,
-          isVerified: true,
-          rating: String((3.5 + Math.random() * 1.5).toFixed(1)),
-          reviewCount: Math.floor(Math.random() * 40) + 5,
-          tags: m.description?.substring(0, 200) || "",
-          createdAt: /* @__PURE__ */ new Date(),
-          updatedAt: /* @__PURE__ */ new Date()
-        });
+        const name = m.businessName || m.businessNameAr;
+        const desc2 = m.description?.substring(0, 500) || name;
+        const shortDesc = desc2.substring(0, 160);
+        const addr = m.address || m.city;
+        const phone = m.phone || "";
+        const rating = String((3.5 + Math.random() * 1.5).toFixed(1));
+        const reviews2 = Math.floor(Math.random() * 40) + 5;
+        const tags = m.description?.substring(0, 200) || "";
+        await db.execute(sql`INSERT INTO merchants ("businessName", "businessNameAr", "shortDescription", description, "descriptionAr", category, country, city, address, "addressAr", phone, website, status, slug, "isFeatured", "isVerified", rating, "reviewCount", tags, "createdAt", "updatedAt") VALUES (${name}, ${m.businessNameAr}, ${shortDesc}, ${desc2}, ${desc2}, ${m.category}, ${m.country}, ${m.city}, ${addr}, ${addr}, ${phone}, ${m.website || null}, 'active', ${slug}, false, true, ${rating}, ${reviews2}, ${tags}, NOW(), NOW()) ON CONFLICT DO NOTHING`);
         inserted++;
       }
       return { success: true, inserted };
