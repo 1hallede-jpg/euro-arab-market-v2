@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: euro-arab-market
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build && rm -rf public && cp -r dist public && cp dist/search-static.html public/search.html
+    startCommand: node boot.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000

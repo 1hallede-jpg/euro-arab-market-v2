@@ -1,0 +1,4324 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بحث المتاجر - يورو عرب ماركت</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f5; }
+.header { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; padding: 2rem 1rem; text-align: center; }
+.header h1 { font-size: 1.3rem; margin-bottom: 0.5rem; }
+.header p { color: #aaa; font-size: 0.85rem; }
+.search-box { max-width: 600px; margin: 1.5rem auto; display: flex; gap: 0.5rem; padding: 0 1rem; }
+.search-box input { flex: 1; padding: 0.8rem 1rem; border: none; border-radius: 12px; background: rgba(255,255,255,0.1); color: white; font-size: 1rem; text-align: right; }
+.search-box input::placeholder { color: #888; }
+.filters { max-width: 900px; margin: 0 auto; padding: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+.filter-btn { padding: 0.4rem 0.8rem; background: white; border: 1px solid #ddd; border-radius: 20px; font-size: 0.8rem; cursor: pointer; color: #333; }
+.filter-btn:hover, .filter-btn.active { background: #fbbf24; border-color: #fbbf24; color: black; }
+.results { max-width: 900px; margin: 0 auto; padding: 0 1rem 2rem; display: grid; grid-template-columns: 1fr; gap: 0.75rem; }
+@media (min-width: 768px) { .results { grid-template-columns: 1fr 1fr; } }
+.card { background: white; border-radius: 12px; padding: 1rem; border: 1px solid #e5e7eb; transition: all 0.2s; }
+.card:hover { border-color: #fbbf24; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+.card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+.card-name { font-weight: bold; color: #111; font-size: 0.95rem; }
+.card-category { font-size: 0.7rem; padding: 0.2rem 0.5rem; background: #fef3c7; color: #d97706; border-radius: 6px; white-space: nowrap; margin-right: 0.5rem; }
+.card-meta { display: flex; justify-content: space-between; color: #999; font-size: 0.75rem; margin-top: 0.5rem; }
+.card-phone { display: inline-block; margin-top: 0.5rem; padding: 0.3rem 0.8rem; background: #fee2e2; color: #dc2626; border-radius: 8px; font-size: 0.8rem; text-decoration: none; font-weight: bold; }
+.hidden { display: none !important; }
+.count { color: #fbbf24; }
+.navbar { background: white; padding: 0.75rem 1rem; display: flex; justify-content: center; gap: 1.5rem; border-bottom: 1px solid #e5e7eb; }
+.navbar a { color: #666; text-decoration: none; font-size: 0.85rem; }
+.navbar a:hover { color: #d97706; }
+.status { text-align: center; padding: 1rem; color: #666; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="navbar">
+  <a href="https://euro-arab-market.onrender.com/">الرئيسية</a>
+  <a href="https://euro-arab-market.onrender.com/stores">المتاجر</a>
+  <a href="https://euro-arab-market.onrender.com/search">البحث</a>
+  <a href="https://euro-arab-market.onrender.com/sindbad">سندباد</a>
+</div>
+<div class="header">
+  <h1>جميع المتاجر العربية <span class="count">(383)</span></h1>
+  <p>دليل المتاجر والمساجد والمطاعم العربية في أوروبا</p>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="ابحث عن مطعم، مسجد، متجر..." oninput="filterSearch()">
+  </div>
+</div>
+<div class="filters">
+  <button class="filter-btn active" onclick="filterCity('')">الكل</button>
+  <button class="filter-btn" onclick="filterCity('Berlin')">Berlin</button>
+<button class="filter-btn" onclick="filterCity('أثينا')">أثينا</button>
+<button class="filter-btn" onclick="filterCity('أمستردام')">أمستردام</button>
+<button class="filter-btn" onclick="filterCity('أوسلو')">أوسلو</button>
+<button class="filter-btn" onclick="filterCity('باريس')">باريس</button>
+<button class="filter-btn" onclick="filterCity('براغ')">براغ</button>
+<button class="filter-btn" onclick="filterCity('برشلونة')">برشلونة</button>
+<button class="filter-btn" onclick="filterCity('برلين')">برلين</button>
+<button class="filter-btn" onclick="filterCity('برمنغهام')">برمنغهام</button>
+<button class="filter-btn" onclick="filterCity('بروكسل')">بروكسل</button>
+<button class="filter-btn" onclick="filterCity('بوخارست')">بوخارست</button>
+<button class="filter-btn" onclick="filterCity('بودابست')">بودابست</button>
+<button class="filter-btn" onclick="filterCity('جنيف')">جنيف</button>
+<button class="filter-btn" onclick="filterCity('دبلن')">دبلن</button>
+<button class="filter-btn" onclick="filterCity('روتردام')">روتردام</button>
+<button class="filter-btn" onclick="filterCity('روما')">روما</button>
+<button class="filter-btn" onclick="filterCity('زيورخ')">زيورخ</button>
+<button class="filter-btn" onclick="filterCity('ستوكهولم')">ستوكهولم</button>
+<button class="filter-btn" onclick="filterCity('شتوتغارت')">شتوتغارت</button>
+<button class="filter-btn" onclick="filterCity('فرانكفورت')">فرانكفورت</button>
+</div>
+<div class="status" id="status">تم تحميل 383 متجر</div>
+<div class="results" id="results">
+  <div class="card" data-city="أثينا" data-search="مسجد في أثينا مساجد أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مسجد في أثينا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="برشلونة" data-search="مسجد في برشلونة مساجد برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">مسجد في برشلونة</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مسجد في مدريد مساجد مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مسجد في مدريد</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="ميلانو" data-search="مسجد في ميلانو مساجد ميلانو إيطاليا">
+<div class="card-header">
+<span class="card-name">مسجد في ميلانو</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 ميلانو، إيطاليا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مسجد في روما مساجد روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مسجد في روما</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="ستوكهولم" data-search="مسجد في ستوكهولم مساجد ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">مسجد في ستوكهولم</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="ستوكهولم" data-search="مسجد في ستوكهولم مساجد ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">مسجد في ستوكهولم</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاجن" data-search="مسجد في كوبنهاجن مساجد كوبنهاجن أوروبا">
+<div class="card-header">
+<span class="card-name">مسجد في كوبنهاجن</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاجن، أوروبا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+45 38100078" class="card-phone">📞 +45 38100078</a>
+</div>
+<div class="card" data-city="كوبنهاجن" data-search="مسجد في كوبنهاجن مساجد كوبنهاجن أوروبا">
+<div class="card-header">
+<span class="card-name">مسجد في كوبنهاجن</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاجن، أوروبا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+45 70605545" class="card-phone">📞 +45 70605545</a>
+</div>
+<div class="card" data-city="فيينا" data-search="مسجد في فيينا مساجد فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مسجد في فيينا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.9</span>
+</div>
+<a href="tel:+43 1 212 4708" class="card-phone">📞 +43 1 212 4708</a>
+</div>
+<div class="card" data-city="فيينا" data-search="مسجد في فيينا مساجد فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مسجد في فيينا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 3.9</span>
+</div>
+<a href="tel:+43 1 726 7033" class="card-phone">📞 +43 1 726 7033</a>
+</div>
+<div class="card" data-city="فيينا" data-search="مسجد في فيينا مساجد فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مسجد في فيينا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 3.7</span>
+</div>
+<a href="tel:+43 1 214 6291" class="card-phone">📞 +43 1 214 6291</a>
+</div>
+<div class="card" data-city="فيينا" data-search="مسجد في فيينا مساجد فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مسجد في فيينا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 3.6</span>
+</div>
+<a href="tel:+43 1 293 3194" class="card-phone">📞 +43 1 293 3194</a>
+</div>
+<div class="card" data-city="بروكسل" data-search="مسجد في بروكسل مساجد بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مسجد في بروكسل</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="روتردام" data-search="مسجد في روتردام مساجد روتردام هولندا">
+<div class="card-header">
+<span class="card-name">مسجد في روتردام</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 روتردام، هولندا</span>
+<span>⭐ 3.8</span>
+</div>
+<a href="tel:+31 10 476 4107" class="card-phone">📞 +31 10 476 4107</a>
+</div>
+<div class="card" data-city="روتردام" data-search="مسجد في روتردام مساجد روتردام هولندا">
+<div class="card-header">
+<span class="card-name">مسجد في روتردام</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 روتردام، هولندا</span>
+<span>⭐ 4.6</span>
+</div>
+<a href="tel:+31 10 419 3666" class="card-phone">📞 +31 10 419 3666</a>
+</div>
+<div class="card" data-city="برمنغهام" data-search="مسجد في برمنغهام مساجد برمنغهام بريطانيا">
+<div class="card-header">
+<span class="card-name">مسجد في برمنغهام</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 برمنغهام، بريطانيا</span>
+<span>⭐ 3.5</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مسجد في لندن مساجد لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مسجد في لندن</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مسجد في لندن مساجد لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مسجد في لندن</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="فرانكفورت" data-search="مسجد في فرانكفورت مساجد فرانكفورت ألمانيا">
+<div class="card-header">
+<span class="card-name">مسجد في فرانكفورت</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فرانكفورت، ألمانيا</span>
+<span>⭐ 4.7</span>
+</div>
+<a href="tel:+49 69 235688" class="card-phone">📞 +49 69 235688</a>
+</div>
+<div class="card" data-city="فرانكفورت" data-search="مسجد في فرانكفورت مساجد فرانكفورت ألمانيا">
+<div class="card-header">
+<span class="card-name">مسجد في فرانكفورت</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فرانكفورت، ألمانيا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+49 69 7891211" class="card-phone">📞 +49 69 7891211</a>
+</div>
+<div class="card" data-city="فرانكفورت" data-search="مسجد في فرانكفورت مساجد فرانكفورت ألمانيا">
+<div class="card-header">
+<span class="card-name">مسجد في فرانكفورت</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فرانكفورت، ألمانيا</span>
+<span>⭐ 5.0</span>
+</div>
+<a href="tel:+49 69 2426600" class="card-phone">📞 +49 69 2426600</a>
+</div>
+<div class="card" data-city="كولونيا" data-search="مسجد في كولونيا مساجد كولونيا ألمانيا">
+<div class="card-header">
+<span class="card-name">مسجد في كولونيا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 كولونيا، ألمانيا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مسجد في برلين مساجد برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مسجد في برلين</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مسجد في برلين مساجد برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مسجد في برلين</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.2</span>
+</div>
+
+</div>
+<div class="card" data-city="ليون" data-search="مسجد في ليون مساجد ليون فرنسا">
+<div class="card-header">
+<span class="card-name">مسجد في ليون</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 ليون، فرنسا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+33 4 78 76 00 23" class="card-phone">📞 +33 4 78 76 00 23</a>
+</div>
+<div class="card" data-city="مرسيليا" data-search="مسجد في مرسيليا مساجد مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مسجد في مرسيليا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مسجد في باريس مساجد باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مسجد في باريس</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+33 1 45 35 97 33" class="card-phone">📞 +33 1 45 35 97 33</a>
+</div>
+<div class="card" data-city="أثينا" data-search="مطعم عربي حلال في أثينا مطاعم عربية أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أثينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="أثينا" data-search="مطعم عربي حلال في أثينا مطاعم عربية أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أثينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="أثينا" data-search="مطعم عربي حلال في أثينا مطاعم عربية أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أثينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="برشلونة" data-search="مطعم عربي حلال في برشلونة مطاعم عربية برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برشلونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="برشلونة" data-search="مطعم عربي حلال في برشلونة مطاعم عربية برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برشلونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="برشلونة" data-search="مطعم عربي حلال في برشلونة مطاعم عربية برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برشلونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+34 934 430 184" class="card-phone">📞 +34 934 430 184</a>
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+34 649 728 081" class="card-phone">📞 +34 649 728 081</a>
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.1</span>
+</div>
+<a href="tel:+393493820862" class="card-phone">📞 +393493820862</a>
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="ميلانو" data-search="مطعم عربي حلال في ميلانو مطاعم عربية ميلانو إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميلانو</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميلانو، إيطاليا</span>
+<span>⭐ 4.1</span>
+</div>
+<a href="tel:+39 02 481 9767" class="card-phone">📞 +39 02 481 9767</a>
+</div>
+<div class="card" data-city="ميلانو" data-search="مطعم عربي حلال في ميلانو مطاعم عربية ميلانو إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميلانو</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميلانو، إيطاليا</span>
+<span>⭐ 3.5</span>
+</div>
+<a href="tel:+39 02 3651 8788" class="card-phone">📞 +39 02 3651 8788</a>
+</div>
+<div class="card" data-city="ميلانو" data-search="مطعم عربي حلال في ميلانو مطاعم عربية ميلانو إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميلانو</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميلانو، إيطاليا</span>
+<span>⭐ 3.6</span>
+</div>
+<a href="tel:+39 02 2952 1565" class="card-phone">📞 +39 02 2952 1565</a>
+</div>
+<div class="card" data-city="ستوكهولم" data-search="مطعم عربي حلال في ستوكهولم مطاعم عربية ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ستوكهولم</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.2</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاجن" data-search="مطعم عربي حلال في كوبنهاجن مطاعم عربية كوبنهاجن أوروبا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كوبنهاجن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاجن، أوروبا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاجن" data-search="مطعم عربي حلال في كوبنهاجن مطاعم عربية كوبنهاجن أوروبا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كوبنهاجن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاجن، أوروبا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاجن" data-search="مطعم عربي حلال في كوبنهاجن مطاعم عربية كوبنهاجن أوروبا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كوبنهاجن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاجن، أوروبا</span>
+<span>⭐ 4.2</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاجن" data-search="مطعم عربي حلال في كوبنهاجن مطاعم عربية كوبنهاجن أوروبا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كوبنهاجن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاجن، أوروبا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="روتردام" data-search="مطعم عربي حلال في روتردام مطاعم عربية روتردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روتردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روتردام، هولندا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="روتردام" data-search="مطعم عربي حلال في روتردام مطاعم عربية روتردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روتردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روتردام، هولندا</span>
+<span>⭐ 3.9</span>
+</div>
+<a href="tel:+31 6 24734939" class="card-phone">📞 +31 6 24734939</a>
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 3.6</span>
+</div>
+<a href="tel:+31 20 624 9791" class="card-phone">📞 +31 20 624 9791</a>
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 3.9</span>
+</div>
+<a href="tel:+31 20 675 4102" class="card-phone">📞 +31 20 675 4102</a>
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.8</span>
+</div>
+<a href="tel:0208 908 9440" class="card-phone">📞 0208 908 9440</a>
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="ميونخ" data-search="مطعم عربي حلال في ميونخ مطاعم عربية ميونخ ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميونخ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميونخ، ألمانيا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="ميونخ" data-search="مطعم عربي حلال في ميونخ مطاعم عربية ميونخ ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميونخ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميونخ، ألمانيا</span>
+<span>⭐ 4.7</span>
+</div>
+<a href="tel:089 64980527" class="card-phone">📞 089 64980527</a>
+</div>
+<div class="card" data-city="فرانكفورت" data-search="مطعم عربي حلال في فرانكفورت مطاعم عربية فرانكفورت ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فرانكفورت</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فرانكفورت، ألمانيا</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:069 21006635" class="card-phone">📞 069 21006635</a>
+</div>
+<div class="card" data-city="كولونيا" data-search="مطعم عربي حلال في كولونيا مطاعم عربية كولونيا ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كولونيا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كولونيا، ألمانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="كولونيا" data-search="مطعم عربي حلال في كولونيا مطاعم عربية كولونيا ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كولونيا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كولونيا، ألمانيا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:+49 30 6126330" class="card-phone">📞 +49 30 6126330</a>
+</div>
+<div class="card" data-city="ليون" data-search="مطعم عربي حلال في ليون مطاعم عربية ليون فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ليون</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ليون، فرنسا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="ليون" data-search="مطعم عربي حلال في ليون مطاعم عربية ليون فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ليون</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ليون، فرنسا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="ليون" data-search="مطعم عربي حلال في ليون مطاعم عربية ليون فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ليون</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ليون، فرنسا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="مرسيليا" data-search="مطعم عربي حلال في مرسيليا مطاعم عربية مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مرسيليا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="مرسيليا" data-search="مطعم عربي حلال في مرسيليا مطاعم عربية مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مرسيليا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="مرسيليا" data-search="مطعم عربي حلال في مرسيليا مطاعم عربية مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مرسيليا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="هلسنكي" data-search="مطعم عربي حلال في هلسنكي مطاعم عربية هلسنكي فنلندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في هلسنكي</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 هلسنكي، فنلندا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="هلسنكي" data-search="مطعم عربي حلال في هلسنكي مطاعم عربية هلسنكي فنلندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في هلسنكي</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 هلسنكي، فنلندا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="أثينا" data-search="مطعم عربي حلال في أثينا مطاعم عربية أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أثينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="أثينا" data-search="مطعم عربي حلال في أثينا مطاعم عربية أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أثينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="أثينا" data-search="مطعم عربي حلال في أثينا مطاعم عربية أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أثينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="لشبونة" data-search="مطعم عربي حلال في لشبونة مطاعم عربية لشبونة البرتغال">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لشبونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لشبونة، البرتغال</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="لشبونة" data-search="مطعم عربي حلال في لشبونة مطاعم عربية لشبونة البرتغال">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لشبونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لشبونة، البرتغال</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="لشبونة" data-search="مطعم عربي حلال في لشبونة مطاعم عربية لشبونة البرتغال">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لشبونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لشبونة، البرتغال</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="لشبونة" data-search="مطعم عربي حلال في لشبونة مطاعم عربية لشبونة البرتغال">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لشبونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لشبونة، البرتغال</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="دبلن" data-search="مطعم عربي حلال في دبلن مطاعم عربية دبلن أيرلندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في دبلن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 دبلن، أيرلندا</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="دبلن" data-search="مطعم عربي حلال في دبلن مطاعم عربية دبلن أيرلندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في دبلن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 دبلن، أيرلندا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="دبلن" data-search="مطعم عربي حلال في دبلن مطاعم عربية دبلن أيرلندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في دبلن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 دبلن، أيرلندا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="براغ" data-search="مطعم عربي حلال في براغ مطاعم عربية براغ التشيك">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في براغ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 براغ، التشيك</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="براغ" data-search="مطعم عربي حلال في براغ مطاعم عربية براغ التشيك">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في براغ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 براغ، التشيك</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="براغ" data-search="مطعم عربي حلال في براغ مطاعم عربية براغ التشيك">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في براغ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 براغ، التشيك</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="بودابست" data-search="مطعم عربي حلال في بودابست مطاعم عربية بودابست المجر">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بودابست</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بودابست، المجر</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="بودابست" data-search="مطعم عربي حلال في بودابست مطاعم عربية بودابست المجر">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بودابست</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بودابست، المجر</span>
+<span>⭐ 4.2</span>
+</div>
+
+</div>
+<div class="card" data-city="بودابست" data-search="مطعم عربي حلال في بودابست مطاعم عربية بودابست المجر">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بودابست</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بودابست، المجر</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="بودابست" data-search="مطعم عربي حلال في بودابست مطاعم عربية بودابست المجر">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بودابست</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بودابست، المجر</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="أوسلو" data-search="مطعم عربي حلال في أوسلو مطاعم عربية أوسلو النرويج">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أوسلو</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أوسلو، النرويج</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="أوسلو" data-search="مطعم عربي حلال في أوسلو مطاعم عربية أوسلو النرويج">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أوسلو</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أوسلو، النرويج</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="ستوكهولم" data-search="مطعم عربي حلال في ستوكهولم مطاعم عربية ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ستوكهولم</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="ستوكهولم" data-search="مطعم عربي حلال في ستوكهولم مطاعم عربية ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ستوكهولم</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="ستوكهولم" data-search="مطعم عربي حلال في ستوكهولم مطاعم عربية ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ستوكهولم</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="مطعم عربي حلال في كوبنهاغن مطاعم عربية كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كوبنهاغن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="مطعم عربي حلال في كوبنهاغن مطاعم عربية كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كوبنهاغن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="مطعم عربي حلال في كوبنهاغن مطاعم عربية كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كوبنهاغن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="فيينا" data-search="مطعم عربي حلال في فيينا مطاعم عربية فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فيينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="فيينا" data-search="مطعم عربي حلال في فيينا مطاعم عربية فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فيينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="فيينا" data-search="مطعم عربي حلال في فيينا مطاعم عربية فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فيينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="فيينا" data-search="مطعم عربي حلال في فيينا مطاعم عربية فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فيينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="جنيف" data-search="مطعم عربي حلال في جنيف مطاعم عربية جنيف سويسرا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في جنيف</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 جنيف، سويسرا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="جنيف" data-search="مطعم عربي حلال في جنيف مطاعم عربية جنيف سويسرا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في جنيف</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 جنيف، سويسرا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="جنيف" data-search="مطعم عربي حلال في جنيف مطاعم عربية جنيف سويسرا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في جنيف</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 جنيف، سويسرا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="زيورخ" data-search="مطعم عربي حلال في زيورخ مطاعم عربية زيورخ سويسرا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في زيورخ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 زيورخ، سويسرا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="زيورخ" data-search="مطعم عربي حلال في زيورخ مطاعم عربية زيورخ سويسرا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في زيورخ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 زيورخ، سويسرا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="زيورخ" data-search="مطعم عربي حلال في زيورخ مطاعم عربية زيورخ سويسرا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في زيورخ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 زيورخ، سويسرا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="زيورخ" data-search="مطعم عربي حلال في زيورخ مطاعم عربية زيورخ سويسرا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في زيورخ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 زيورخ، سويسرا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="زيورخ" data-search="مطعم عربي حلال في زيورخ مطاعم عربية زيورخ سويسرا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في زيورخ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 زيورخ، سويسرا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="زيورخ" data-search="مطعم عربي حلال في زيورخ مطاعم عربية زيورخ سويسرا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في زيورخ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 زيورخ، سويسرا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="ميلان" data-search="مطعم عربي حلال في ميلان مطاعم عربية ميلان إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميلان</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميلان، إيطاليا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="ميلان" data-search="مطعم عربي حلال في ميلان مطاعم عربية ميلان إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميلان</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميلان، إيطاليا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="برشلونة" data-search="مطعم عربي حلال في برشلونة مطاعم عربية برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برشلونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="برشلونة" data-search="مطعم عربي حلال في برشلونة مطاعم عربية برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برشلونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="برشلونة" data-search="مطعم عربي حلال في برشلونة مطاعم عربية برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برشلونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="بقالة حلال في برلين بقالة حلال برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">بقالة حلال في برلين</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="بقالة حلال في برلين بقالة حلال برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">بقالة حلال في برلين</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مخبز عربي في لندن مخابز لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مخبز عربي في لندن</span>
+<span class="card-category">مخابز</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مخبز عربي في لندن مخابز لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مخبز عربي في لندن</span>
+<span class="card-category">مخابز</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="حلويات شرقية في لندن حلويات شرقية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">حلويات شرقية في لندن</span>
+<span class="card-category">حلويات شرقية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.2</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="متجر عربي في لندن أخرى لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في لندن</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="متجر عربي في لندن أخرى لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في لندن</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="صالون حلاقة في لندن صالونات حلاقة لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">صالون حلاقة في لندن</span>
+<span class="card-category">صالونات حلاقة</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="صالون حلاقة في لندن صالونات حلاقة لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">صالون حلاقة في لندن</span>
+<span class="card-category">صالونات حلاقة</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="بقالة حلال في لندن بقالة حلال لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">بقالة حلال في لندن</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="متجر عربي في لندن أخرى لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في لندن</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="متجر عربي في لندن أخرى لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في لندن</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.9</span>
+</div>
+<a href="tel:07340259101" class="card-phone">📞 07340259101</a>
+</div>
+<div class="card" data-city="لندن" data-search="متجر عربي في لندن أخرى لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في لندن</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+44 208 908 9440" class="card-phone">📞 +44 208 908 9440</a>
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.5</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="حلويات شرقية في باريس حلويات شرقية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">حلويات شرقية في باريس</span>
+<span class="card-category">حلويات شرقية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.2</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="مطعم عربي حلال في كوبنهاغن مطاعم عربية كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كوبنهاغن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="مطعم عربي حلال في كوبنهاغن مطاعم عربية كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كوبنهاغن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="مطعم عربي حلال في كوبنهاغن مطاعم عربية كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كوبنهاغن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="فيينا" data-search="مطعم عربي حلال في فيينا مطاعم عربية فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فيينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="فيينا" data-search="مطعم عربي حلال في فيينا مطاعم عربية فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فيينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="فيينا" data-search="مطعم عربي حلال في فيينا مطاعم عربية فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فيينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="فيينا" data-search="مطعم عربي حلال في فيينا مطاعم عربية فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فيينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="فيينا" data-search="مطعم عربي حلال في فيينا مطاعم عربية فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فيينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="بقالة حلال في برلين بقالة حلال برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">بقالة حلال في برلين</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مخبز عربي في لندن مخابز لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مخبز عربي في لندن</span>
+<span class="card-category">مخابز</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.2</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.6</span>
+</div>
+<a href="tel:+33 1 55 35 00 66" class="card-phone">📞 +33 1 55 35 00 66</a>
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.9</span>
+</div>
+<a href="tel:+33 1 71 27 43 71" class="card-phone">📞 +33 1 71 27 43 71</a>
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.6</span>
+</div>
+<a href="tel:+33 1 47 23 02 02" class="card-phone">📞 +33 1 47 23 02 02</a>
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.9</span>
+</div>
+<a href="tel:+33 9 53 41 92 30" class="card-phone">📞 +33 9 53 41 92 30</a>
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+33 1 48 87 63 60" class="card-phone">📞 +33 1 48 87 63 60</a>
+</div>
+<div class="card" data-city="أثينا" data-search="مطعم عربي حلال في أثينا مطاعم عربية أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أثينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="أثينا" data-search="سوبرماركت حلال في أثينا سوبرماركت حلال أثينا اليونان">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في أثينا</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="أثينا" data-search="مطعم عربي حلال في أثينا مطاعم عربية أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أثينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="أثينا" data-search="مطعم عربي حلال في أثينا مطاعم عربية أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أثينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="بقالة حلال في مدريد بقالة حلال مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">بقالة حلال في مدريد</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 3.6</span>
+</div>
+<a href="tel:+34 649 728 081" class="card-phone">📞 +34 649 728 081</a>
+</div>
+<div class="card" data-city="برشلونة" data-search="مخبز عربي في برشلونة مخابز برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">مخبز عربي في برشلونة</span>
+<span class="card-category">مخابز</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="برشلونة" data-search="متجر عربي في برشلونة أخرى برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في برشلونة</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="برشلونة" data-search="متجر عربي في برشلونة أخرى برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في برشلونة</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="برشلونة" data-search="مطعم عربي حلال في برشلونة مطاعم عربية برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برشلونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 4.8</span>
+</div>
+<a href="tel:+34 934 430 184" class="card-phone">📞 +34 934 430 184</a>
+</div>
+<div class="card" data-city="روما" data-search="متجر عربي في روما أخرى روما إيطاليا">
+<div class="card-header">
+<span class="card-name">متجر عربي في روما</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="متجر عربي في روما أخرى روما إيطاليا">
+<div class="card-header">
+<span class="card-name">متجر عربي في روما</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="روما" data-search="مسجد في روما مساجد روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مسجد في روما</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="ميلانو" data-search="مطعم عربي حلال في ميلانو مطاعم عربية ميلانو إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميلانو</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميلانو، إيطاليا</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+39 02 481 9767" class="card-phone">📞 +39 02 481 9767</a>
+</div>
+<div class="card" data-city="ميلانو" data-search="مطعم عربي حلال في ميلانو مطاعم عربية ميلانو إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميلانو</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميلانو، إيطاليا</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+39 02 3651 8788" class="card-phone">📞 +39 02 3651 8788</a>
+</div>
+<div class="card" data-city="ميلانو" data-search="مطعم عربي حلال في ميلانو مطاعم عربية ميلانو إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميلانو</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميلانو، إيطاليا</span>
+<span>⭐ 4.8</span>
+</div>
+<a href="tel:+39 02 2952 1565" class="card-phone">📞 +39 02 2952 1565</a>
+</div>
+<div class="card" data-city="ستوكهولم" data-search="متجر عربي في ستوكهولم أخرى ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">متجر عربي في ستوكهولم</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="ستوكهولم" data-search="بقالة حلال في ستوكهولم بقالة حلال ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">بقالة حلال في ستوكهولم</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="ستوكهولم" data-search="متجر عربي في ستوكهولم أخرى ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">متجر عربي في ستوكهولم</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="ستوكهولم" data-search="بقالة حلال في ستوكهولم بقالة حلال ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">بقالة حلال في ستوكهولم</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="ستوكهولم" data-search="مسجد في ستوكهولم مساجد ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">مسجد في ستوكهولم</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="ستوكهولم" data-search="مسجد في ستوكهولم مساجد ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">مسجد في ستوكهولم</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="متجر عربي في كوبنهاغن أخرى كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">متجر عربي في كوبنهاغن</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 3.7</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="بقالة حلال في كوبنهاغن بقالة حلال كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">بقالة حلال في كوبنهاغن</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="متجر عربي في كوبنهاغن أخرى كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">متجر عربي في كوبنهاغن</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="بقالة حلال في كوبنهاغن بقالة حلال كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">بقالة حلال في كوبنهاغن</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="مسجد في كوبنهاغن مساجد كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">مسجد في كوبنهاغن</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 4.9</span>
+</div>
+<a href="tel:+45 38100078" class="card-phone">📞 +45 38100078</a>
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="مسجد في كوبنهاغن مساجد كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">مسجد في كوبنهاغن</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 4.1</span>
+</div>
+<a href="tel:+45 70605545" class="card-phone">📞 +45 70605545</a>
+</div>
+<div class="card" data-city="فيينا" data-search="سوبرماركت حلال في فيينا سوبرماركت حلال فيينا النمسا">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في فيينا</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="فيينا" data-search="مسجد في فيينا مساجد فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مسجد في فيينا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.0</span>
+</div>
+<a href="tel:+43 1 212 4708" class="card-phone">📞 +43 1 212 4708</a>
+</div>
+<div class="card" data-city="فيينا" data-search="مسجد في فيينا مساجد فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مسجد في فيينا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:+43 1 726 7033" class="card-phone">📞 +43 1 726 7033</a>
+</div>
+<div class="card" data-city="فيينا" data-search="مسجد في فيينا مساجد فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مسجد في فيينا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 3.8</span>
+</div>
+<a href="tel:+43 1 214 6291" class="card-phone">📞 +43 1 214 6291</a>
+</div>
+<div class="card" data-city="فيينا" data-search="مسجد في فيينا مساجد فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مسجد في فيينا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 3.7</span>
+</div>
+<a href="tel:+43 1 293 3194" class="card-phone">📞 +43 1 293 3194</a>
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="بروكسل" data-search="مسجد في بروكسل مساجد بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مسجد في بروكسل</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="روتردام" data-search="مطعم عربي حلال في روتردام مطاعم عربية روتردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روتردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روتردام، هولندا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="روتردام" data-search="مطعم عربي حلال في روتردام مطاعم عربية روتردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روتردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روتردام، هولندا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+31 6 24734939" class="card-phone">📞 +31 6 24734939</a>
+</div>
+<div class="card" data-city="روتردام" data-search="مسجد في روتردام مساجد روتردام هولندا">
+<div class="card-header">
+<span class="card-name">مسجد في روتردام</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 روتردام، هولندا</span>
+<span>⭐ 3.7</span>
+</div>
+<a href="tel:+31 10 476 4107" class="card-phone">📞 +31 10 476 4107</a>
+</div>
+<div class="card" data-city="روتردام" data-search="مسجد في روتردام مساجد روتردام هولندا">
+<div class="card-header">
+<span class="card-name">مسجد في روتردام</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 روتردام، هولندا</span>
+<span>⭐ 4.1</span>
+</div>
+<a href="tel:+31 10 419 3666" class="card-phone">📞 +31 10 419 3666</a>
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:+31 20 773 9212" class="card-phone">📞 +31 20 773 9212</a>
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.8</span>
+</div>
+<a href="tel:+31 20 624 9791" class="card-phone">📞 +31 20 624 9791</a>
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.9</span>
+</div>
+<a href="tel:+31 20 675 4102" class="card-phone">📞 +31 20 675 4102</a>
+</div>
+<div class="card" data-city="برمنغهام" data-search="مسجد في برمنغهام مساجد برمنغهام بريطانيا">
+<div class="card-header">
+<span class="card-name">مسجد في برمنغهام</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 برمنغهام، بريطانيا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="متجر عربي في لندن أخرى لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في لندن</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.6</span>
+</div>
+<a href="tel:07940 993628" class="card-phone">📞 07940 993628</a>
+</div>
+<div class="card" data-city="لندن" data-search="متجر عربي في لندن أخرى لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في لندن</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.6</span>
+</div>
+<a href="tel:0208 908 9440" class="card-phone">📞 0208 908 9440</a>
+</div>
+<div class="card" data-city="لندن" data-search="بقالة حلال في لندن بقالة حلال لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">بقالة حلال في لندن</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 4.6</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="متجر عربي في لندن أخرى لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في لندن</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="لندن" data-search="مسجد في لندن مساجد لندن بريطانيا">
+<div class="card-header">
+<span class="card-name">مسجد في لندن</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، بريطانيا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="ميونخ" data-search="متجر عربي في ميونخ أخرى ميونخ ألمانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في ميونخ</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 ميونخ، ألمانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="ميونخ" data-search="متجر عربي في ميونخ أخرى ميونخ ألمانيا">
+<div class="card-header">
+<span class="card-name">متجر عربي في ميونخ</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 ميونخ، ألمانيا</span>
+<span>⭐ 5.0</span>
+</div>
+
+</div>
+<div class="card" data-city="ميونخ" data-search="مطعم عربي حلال في ميونخ مطاعم عربية ميونخ ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في ميونخ</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 ميونخ، ألمانيا</span>
+<span>⭐ 4.9</span>
+</div>
+<a href="tel:089 64980527" class="card-phone">📞 089 64980527</a>
+</div>
+<div class="card" data-city="فرانكفورت" data-search="مطعم عربي حلال في فرانكفورت مطاعم عربية فرانكفورت ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فرانكفورت</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فرانكفورت، ألمانيا</span>
+<span>⭐ 4.0</span>
+</div>
+<a href="tel:069 21006635" class="card-phone">📞 069 21006635</a>
+</div>
+<div class="card" data-city="فرانكفورت" data-search="مسجد في فرانكفورت مساجد فرانكفورت ألمانيا">
+<div class="card-header">
+<span class="card-name">مسجد في فرانكفورت</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فرانكفورت، ألمانيا</span>
+<span>⭐ 4.7</span>
+</div>
+<a href="tel:+49 69 235688" class="card-phone">📞 +49 69 235688</a>
+</div>
+<div class="card" data-city="فرانكفورت" data-search="مسجد في فرانكفورت مساجد فرانكفورت ألمانيا">
+<div class="card-header">
+<span class="card-name">مسجد في فرانكفورت</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فرانكفورت، ألمانيا</span>
+<span>⭐ 4.8</span>
+</div>
+<a href="tel:+49 69 7891211" class="card-phone">📞 +49 69 7891211</a>
+</div>
+<div class="card" data-city="فرانكفورت" data-search="مسجد في فرانكفورت مساجد فرانكفورت ألمانيا">
+<div class="card-header">
+<span class="card-name">مسجد في فرانكفورت</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 فرانكفورت، ألمانيا</span>
+<span>⭐ 4.8</span>
+</div>
+<a href="tel:+49 69 2426600" class="card-phone">📞 +49 69 2426600</a>
+</div>
+<div class="card" data-city="كولونيا" data-search="مطعم عربي حلال في كولونيا مطاعم عربية كولونيا ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كولونيا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كولونيا، ألمانيا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="كولونيا" data-search="مطعم عربي حلال في كولونيا مطاعم عربية كولونيا ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كولونيا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كولونيا، ألمانيا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="كولونيا" data-search="مطعم عربي حلال في كولونيا مطاعم عربية كولونيا ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كولونيا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كولونيا، ألمانيا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="كولونيا" data-search="مطعم عربي حلال في كولونيا مطاعم عربية كولونيا ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في كولونيا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 كولونيا، ألمانيا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="كولونيا" data-search="مسجد في كولونيا مساجد كولونيا ألمانيا">
+<div class="card-header">
+<span class="card-name">مسجد في كولونيا</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 كولونيا، ألمانيا</span>
+<span>⭐ 4.3</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.4</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 3.7</span>
+</div>
+<a href="tel:+49 30 6126330" class="card-phone">📞 +49 30 6126330</a>
+</div>
+<div class="card" data-city="برلين" data-search="بقالة حلال في برلين بقالة حلال برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">بقالة حلال في برلين</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="برلين" data-search="بقالة حلال في برلين بقالة حلال برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">بقالة حلال في برلين</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.0</span>
+</div>
+
+</div>
+<div class="card" data-city="ليون" data-search="متجر عربي في ليون أخرى ليون فرنسا">
+<div class="card-header">
+<span class="card-name">متجر عربي في ليون</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 ليون، فرنسا</span>
+<span>⭐ 3.6</span>
+</div>
+
+</div>
+<div class="card" data-city="ليون" data-search="متجر عربي في ليون أخرى ليون فرنسا">
+<div class="card-header">
+<span class="card-name">متجر عربي في ليون</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 ليون، فرنسا</span>
+<span>⭐ 4.2</span>
+</div>
+
+</div>
+<div class="card" data-city="ليون" data-search="متجر عربي في ليون أخرى ليون فرنسا">
+<div class="card-header">
+<span class="card-name">متجر عربي في ليون</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 ليون، فرنسا</span>
+<span>⭐ 4.7</span>
+</div>
+
+</div>
+<div class="card" data-city="ليون" data-search="متجر عربي في ليون أخرى ليون فرنسا">
+<div class="card-header">
+<span class="card-name">متجر عربي في ليون</span>
+<span class="card-category">أخرى</span>
+</div>
+<div class="card-meta">
+<span>📍 ليون، فرنسا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="ليون" data-search="مسجد في ليون مساجد ليون فرنسا">
+<div class="card-header">
+<span class="card-name">مسجد في ليون</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 ليون، فرنسا</span>
+<span>⭐ 3.7</span>
+</div>
+<a href="tel:+33 4 78 76 00 23" class="card-phone">📞 +33 4 78 76 00 23</a>
+</div>
+<div class="card" data-city="مرسيليا" data-search="مطعم عربي حلال في مرسيليا مطاعم عربية مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مرسيليا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="مرسيليا" data-search="مطعم عربي حلال في مرسيليا مطاعم عربية مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مرسيليا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 4.5</span>
+</div>
+
+</div>
+<div class="card" data-city="مرسيليا" data-search="مطعم عربي حلال في مرسيليا مطاعم عربية مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مرسيليا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 3.8</span>
+</div>
+
+</div>
+<div class="card" data-city="مرسيليا" data-search="مطعم عربي حلال في مرسيليا مطاعم عربية مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مرسيليا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 4.8</span>
+</div>
+
+</div>
+<div class="card" data-city="مرسيليا" data-search="مطعم عربي حلال في مرسيليا مطاعم عربية مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مرسيليا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 3.6</span>
+</div>
+<a href="tel:+33 4 91 07 41 91" class="card-phone">📞 +33 4 91 07 41 91</a>
+</div>
+<div class="card" data-city="مرسيليا" data-search="مطعم عربي حلال في مرسيليا مطاعم عربية مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مرسيليا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 4.9</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="سوبرماركت حلال في باريس سوبرماركت حلال باريس فرنسا">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في باريس</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.9</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="سوبرماركت حلال في باريس سوبرماركت حلال باريس فرنسا">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في باريس</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.1</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="سوبرماركت حلال في باريس سوبرماركت حلال باريس فرنسا">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في باريس</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.5</span>
+</div>
+
+</div>
+<div class="card" data-city="باريس" data-search="بقالة حلال في باريس بقالة حلال باريس فرنسا">
+<div class="card-header">
+<span class="card-name">بقالة حلال في باريس</span>
+<span class="card-category">بقالة حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 3.8</span>
+</div>
+<a href="tel:+33 1 45 35 97 33" class="card-phone">📞 +33 1 45 35 97 33</a>
+</div>
+<div class="card" data-city="Berlin" data-search="مطعم عربي حلال في Berlin مطاعم عربية Berlin Germany">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في Berlin</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 Berlin، Germany</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:+49 30 6126330" class="card-phone">📞 +49 30 6126330</a>
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="مقهى شيشة في كوبنهاغن مقاهي شيشة كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">مقهى شيشة في كوبنهاغن</span>
+<span class="card-category">مقاهي شيشة</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:+45 33 21 44 88" class="card-phone">📞 +45 33 21 44 88</a>
+</div>
+<div class="card" data-city="ستوكهولم" data-search="سوبرماركت حلال في ستوكهولم سوبرماركت حلال ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في ستوكهولم</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+46 8 669 28 44" class="card-phone">📞 +46 8 669 28 44</a>
+</div>
+<div class="card" data-city="أوسلو" data-search="صالون حلاقة في أوسلو صالونات حلاقة أوسلو النرويج">
+<div class="card-header">
+<span class="card-name">صالون حلاقة في أوسلو</span>
+<span class="card-category">صالونات حلاقة</span>
+</div>
+<div class="card-meta">
+<span>📍 أوسلو، النرويج</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+47 22 42 18 33" class="card-phone">📞 +47 22 42 18 33</a>
+</div>
+<div class="card" data-city="لشبونة" data-search="مطعم عربي حلال في لشبونة مطاعم عربية لشبونة البرتغال">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لشبونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لشبونة، البرتغال</span>
+<span>⭐ 4.6</span>
+</div>
+<a href="tel:+351 21 887 65 22" class="card-phone">📞 +351 21 887 65 22</a>
+</div>
+<div class="card" data-city="بودابست" data-search="مقهى عربي في بودابست مقاهي بودابست المجر">
+<div class="card-header">
+<span class="card-name">مقهى عربي في بودابست</span>
+<span class="card-category">مقاهي</span>
+</div>
+<div class="card-meta">
+<span>📍 بودابست، المجر</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+36 1 782 22 44" class="card-phone">📞 +36 1 782 22 44</a>
+</div>
+<div class="card" data-city="بوخارست" data-search="سوبرماركت حلال في بوخارست سوبرماركت حلال بوخارست رومانيا">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في بوخارست</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 بوخارست، رومانيا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+40 21 322 15 88" class="card-phone">📞 +40 21 322 15 88</a>
+</div>
+<div class="card" data-city="أثينا" data-search="مطعم عربي حلال في أثينا مطاعم عربية أثينا اليونان">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أثينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أثينا، اليونان</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:+30 21 0321 88 42" class="card-phone">📞 +30 21 0321 88 42</a>
+</div>
+<div class="card" data-city="ميلانو" data-search="مخبز عربي في ميلانو مخابز ميلانو إيطاليا">
+<div class="card-header">
+<span class="card-name">مخبز عربي في ميلانو</span>
+<span class="card-category">مخابز</span>
+</div>
+<div class="card-meta">
+<span>📍 ميلانو، إيطاليا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+39 02 349 41 88" class="card-phone">📞 +39 02 349 41 88</a>
+</div>
+<div class="card" data-city="برشلونة" data-search="مقهى شيشة في برشلونة مقاهي شيشة برشلونة إسبانيا">
+<div class="card-header">
+<span class="card-name">مقهى شيشة في برشلونة</span>
+<span class="card-category">مقاهي شيشة</span>
+</div>
+<div class="card-meta">
+<span>📍 برشلونة، إسبانيا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+34 934 88 12 55" class="card-phone">📞 +34 934 88 12 55</a>
+</div>
+<div class="card" data-city="برمنغهام" data-search="مسجد في برمنغهام مساجد برمنغهام المملكة المتحدة">
+<div class="card-header">
+<span class="card-name">مسجد في برمنغهام</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 برمنغهام، المملكة المتحدة</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+44 121 766 22 44" class="card-phone">📞 +44 121 766 22 44</a>
+</div>
+<div class="card" data-city="مانشستر" data-search="جزار حلال في مانشستر جزار حلال مانشستر المملكة المتحدة">
+<div class="card-header">
+<span class="card-name">جزار حلال في مانشستر</span>
+<span class="card-category">جزار حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 مانشستر، المملكة المتحدة</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+44 161 224 55 88" class="card-phone">📞 +44 161 224 55 88</a>
+</div>
+<div class="card" data-city="شتوتغارت" data-search="حلويات شرقية في شتوتغارت حلويات شرقية شتوتغارت ألمانيا">
+<div class="card-header">
+<span class="card-name">حلويات شرقية في شتوتغارت</span>
+<span class="card-category">حلويات شرقية</span>
+</div>
+<div class="card-meta">
+<span>📍 شتوتغارت، ألمانيا</span>
+<span>⭐ 4.6</span>
+</div>
+<a href="tel:+49 711 293 84 17" class="card-phone">📞 +49 711 293 84 17</a>
+</div>
+<div class="card" data-city="كولونيا" data-search="سوبرماركت حلال في كولونيا سوبرماركت حلال كولونيا ألمانيا">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في كولونيا</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 كولونيا، ألمانيا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+49 221 168 91 33" class="card-phone">📞 +49 221 168 91 33</a>
+</div>
+<div class="card" data-city="فرانكفورت" data-search="مطعم عربي حلال في فرانكفورت مطاعم عربية فرانكفورت ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فرانكفورت</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فرانكفورت، ألمانيا</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+49 69 272 38 22" class="card-phone">📞 +49 69 272 38 22</a>
+</div>
+<div class="card" data-city="نيس" data-search="مقهى عربي في نيس مقاهي نيس فرنسا">
+<div class="card-header">
+<span class="card-name">مقهى عربي في نيس</span>
+<span class="card-category">مقاهي</span>
+</div>
+<div class="card-meta">
+<span>📍 نيس، فرنسا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+33 4 93 87 22 11" class="card-phone">📞 +33 4 93 87 22 11</a>
+</div>
+<div class="card" data-city="مرسيليا" data-search="مطعم عربي حلال في مرسيليا مطاعم عربية مرسيليا فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مرسيليا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مرسيليا، فرنسا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+33 4 91 08 12 44" class="card-phone">📞 +33 4 91 08 12 44</a>
+</div>
+<div class="card" data-city="فيينا" data-search="مقهى شيشة في فيينا مقاهي شيشة فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مقهى شيشة في فيينا</span>
+<span class="card-category">مقاهي شيشة</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:+43 1 214 52 88" class="card-phone">📞 +43 1 214 52 88</a>
+</div>
+<div class="card" data-city="زيورخ" data-search="مقهى عربي في زيورخ مقاهي زيورخ سويسرا">
+<div class="card-header">
+<span class="card-name">مقهى عربي في زيورخ</span>
+<span class="card-category">مقاهي</span>
+</div>
+<div class="card-meta">
+<span>📍 زيورخ، سويسرا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+41 43 488 76 22" class="card-phone">📞 +41 43 488 76 22</a>
+</div>
+<div class="card" data-city="بودابست" data-search="مخبز عربي في بودابست مخابز بودابست المجر">
+<div class="card-header">
+<span class="card-name">مخبز عربي في بودابست</span>
+<span class="card-category">مخابز</span>
+</div>
+<div class="card-meta">
+<span>📍 بودابست، المجر</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+36 1 322 41 95" class="card-phone">📞 +36 1 322 41 95</a>
+</div>
+<div class="card" data-city="وارسو" data-search="مطعم عربي حلال في وارسو مطاعم عربية وارسو بولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في وارسو</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 وارسو، بولندا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+48 22 622 43 78" class="card-phone">📞 +48 22 622 43 78</a>
+</div>
+<div class="card" data-city="براغ" data-search="سوبرماركت حلال في براغ سوبرماركت حلال براغ التشيك">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في براغ</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 براغ، التشيك</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:+420 284 681 32 7" class="card-phone">📞 +420 284 681 32 7</a>
+</div>
+<div class="card" data-city="لشبونة" data-search="مطعم عربي حلال في لشبونة مطاعم عربية لشبونة البرتغال">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لشبونة</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لشبونة، البرتغال</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+351 21 882 34 71" class="card-phone">📞 +351 21 882 34 71</a>
+</div>
+<div class="card" data-city="هلسنكي" data-search="مسجد في هلسنكي مساجد هلسنكي فنلندا">
+<div class="card-header">
+<span class="card-name">مسجد في هلسنكي</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 هلسنكي، فنلندا</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+358 9 739 67 82" class="card-phone">📞 +358 9 739 67 82</a>
+</div>
+<div class="card" data-city="أوسلو" data-search="مطعم عربي حلال في أوسلو مطاعم عربية أوسلو النرويج">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أوسلو</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أوسلو، النرويج</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+47 22 17 38 56" class="card-phone">📞 +47 22 17 38 56</a>
+</div>
+<div class="card" data-city="لندن" data-search="تحويل أموال في لندن تحويل أموال لندن المملكة المتحدة">
+<div class="card-header">
+<span class="card-name">تحويل أموال في لندن</span>
+<span class="card-category">تحويل أموال</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، المملكة المتحدة</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:+44 20 7723 91 44" class="card-phone">📞 +44 20 7723 91 44</a>
+</div>
+<div class="card" data-city="دبلن" data-search="مطعم عربي حلال في دبلن مطاعم عربية دبلن أيرلندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في دبلن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 دبلن، أيرلندا</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+353 1 873 42 61" class="card-phone">📞 +353 1 873 42 61</a>
+</div>
+<div class="card" data-city="كوبنهاغن" data-search="مخبز عربي في كوبنهاغن مخابز كوبنهاغن الدنمارك">
+<div class="card-header">
+<span class="card-name">مخبز عربي في كوبنهاغن</span>
+<span class="card-category">مخابز</span>
+</div>
+<div class="card-meta">
+<span>📍 كوبنهاغن، الدنمارك</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+45 35 24 18 92" class="card-phone">📞 +45 35 24 18 92</a>
+</div>
+<div class="card" data-city="ليون" data-search="جزار حلال في ليون جزار حلال ليون فرنسا">
+<div class="card-header">
+<span class="card-name">جزار حلال في ليون</span>
+<span class="card-category">جزار حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 ليون، فرنسا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+33 4 78 42 19 37" class="card-phone">📞 +33 4 78 42 19 37</a>
+</div>
+<div class="card" data-city="بروكسل" data-search="مسجد في بروكسل مساجد بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مسجد في بروكسل</span>
+<span class="card-category">مساجد</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.7</span>
+</div>
+<a href="tel:+32 2 215 88 44" class="card-phone">📞 +32 2 215 88 44</a>
+</div>
+<div class="card" data-city="روتردام" data-search="مطعم عربي حلال في روتردام مطاعم عربية روتردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روتردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روتردام، هولندا</span>
+<span>⭐ 4.6</span>
+</div>
+<a href="tel:+31 10 214 78 56" class="card-phone">📞 +31 10 214 78 56</a>
+</div>
+<div class="card" data-city="ميونخ" data-search="صالون حلاقة في ميونخ صالونات حلاقة ميونخ ألمانيا">
+<div class="card-header">
+<span class="card-name">صالون حلاقة في ميونخ</span>
+<span class="card-category">صالونات حلاقة</span>
+</div>
+<div class="card-meta">
+<span>📍 ميونخ، ألمانيا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+49 89 545 32 18" class="card-phone">📞 +49 89 545 32 18</a>
+</div>
+<div class="card" data-city="هامبورغ" data-search="وكالة سفر في هامبورغ وكالات سفر هامبورغ ألمانيا">
+<div class="card-header">
+<span class="card-name">وكالة سفر في هامبورغ</span>
+<span class="card-category">وكالات سفر</span>
+</div>
+<div class="card-meta">
+<span>📍 هامبورغ، ألمانيا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+49 40 284 12 39" class="card-phone">📞 +49 40 284 12 39</a>
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن المملكة المتحدة">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، المملكة المتحدة</span>
+<span>⭐ 4.8</span>
+</div>
+<a href="tel:+44 20 7491 3832" class="card-phone">📞 +44 20 7491 3832</a>
+</div>
+<div class="card" data-city="باريس" data-search="مقهى عربي في باريس مقاهي باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مقهى عربي في باريس</span>
+<span class="card-category">مقاهي</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+33 1 43 29 47 82" class="card-phone">📞 +33 1 43 29 47 82</a>
+</div>
+<div class="card" data-city="جنيف" data-search="مطعم عربي حلال في جنيف مطاعم عربية جنيف سويسرا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في جنيف</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 جنيف، سويسرا</span>
+<span>⭐ 4.6</span>
+</div>
+<a href="tel:+41 22 731 77 93" class="card-phone">📞 +41 22 731 77 93</a>
+</div>
+<div class="card" data-city="ستوكهولم" data-search="مخبز عربي في ستوكهولم مخابز ستوكهولم السويد">
+<div class="card-header">
+<span class="card-name">مخبز عربي في ستوكهولم</span>
+<span class="card-category">مخابز</span>
+</div>
+<div class="card-meta">
+<span>📍 ستوكهولم، السويد</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+46 8 30 18 42" class="card-phone">📞 +46 8 30 18 42</a>
+</div>
+<div class="card" data-city="روما" data-search="مطعم عربي حلال في روما مطاعم عربية روما إيطاليا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في روما</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 روما، إيطاليا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+39 06 770 99 182" class="card-phone">📞 +39 06 770 99 182</a>
+</div>
+<div class="card" data-city="مدريد" data-search="سوبرماركت حلال في مدريد سوبرماركت حلال مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في مدريد</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 4.2</span>
+</div>
+<a href="tel:+34 913 67 22 81" class="card-phone">📞 +34 913 67 22 81</a>
+</div>
+<div class="card" data-city="مدريد" data-search="مطعم عربي حلال في مدريد مطاعم عربية مدريد إسبانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في مدريد</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 مدريد، إسبانيا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+34 915 32 76 45" class="card-phone">📞 +34 915 32 76 45</a>
+</div>
+<div class="card" data-city="فيينا" data-search="مقهى شيشة في فيينا مقاهي شيشة فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مقهى شيشة في فيينا</span>
+<span class="card-category">مقاهي شيشة</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+43 1 597 63 42" class="card-phone">📞 +43 1 597 63 42</a>
+</div>
+<div class="card" data-city="فيينا" data-search="مطعم عربي حلال في فيينا مطاعم عربية فيينا النمسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في فيينا</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 فيينا، النمسا</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+43 1 214 22 87" class="card-phone">📞 +43 1 214 22 87</a>
+</div>
+<div class="card" data-city="بروكسل" data-search="حلويات شرقية في بروكسل حلويات شرقية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">حلويات شرقية في بروكسل</span>
+<span class="card-category">حلويات شرقية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.7</span>
+</div>
+<a href="tel:+32 2 217 09 83" class="card-phone">📞 +32 2 217 09 83</a>
+</div>
+<div class="card" data-city="بروكسل" data-search="مطعم عربي حلال في بروكسل مطاعم عربية بروكسل بلجيكا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في بروكسل</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 بروكسل، بلجيكا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+32 2 512 43 68" class="card-phone">📞 +32 2 512 43 68</a>
+</div>
+<div class="card" data-city="أمستردام" data-search="سوبرماركت حلال في أمستردام سوبرماركت حلال أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في أمستردام</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+31 20 684 83 21" class="card-phone">📞 +31 20 684 83 21</a>
+</div>
+<div class="card" data-city="أمستردام" data-search="مطعم عربي حلال في أمستردام مطاعم عربية أمستردام هولندا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في أمستردام</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 أمستردام، هولندا</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+31 20 624 52 19" class="card-phone">📞 +31 20 624 52 19</a>
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+49 30 614 12 88" class="card-phone">📞 +49 30 614 12 88</a>
+</div>
+<div class="card" data-city="برلين" data-search="حلويات شرقية في برلين حلويات شرقية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">حلويات شرقية في برلين</span>
+<span class="card-category">حلويات شرقية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.8</span>
+</div>
+<a href="tel:+49 30 622 35 71" class="card-phone">📞 +49 30 622 35 71</a>
+</div>
+<div class="card" data-city="برلين" data-search="سوبرماركت حلال في برلين سوبرماركت حلال برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في برلين</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+49 30 624 89 33" class="card-phone">📞 +49 30 624 89 33</a>
+</div>
+<div class="card" data-city="برلين" data-search="مطعم عربي حلال في برلين مطاعم عربية برلين ألمانيا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في برلين</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 برلين، ألمانيا</span>
+<span>⭐ 4.6</span>
+</div>
+<a href="tel:+49 30 623 72 14" class="card-phone">📞 +49 30 623 72 14</a>
+</div>
+<div class="card" data-city="لندن" data-search="مقهى شيشة في لندن مقاهي شيشة لندن المملكة المتحدة">
+<div class="card-header">
+<span class="card-name">مقهى شيشة في لندن</span>
+<span class="card-category">مقاهي شيشة</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، المملكة المتحدة</span>
+<span>⭐ 4.3</span>
+</div>
+<a href="tel:+44 20 7286 5492" class="card-phone">📞 +44 20 7286 5492</a>
+</div>
+<div class="card" data-city="لندن" data-search="جزار حلال في لندن جزار حلال لندن المملكة المتحدة">
+<div class="card-header">
+<span class="card-name">جزار حلال في لندن</span>
+<span class="card-category">جزار حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، المملكة المتحدة</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+44 20 7723 8765" class="card-phone">📞 +44 20 7723 8765</a>
+</div>
+<div class="card" data-city="لندن" data-search="مطعم عربي حلال في لندن مطاعم عربية لندن المملكة المتحدة">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في لندن</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 لندن، المملكة المتحدة</span>
+<span>⭐ 4.6</span>
+</div>
+<a href="tel:+44 20 7256 1122" class="card-phone">📞 +44 20 7256 1122</a>
+</div>
+<div class="card" data-city="باريس" data-search="مقهى عربي في باريس مقاهي باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مقهى عربي في باريس</span>
+<span class="card-category">مقاهي</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.7</span>
+</div>
+<a href="tel:+33 1 43 31 18 14" class="card-phone">📞 +33 1 43 31 18 14</a>
+</div>
+<div class="card" data-city="باريس" data-search="سوبرماركت حلال في باريس سوبرماركت حلال باريس فرنسا">
+<div class="card-header">
+<span class="card-name">سوبرماركت حلال في باريس</span>
+<span class="card-category">سوبرماركت حلال</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.4</span>
+</div>
+<a href="tel:+33 1 43 58 42 61" class="card-phone">📞 +33 1 43 58 42 61</a>
+</div>
+<div class="card" data-city="باريس" data-search="صالون حلاقة في باريس صالونات حلاقة باريس فرنسا">
+<div class="card-header">
+<span class="card-name">صالون حلاقة في باريس</span>
+<span class="card-category">صالونات حلاقة</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.6</span>
+</div>
+<a href="tel:+33 1 42 38 59 27" class="card-phone">📞 +33 1 42 38 59 27</a>
+</div>
+<div class="card" data-city="باريس" data-search="مخبز عربي في باريس مخابز باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مخبز عربي في باريس</span>
+<span class="card-category">مخابز</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.5</span>
+</div>
+<a href="tel:+33 1 47 00 21 93" class="card-phone">📞 +33 1 47 00 21 93</a>
+</div>
+<div class="card" data-city="باريس" data-search="حلويات شرقية في باريس حلويات شرقية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">حلويات شرقية في باريس</span>
+<span class="card-category">حلويات شرقية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.8</span>
+</div>
+<a href="tel:+33 1 42 72 91 42" class="card-phone">📞 +33 1 42 72 91 42</a>
+</div>
+<div class="card" data-city="باريس" data-search="مطعم عربي حلال في باريس مطاعم عربية باريس فرنسا">
+<div class="card-header">
+<span class="card-name">مطعم عربي حلال في باريس</span>
+<span class="card-category">مطاعم عربية</span>
+</div>
+<div class="card-meta">
+<span>📍 باريس، فرنسا</span>
+<span>⭐ 4.7</span>
+</div>
+<a href="tel:+33 1 42 46 04 38" class="card-phone">📞 +33 1 42 46 04 38</a>
+</div>
+</div>
+<script>
+const cards = document.querySelectorAll('.card');
+const statusEl = document.getElementById('status');
+
+function filterSearch() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  let count = 0;
+  cards.forEach(card => {
+    const search = card.getAttribute('data-search').toLowerCase();
+    if (!q || search.includes(q)) {
+      card.classList.remove('hidden');
+      count++;
+    } else {
+      card.classList.add('hidden');
+    }
+  });
+  statusEl.textContent = q ? count + ' نتيجة لـ "' + q + '"' : '383 متجر';
+}
+
+function filterCity(city) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  let count = 0;
+  cards.forEach(card => {
+    if (!city || card.getAttribute('data-city') === city) {
+      card.classList.remove('hidden');
+      count++;
+    } else {
+      card.classList.add('hidden');
+    }
+  });
+  statusEl.textContent = city ? count + ' متجر في ' + city : '383 متجر';
+}
+</script>
+</body>
+</html>
