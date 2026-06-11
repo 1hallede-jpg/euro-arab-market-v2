@@ -293,7 +293,7 @@ export const migrateRouter = createRouter({
     }
   }),
 
-  // Batch insert merchants using raw SQL
+  // Batch insert merchants using postgres raw SQL
   batchInsert: publicQuery
     .input(z.object({
       merchants: z.array(z.object({
@@ -309,7 +309,10 @@ export const migrateRouter = createRouter({
       }))
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const client = postgres(env.databaseUrl, {
+        ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+        max: 1,
+      });
       let inserted = 0;
       try {
         for (const m of input.merchants) {
@@ -317,20 +320,23 @@ export const migrateRouter = createRouter({
             .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
             .substring(0, 40);
           const slug = `${slugBase}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-          const name = m.businessName || m.businessNameAr;
-          const desc = m.description?.substring(0, 500) || name;
+          const name = (m.businessName || m.businessNameAr).replace(/'/g, "''");
+          const nameAr = m.businessNameAr.replace(/'/g, "''");
+          const desc = (m.description?.substring(0, 500) || nameAr).replace(/'/g, "''");
           const shortDesc = desc.substring(0, 160);
-          const addr = m.address || m.city;
-          const phone = m.phone || '';
+          const addr = (m.address || m.city).replace(/'/g, "''");
+          const phoneVal = (m.phone || '').replace(/'/g, "''");
           const rating = String((3.5 + Math.random() * 1.5).toFixed(1));
           const reviews = Math.floor(Math.random() * 40) + 5;
-          const tags = m.description?.substring(0, 200) || '';
+          const tagsVal = (m.description?.substring(0, 200) || '').replace(/'/g, "''");
           
-          await db.execute(sql`INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, address_ar, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES (${name}, ${m.businessNameAr}, ${shortDesc}, ${desc}, ${desc}, ${m.category}, ${m.country}, ${m.city}, ${addr}, ${addr}, ${phone}, ${m.website || null}, 'active', ${slug}, false, true, ${rating}, ${reviews}, ${tags}, NOW(), NOW()) ON CONFLICT DO NOTHING`);
+          await client.unsafe(`INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, address_ar, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES ('${name}', '${nameAr}', '${shortDesc}', '${desc}', '${desc}', '${m.category}', '${m.country}', '${m.city}', '${addr}', '${addr}', '${phoneVal}', ${m.website ? "'" + m.website + "'" : "null"}, 'active', '${slug}', false, true, '${rating}', ${reviews}, '${tagsVal}', NOW(), NOW()) ON CONFLICT DO NOTHING`);
           inserted++;
         }
+        await client.end();
         return { success: true, inserted };
       } catch (error: any) {
+        await client.end();
         return { success: false, message: error?.message, inserted };
       }
     }),
