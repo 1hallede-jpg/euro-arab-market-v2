@@ -56,6 +56,20 @@ if (!publicPath) {
 } else {
   console.log("[Static] Serving from:", publicPath);
 
+  // Direct search page (bypasses React SPA to avoid cache issues)
+  app.use("/search", async (c) => {
+    const indexPath = path.join(publicPath, "search.html");
+    if (fs.existsSync(indexPath)) {
+      return c.html(fs.readFileSync(indexPath, "utf-8"));
+    }
+    // Fallback: serve search-static.html
+    const staticPath = path.join(publicPath, "search-static.html");
+    if (fs.existsSync(staticPath)) {
+      return c.html(fs.readFileSync(staticPath, "utf-8"));
+    }
+    await next();
+  });
+
   // Serve assets
   app.use("/assets/*", async (c) => {
     const file = path.basename(c.req.path);
