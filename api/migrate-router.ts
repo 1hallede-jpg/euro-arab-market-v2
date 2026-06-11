@@ -269,6 +269,8 @@ export const migrateRouter = createRouter({
           await db.insert(merchants).values({
             businessName: m.businessName || m.businessNameAr,
             businessNameAr: m.businessNameAr,
+            business_name: m.businessName || m.businessNameAr,
+            business_name_ar: m.businessNameAr,
             shortDescription: m.description?.substring(0, 160) || m.businessNameAr,
             description: m.description,
             descriptionAr: m.description,
