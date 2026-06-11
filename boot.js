@@ -29659,7 +29659,7 @@ __export(schema_exports, {
   emergencyTypeEnum: () => emergencyTypeEnum,
   favorites: () => favorites,
   jobs: () => jobs,
-  merchants: () => merchants,
+  merchants: () => merchants2,
   reviews: () => reviews,
   searchLogs: () => searchLogs,
   subscriptions: () => subscriptions,
@@ -29759,7 +29759,7 @@ var users = pgTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => /* @__PURE__ */ new Date()),
   lastSignInAt: timestamp("lastSignInAt").defaultNow().notNull()
 });
-var merchants = pgTable("merchants", {
+var merchants2 = pgTable("merchants", {
   // Basic Info
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id),
@@ -29862,7 +29862,7 @@ var jobs = pgTable("jobs", {
 var reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id),
-  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants.id),
+  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants2.id),
   jobId: bigint4("jobId", { mode: "number" }).references(() => jobs.id),
   rating: integer2("rating").notNull(),
   comment: text("comment"),
@@ -29872,7 +29872,7 @@ var reviews = pgTable("reviews", {
 var subscriptions = pgTable("subscriptions", {
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id).notNull(),
-  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants.id).notNull(),
+  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants2.id).notNull(),
   plan: subscriptionPlanEnum("plan").default("basic").notNull(),
   status: subscriptionStatusEnum("status").default("trial").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
@@ -29891,7 +29891,7 @@ var subscriptions = pgTable("subscriptions", {
 var claims = pgTable("claims", {
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id).notNull(),
-  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants.id).notNull(),
+  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants2.id).notNull(),
   status: claimStatusEnum("status").default("pending").notNull(),
   fullName: varchar("fullName", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
@@ -29955,7 +29955,7 @@ var emergencyContacts = pgTable("emergency_contacts", {
 var favorites = pgTable("favorites", {
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id).notNull(),
-  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants.id),
+  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants2.id),
   jobId: bigint4("jobId", { mode: "number" }).references(() => jobs.id),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
@@ -29972,15 +29972,15 @@ __export(relations_exports, {
   usersRelations: () => usersRelations
 });
 var usersRelations = relations(users, ({ many }) => ({
-  merchants: many(merchants),
+  merchants: many(merchants2),
   jobs: many(jobs),
   reviews: many(reviews),
   chatMessages: many(chatMessages),
   searchLogs: many(searchLogs),
   favorites: many(favorites)
 }));
-var merchantsRelations = relations(merchants, ({ one, many }) => ({
-  user: one(users, { fields: [merchants.userId], references: [users.id] }),
+var merchantsRelations = relations(merchants2, ({ one, many }) => ({
+  user: one(users, { fields: [merchants2.userId], references: [users.id] }),
   reviews: many(reviews),
   favorites: many(favorites)
 }));
@@ -29990,7 +29990,7 @@ var jobsRelations = relations(jobs, ({ one, many }) => ({
 }));
 var reviewsRelations = relations(reviews, ({ one }) => ({
   user: one(users, { fields: [reviews.userId], references: [users.id] }),
-  merchant: one(merchants, { fields: [reviews.merchantId], references: [merchants.id] })
+  merchant: one(merchants2, { fields: [reviews.merchantId], references: [merchants2.id] })
 }));
 var chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   user: one(users, { fields: [chatMessages.userId], references: [users.id] })
@@ -30000,7 +30000,7 @@ var searchLogsRelations = relations(searchLogs, ({ one }) => ({
 }));
 var favoritesRelations = relations(favorites, ({ one }) => ({
   user: one(users, { fields: [favorites.userId], references: [users.id] }),
-  merchant: one(merchants, { fields: [favorites.merchantId], references: [merchants.id] }),
+  merchant: one(merchants2, { fields: [favorites.merchantId], references: [merchants2.id] }),
   job: one(jobs, { fields: [favorites.jobId], references: [jobs.id] })
 }));
 
@@ -30014,7 +30014,7 @@ function needsSsl(url2) {
   if (url2.includes("localhost") || url2.includes("127.0.0.1")) return false;
   return env.isProduction;
 }
-function getDb() {
+function getDb2() {
   if (!instance) {
     const useSsl = needsSsl(env.databaseUrl);
     console.log("[DB] DATABASE_URL:", env.databaseUrl.substring(0, 30) + "...");
@@ -30050,39 +30050,39 @@ var merchantRouter = createRouter({
     }).optional()
   ).query(async ({ input }) => {
     try {
-      const db = getDb();
-      let query = db.select().from(merchants);
+      const db = getDb2();
+      let query = db.select().from(merchants2);
       const conditions = [];
       const targetStatus = input?.status || "active";
-      conditions.push(sql`${merchants.status} = ${targetStatus}`);
+      conditions.push(sql`${merchants2.status} = ${targetStatus}`);
       if (input?.category) {
-        conditions.push(sql`${merchants.category} = ${input.category}`);
+        conditions.push(sql`${merchants2.category} = ${input.category}`);
       }
       if (input?.country) {
-        conditions.push(sql`${merchants.country} = ${input.country}`);
+        conditions.push(sql`${merchants2.country} = ${input.country}`);
       }
       if (input?.city) {
-        conditions.push(sql`${merchants.city} = ${input.city}`);
+        conditions.push(sql`${merchants2.city} = ${input.city}`);
       }
       if (input?.featured) {
-        conditions.push(sql`${merchants.isFeatured} = true`);
+        conditions.push(sql`${merchants2.isFeatured} = true`);
       }
       if (input?.search) {
         const term = `%${input.search}%`;
         conditions.push(sql`(
-            ${merchants.businessName} ILIKE ${term} OR
-            ${merchants.businessNameAr} ILIKE ${term} OR
-            ${merchants.description} ILIKE ${term} OR
-            ${merchants.descriptionAr} ILIKE ${term} OR
-            ${merchants.tags} ILIKE ${term} OR
-            ${merchants.city} ILIKE ${term} OR
-            ${merchants.country} ILIKE ${term} OR
-            ${merchants.address} ILIKE ${term}
+            ${merchants2.businessName} ILIKE ${term} OR
+            ${merchants2.businessNameAr} ILIKE ${term} OR
+            ${merchants2.description} ILIKE ${term} OR
+            ${merchants2.descriptionAr} ILIKE ${term} OR
+            ${merchants2.tags} ILIKE ${term} OR
+            ${merchants2.city} ILIKE ${term} OR
+            ${merchants2.country} ILIKE ${term} OR
+            ${merchants2.address} ILIKE ${term}
           )`);
       }
       const where = conditions.length > 1 ? and(...conditions) : conditions[0];
-      const items = await query.where(where).limit(input?.limit || 20).offset(input?.offset || 0).orderBy(desc(merchants.id));
-      const countResult = await db.select({ count: sql`count(*)` }).from(merchants).where(where);
+      const items = await query.where(where).limit(input?.limit || 20).offset(input?.offset || 0).orderBy(desc(merchants2.id));
+      const countResult = await db.select({ count: sql`count(*)` }).from(merchants2).where(where);
       return {
         items,
         total: countResult[0]?.count || 0
@@ -30094,8 +30094,8 @@ var merchantRouter = createRouter({
   }),
   // Get single merchant by ID
   getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb();
-    const merchant = await db.select().from(merchants).where(eq(merchants.id, input.id)).limit(1);
+    const db = getDb2();
+    const merchant = await db.select().from(merchants2).where(eq(merchants2.id, input.id)).limit(1);
     if (!merchant[0]) {
       throw new Error("Merchant not found");
     }
@@ -30108,13 +30108,13 @@ var merchantRouter = createRouter({
   // Get merchant by slug or id
   getBySlug: publicQuery.input(external_exports.object({ slug: external_exports.string() })).query(async ({ input }) => {
     try {
-      const db = getDb();
-      let result = await db.select().from(merchants).where(eq(merchants.slug, input.slug)).limit(1);
+      const db = getDb2();
+      let result = await db.select().from(merchants2).where(eq(merchants2.slug, input.slug)).limit(1);
       if (!result[0] && /^\d+$/.test(input.slug)) {
-        result = await db.select().from(merchants).where(eq(merchants.id, parseInt(input.slug))).limit(1);
+        result = await db.select().from(merchants2).where(eq(merchants2.id, parseInt(input.slug))).limit(1);
       }
       if (!result[0]) {
-        result = await db.select().from(merchants).where(sql`${merchants.slug} ILIKE ${"%" + input.slug + "%"}`).limit(1);
+        result = await db.select().from(merchants2).where(sql`${merchants2.slug} ILIKE ${"%" + input.slug + "%"}`).limit(1);
       }
       if (!result[0]) {
         return null;
@@ -30128,8 +30128,8 @@ var merchantRouter = createRouter({
   // Get merchant by ID
   getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
     try {
-      const db = getDb();
-      const result = await db.select().from(merchants).where(eq(merchants.id, input.id)).limit(1);
+      const db = getDb2();
+      const result = await db.select().from(merchants2).where(eq(merchants2.id, input.id)).limit(1);
       return result[0] || null;
     } catch (error48) {
       console.error("[getById] Error:", error48?.message);
@@ -30172,25 +30172,25 @@ var merchantRouter = createRouter({
       userId: external_exports.number().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const slug = input.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
-    const result = await db.insert(merchants).values({
+    const result = await db.insert(merchants2).values({
       ...input,
       slug,
       status: "pending",
       createdAt: /* @__PURE__ */ new Date(),
       updatedAt: /* @__PURE__ */ new Date()
-    }).returning({ id: merchants.id });
+    }).returning({ id: merchants2.id });
     return { id: result[0].id, slug };
   }),
   // Get featured merchants
   featured: publicQuery.query(async () => {
-    const db = getDb();
-    return db.select().from(merchants).where(and(eq(merchants.status, "active"), eq(merchants.isVerified, true))).orderBy(desc(merchants.rating)).limit(6);
+    const db = getDb2();
+    return db.select().from(merchants2).where(and(eq(merchants2.status, "active"), eq(merchants2.isVerified, true))).orderBy(desc(merchants2.rating)).limit(6);
   }),
   // Get categories with counts
   categories: publicQuery.query(async () => {
-    const db = getDb();
+    const db = getDb2();
     const categories = [
       { id: 1, name: "\u0645\u0637\u0627\u0639\u0645 \u0639\u0631\u0628\u064A\u0629", nameEn: "restaurant", icon: "Utensils", color: "#ef4444", count: 0 },
       { id: 2, name: "\u0633\u0648\u0628\u0631\u0645\u0627\u0631\u0643\u062A \u062D\u0644\u0627\u0644", nameEn: "supermarket", icon: "ShoppingCart", color: "#22c55e", count: 0 },
@@ -30213,19 +30213,19 @@ var merchantRouter = createRouter({
       { id: 19, name: "\u0623\u062E\u0631\u0649", nameEn: "other", icon: "Store", color: "#6b7280", count: 0 }
     ];
     for (const cat of categories) {
-      const result = await db.select({ count: sql`count(*)` }).from(merchants).where(and(eq(merchants.category, cat.nameEn), eq(merchants.status, "active")));
+      const result = await db.select({ count: sql`count(*)` }).from(merchants2).where(and(eq(merchants2.category, cat.nameEn), eq(merchants2.status, "active")));
       cat.count = result[0]?.count || 0;
     }
     return categories;
   }),
   // Get cities list
   cities: publicQuery.query(async () => {
-    const db = getDb();
+    const db = getDb2();
     const result = await db.select({
-      city: merchants.city,
-      country: merchants.country,
+      city: merchants2.city,
+      country: merchants2.country,
       count: sql`count(*)`
-    }).from(merchants).where(eq(merchants.status, "active")).groupBy(merchants.city, merchants.country).orderBy(desc(sql`count(*)`));
+    }).from(merchants2).where(eq(merchants2.status, "active")).groupBy(merchants2.city, merchants2.country).orderBy(desc(sql`count(*)`));
     return result;
   }),
   // Submit store request (no auth required - public)
@@ -30244,10 +30244,10 @@ var merchantRouter = createRouter({
       contactName: external_exports.string().optional().nullable()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const baseSlug = (input.businessName || input.businessNameAr).toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").replace(/(^-|-$)/g, "");
     const slug = `${baseSlug}-${Date.now()}-${Math.floor(Math.random() * 1e3)}`;
-    await db.insert(merchants).values({
+    await db.insert(merchants2).values({
       businessName: input.businessName || input.businessNameAr,
       businessNameAr: input.businessNameAr,
       shortDescription: input.description.slice(0, 160),
@@ -30286,7 +30286,7 @@ var jobRouter = createRouter({
       offset: external_exports.number().min(0).default(0)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const conditions = [];
     if (input?.category) {
       conditions.push(eq(jobs.category, input.category));
@@ -30332,7 +30332,7 @@ var jobRouter = createRouter({
   }),
   // Get single job by ID
   getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const job = await db.select().from(jobs).where(eq(jobs.id, input.id)).limit(1);
     if (!job[0]) {
       throw new Error("Job not found");
@@ -30380,7 +30380,7 @@ var jobRouter = createRouter({
       userId: external_exports.number().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const slug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
     const result = await db.insert(jobs).values({
       ...input,
@@ -30393,7 +30393,7 @@ var jobRouter = createRouter({
   }),
   // Get job categories
   categories: publicQuery.query(async () => {
-    const db = getDb();
+    const db = getDb2();
     const categories = [
       { id: 1, name: "\u0628\u0646\u0627\u0621", nameEn: "construction", icon: "HardHat", color: "#f59e0b", count: 0 },
       { id: 2, name: "\u0642\u064A\u0627\u062F\u0629", nameEn: "driving", icon: "Car", color: "#3b82f6", count: 0 },
@@ -30419,7 +30419,7 @@ var jobRouter = createRouter({
   }),
   // Get recent jobs
   recent: publicQuery.input(external_exports.object({ limit: external_exports.number().default(6) }).optional()).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     return db.select().from(jobs).where(eq(jobs.status, "open")).orderBy(desc(jobs.createdAt)).limit(input?.limit || 6);
   })
 });
@@ -30437,32 +30437,32 @@ var searchRouter = createRouter({
       limit: external_exports.number().min(1).max(50).default(20)
     })
   ).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const searchTerm = `%${input.query}%`;
     const results = { merchants: [], jobs: [], total: 0 };
     if (input.type === "all" || input.type === "merchants") {
       const merchantConditions = [
         or(
-          like(merchants.businessName, searchTerm),
-          like(merchants.businessNameAr, searchTerm),
-          like(merchants.description, searchTerm),
-          like(merchants.descriptionAr, searchTerm),
-          like(merchants.tags, searchTerm),
-          like(merchants.city, searchTerm),
-          like(merchants.country, searchTerm)
+          like(merchants2.businessName, searchTerm),
+          like(merchants2.businessNameAr, searchTerm),
+          like(merchants2.description, searchTerm),
+          like(merchants2.descriptionAr, searchTerm),
+          like(merchants2.tags, searchTerm),
+          like(merchants2.city, searchTerm),
+          like(merchants2.country, searchTerm)
         ),
-        eq(merchants.status, "active")
+        eq(merchants2.status, "active")
       ];
       if (input.country) {
-        merchantConditions.push(eq(merchants.country, input.country));
+        merchantConditions.push(eq(merchants2.country, input.country));
       }
       if (input.city) {
-        merchantConditions.push(eq(merchants.city, input.city));
+        merchantConditions.push(eq(merchants2.city, input.city));
       }
       if (input.category) {
-        merchantConditions.push(eq(merchants.category, input.category));
+        merchantConditions.push(eq(merchants2.category, input.category));
       }
-      results.merchants = await db.select().from(merchants).where(and(...merchantConditions)).limit(input.limit).orderBy(desc(merchants.rating));
+      results.merchants = await db.select().from(merchants2).where(and(...merchantConditions)).limit(input.limit).orderBy(desc(merchants2.rating));
     }
     if (input.type === "all" || input.type === "jobs") {
       const jobConditions = [
@@ -30528,22 +30528,22 @@ var searchRouter = createRouter({
   }),
   // Get suggestions based on query
   suggestions: publicQuery.input(external_exports.object({ query: external_exports.string().min(1) })).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const searchTerm = `%${input.query}%`;
     const [merchantResults, jobResults] = await Promise.all([
       db.select({
-        id: merchants.id,
-        name: merchants.businessName,
+        id: merchants2.id,
+        name: merchants2.businessName,
         type: sql`'merchant'`,
-        category: merchants.category,
-        city: merchants.city
-      }).from(merchants).where(
+        category: merchants2.category,
+        city: merchants2.city
+      }).from(merchants2).where(
         and(
           or(
-            like(merchants.businessName, searchTerm),
-            like(merchants.businessNameAr, searchTerm)
+            like(merchants2.businessName, searchTerm),
+            like(merchants2.businessNameAr, searchTerm)
           ),
-          eq(merchants.status, "active")
+          eq(merchants2.status, "active")
         )
       ).limit(5),
       db.select({
@@ -30706,7 +30706,7 @@ var sindbadRouter = createRouter({
       userId: external_exports.number().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const sessionId = input.sessionId || createSessionId(input.userId);
     await db.insert(chatMessages).values({
       userId: input.userId,
@@ -30760,12 +30760,12 @@ var sindbadRouter = createRouter({
   }),
   // Get chat history for a session
   history: publicQuery.input(external_exports.object({ sessionId: external_exports.string() })).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     return db.select().from(chatMessages).where(eq(chatMessages.sessionId, input.sessionId)).orderBy(chatMessages.createdAt);
   }),
   // Get user's daily wishes status
   wishesStatus: publicQuery.input(external_exports.object({ userId: external_exports.number().optional() }).optional()).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     if (!input?.userId) {
       return {
         wishesUsed: 0,
@@ -30795,7 +30795,7 @@ var sindbadRouter = createRouter({
 var adminRouter = createRouter({
   // Dashboard stats
   stats: adminQuery.query(async () => {
-    const db = getDb();
+    const db = getDb2();
     const [
       usersCount,
       merchantsCount,
@@ -30806,10 +30806,10 @@ var adminRouter = createRouter({
       todaySearches
     ] = await Promise.all([
       db.select({ count: sql`count(*)` }).from(users),
-      db.select({ count: sql`count(*)` }).from(merchants),
+      db.select({ count: sql`count(*)` }).from(merchants2),
       db.select({ count: sql`count(*)` }).from(jobs),
       db.select({ count: sql`count(*)` }).from(reviews),
-      db.select({ count: sql`count(*)` }).from(merchants).where(eq(merchants.status, "pending")),
+      db.select({ count: sql`count(*)` }).from(merchants2).where(eq(merchants2.status, "pending")),
       db.select({ count: sql`count(*)` }).from(jobs).where(eq(jobs.status, "open")),
       db.select({ count: sql`count(*)` }).from(searchLogs).where(sql`DATE(${searchLogs.createdAt}) = DATE(NOW())`)
     ]);
@@ -30832,25 +30832,25 @@ var adminRouter = createRouter({
       offset: external_exports.number().default(0)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const conditions = [];
     if (input?.status) {
-      conditions.push(eq(merchants.status, input.status));
+      conditions.push(eq(merchants2.status, input.status));
     }
     if (input?.search) {
       const term = `%${input.search}%`;
       conditions.push(
         or(
-          like(merchants.businessName, term),
-          like(merchants.businessNameAr, term),
-          like(merchants.email, term)
+          like(merchants2.businessName, term),
+          like(merchants2.businessNameAr, term),
+          like(merchants2.email, term)
         )
       );
     }
     const where = conditions.length > 0 ? and(...conditions) : void 0;
     const [items, totalResult] = await Promise.all([
-      db.select().from(merchants).where(where).limit(input?.limit || 50).offset(input?.offset || 0).orderBy(desc(merchants.createdAt)),
-      db.select({ count: sql`count(*)` }).from(merchants).where(where)
+      db.select().from(merchants2).where(where).limit(input?.limit || 50).offset(input?.offset || 0).orderBy(desc(merchants2.createdAt)),
+      db.select({ count: sql`count(*)` }).from(merchants2).where(where)
     ]);
     return { items, total: totalResult[0]?.count || 0 };
   }),
@@ -30861,14 +30861,14 @@ var adminRouter = createRouter({
       status: external_exports.enum(["pending", "active", "suspended", "rejected"])
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
-    await db.update(merchants).set({ status: input.status, updatedAt: /* @__PURE__ */ new Date() }).where(eq(merchants.id, input.id));
+    const db = getDb2();
+    await db.update(merchants2).set({ status: input.status, updatedAt: /* @__PURE__ */ new Date() }).where(eq(merchants2.id, input.id));
     return { success: true };
   }),
   // Delete merchant
   deleteMerchant: adminQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
-    const db = getDb();
-    await db.delete(merchants).where(eq(merchants.id, input.id));
+    const db = getDb2();
+    await db.delete(merchants2).where(eq(merchants2.id, input.id));
     return { success: true };
   }),
   // List all jobs (admin view)
@@ -30880,7 +30880,7 @@ var adminRouter = createRouter({
       offset: external_exports.number().default(0)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const conditions = [];
     if (input?.status) {
       conditions.push(eq(jobs.status, input.status));
@@ -30909,13 +30909,13 @@ var adminRouter = createRouter({
       status: external_exports.enum(["open", "closed", "filled", "paused"])
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     await db.update(jobs).set({ status: input.status, updatedAt: /* @__PURE__ */ new Date() }).where(eq(jobs.id, input.id));
     return { success: true };
   }),
   // Delete job
   deleteJob: adminQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     await db.delete(jobs).where(eq(jobs.id, input.id));
     return { success: true };
   }),
@@ -30928,7 +30928,7 @@ var adminRouter = createRouter({
       offset: external_exports.number().default(0)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const conditions = [];
     if (input?.role) {
       conditions.push(eq(users.role, input.role));
@@ -30953,15 +30953,15 @@ var adminRouter = createRouter({
       role: external_exports.enum(["user", "admin"])
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     await db.update(users).set({ role: input.role, updatedAt: /* @__PURE__ */ new Date() }).where(eq(users.id, input.id));
     return { success: true };
   }),
   // Get recent activity
   recentActivity: adminQuery.query(async () => {
-    const db = getDb();
+    const db = getDb2();
     const [recentMerchants, recentJobs, recentUsers, recentReviews] = await Promise.all([
-      db.select().from(merchants).orderBy(desc(merchants.createdAt)).limit(5),
+      db.select().from(merchants2).orderBy(desc(merchants2.createdAt)).limit(5),
       db.select().from(jobs).orderBy(desc(jobs.createdAt)).limit(5),
       db.select().from(users).orderBy(desc(users.createdAt)).limit(5),
       db.select().from(reviews).orderBy(desc(reviews.createdAt)).limit(5)
@@ -31016,13 +31016,13 @@ var adminRouter = createRouter({
     })
   ).mutation(async ({ input }) => {
     const { id, ...data } = input;
-    const db = getDb();
-    await db.update(merchants).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where(eq(merchants.id, id));
+    const db = getDb2();
+    await db.update(merchants2).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where(eq(merchants2.id, id));
     return { success: true };
   }),
   // Get search analytics
   searchAnalytics: adminQuery.query(async () => {
-    const db = getDb();
+    const db = getDb2();
     const popularSearches = await db.select({
       query: searchLogs.query,
       count: sql`count(*)`
@@ -32738,7 +32738,7 @@ var subscriptionRouter = createRouter({
       paymentId: external_exports.string().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const now = /* @__PURE__ */ new Date();
     const expiresAt = new Date(now);
     if (input.billingCycle === "yearly") {
@@ -32757,12 +32757,12 @@ var subscriptionRouter = createRouter({
   }),
   // Get merchant subscription
   getByMerchant: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     return db.select().from(subscriptions).where(eq(subscriptions.merchantId, input.merchantId)).orderBy(desc(subscriptions.createdAt)).limit(1);
   }),
   // Check if subscription is active
   checkStatus: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const sub = await db.select().from(subscriptions).where(
       and(
         eq(subscriptions.merchantId, input.merchantId),
@@ -32781,13 +32781,13 @@ var subscriptionRouter = createRouter({
   }),
   // Cancel subscription
   cancel: publicQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     await db.update(subscriptions).set({ status: "cancelled", cancelledAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq(subscriptions.id, input.id));
     return { success: true };
   }),
   // List all subscriptions (admin)
   list: publicQuery.input(external_exports.object({ status: external_exports.string().optional() }).optional()).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const conditions = [];
     if (input?.status) {
       conditions.push(eq(subscriptions.status, input.status));
@@ -32811,7 +32811,7 @@ var claimRouter = createRouter({
       message: external_exports.string().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const existing = await db.select().from(claims).where(
       and(
         eq(claims.merchantId, input.merchantId),
@@ -32830,7 +32830,7 @@ var claimRouter = createRouter({
   }),
   // Get claims by merchant
   getByMerchant: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     return db.select().from(claims).where(eq(claims.merchantId, input.merchantId)).orderBy(desc(claims.createdAt));
   }),
   // Approve claim (admin)
@@ -32840,7 +32840,7 @@ var claimRouter = createRouter({
       reviewedBy: external_exports.number()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     await db.update(claims).set({
       status: "approved",
       reviewedBy: input.reviewedBy,
@@ -32848,11 +32848,11 @@ var claimRouter = createRouter({
     }).where(eq(claims.id, input.id));
     const claim = await db.select().from(claims).where(eq(claims.id, input.id)).limit(1);
     if (claim[0]) {
-      await db.update(merchants).set({
+      await db.update(merchants2).set({
         status: "claimed",
         claimedBy: claim[0].userId,
         claimedAt: /* @__PURE__ */ new Date()
-      }).where(eq(merchants.id, claim[0].merchantId));
+      }).where(eq(merchants2.id, claim[0].merchantId));
     }
     return { success: true };
   }),
@@ -32864,7 +32864,7 @@ var claimRouter = createRouter({
       rejectionReason: external_exports.string()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     await db.update(claims).set({
       status: "rejected",
       reviewedBy: input.reviewedBy,
@@ -32875,7 +32875,7 @@ var claimRouter = createRouter({
   }),
   // List all claims (admin)
   list: publicQuery.input(external_exports.object({ status: external_exports.string().optional() }).optional()).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const conditions = [];
     if (input?.status) {
       conditions.push(eq(claims.status, input.status));
@@ -32944,8 +32944,8 @@ var merchantsData = [
 ];
 var seedRouter = createRouter({
   runSeed: publicQuery.mutation(async () => {
-    const db = getDb();
-    const existingCount = await db.select({ count: sql`count(*)` }).from(merchants);
+    const db = getDb2();
+    const existingCount = await db.select({ count: sql`count(*)` }).from(merchants2);
     const count2 = existingCount[0]?.count || 0;
     if (count2 >= 50) {
       return { success: true, message: "Already seeded!", count: count2, alreadySeeded: true };
@@ -32953,7 +32953,7 @@ var seedRouter = createRouter({
     let inserted = 0;
     for (const merchant of merchantsData) {
       try {
-        await db.insert(merchants).values({
+        await db.insert(merchants2).values({
           ...merchant,
           slug: merchant.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now() + "-" + Math.floor(Math.random() * 1e3),
           createdAt: /* @__PURE__ */ new Date(),
@@ -32967,8 +32967,8 @@ var seedRouter = createRouter({
     return { success: true, message: `Inserted ${inserted} merchants!`, count: inserted, alreadySeeded: false };
   }),
   status: publicQuery.query(async () => {
-    const db = getDb();
-    const result = await db.select({ count: sql`count(*)` }).from(merchants);
+    const db = getDb2();
+    const result = await db.select({ count: sql`count(*)` }).from(merchants2);
     return { count: result[0]?.count || 0 };
   })
 });
@@ -33179,7 +33179,7 @@ var migrateRouter = createRouter({
       return { success: false, message: error48?.message };
     }
   }),
-  // Batch insert merchants
+  // Batch insert merchants using Drizzle ORM
   batchInsert: publicQuery.input(external_exports.object({
     merchants: external_exports.array(external_exports.object({
       businessNameAr: external_exports.string(),
@@ -33193,30 +33193,39 @@ var migrateRouter = createRouter({
       website: external_exports.string().optional()
     }))
   })).mutation(async ({ input }) => {
-    const client = src_default(env.databaseUrl, {
-      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
-      max: 1
-    });
+    const db = getDb();
     let inserted = 0;
     try {
       for (const m of input.merchants) {
-        const slug = `${m.businessNameAr.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").substring(0, 40)}-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-        await client`
-            INSERT INTO merchants ("businessName", "businessNameAr", "shortDescription", "description", "descriptionAr",
-              "category", "country", "city", "address", "addressAr", "phone", "website",
-              "status", "slug", "isFeatured", "isVerified", "rating", "reviewCount", "createdAt", "updatedAt")
-            VALUES (${m.businessName || m.businessNameAr}, ${m.businessNameAr}, ${m.description?.substring(0, 160)}, ${m.description}, ${m.description},
-              ${m.category}, ${m.country}, ${m.city}, ${m.address || m.city}, ${m.address || m.city},
-              ${m.phone || null}, ${m.website || null},
-              'active', ${slug}, false, true, ${(3.5 + Math.random() * 1.5).toFixed(1)}, ${Math.floor(Math.random() * 40) + 5}, NOW(), NOW())
-            ON CONFLICT DO NOTHING
-          `;
+        const slugBase = m.businessNameAr.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").substring(0, 40);
+        const slug = `${slugBase}-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
+        await db.insert(merchants).values({
+          businessName: m.businessName || m.businessNameAr,
+          businessNameAr: m.businessNameAr,
+          shortDescription: m.description?.substring(0, 160) || m.businessNameAr,
+          description: m.description,
+          descriptionAr: m.description,
+          category: m.category,
+          country: m.country,
+          city: m.city,
+          address: m.address || m.city,
+          addressAr: m.address || m.city,
+          phone: m.phone || null,
+          website: m.website || null,
+          status: "active",
+          slug,
+          isFeatured: false,
+          isVerified: true,
+          rating: String((3.5 + Math.random() * 1.5).toFixed(1)),
+          reviewCount: Math.floor(Math.random() * 40) + 5,
+          tags: m.description?.substring(0, 200) || "",
+          createdAt: /* @__PURE__ */ new Date(),
+          updatedAt: /* @__PURE__ */ new Date()
+        });
         inserted++;
       }
-      await client.end();
       return { success: true, inserted };
     } catch (error48) {
-      await client.end();
       return { success: false, message: error48?.message, inserted };
     }
   }),
@@ -33302,7 +33311,7 @@ var migrateRouter = createRouter({
 var reviewsRouter = createRouter({
   // Get reviews for a merchant
   list: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const items = await db.select().from(reviews).where(eq(reviews.merchantId, input.merchantId)).orderBy(desc(reviews.createdAt));
     const stats = await db.select({
       avgRating: avg(reviews.rating),
@@ -33322,7 +33331,7 @@ var reviewsRouter = createRouter({
       comment: external_exports.string().min(1).max(1e3)
     })
   ).mutation(async ({ input, ctx }) => {
-    const db = getDb();
+    const db = getDb2();
     const userId = ctx.user.id;
     const existing = await db.select().from(reviews).where(
       sql`${reviews.userId} = ${userId} AND ${reviews.merchantId} = ${input.merchantId}`
@@ -33346,7 +33355,7 @@ var reviewsRouter = createRouter({
   }),
   // Delete own review
   delete: authedQuery.input(external_exports.object({ reviewId: external_exports.number() })).mutation(async ({ input, ctx }) => {
-    const db = getDb();
+    const db = getDb2();
     await db.delete(reviews).where(
       sql`${reviews.id} = ${input.reviewId} AND ${reviews.userId} = ${ctx.user.id}`
     );
@@ -33354,13 +33363,13 @@ var reviewsRouter = createRouter({
   }),
   // Admin: verify a review
   verify: authedQuery.input(external_exports.object({ reviewId: external_exports.number() })).mutation(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     await db.update(reviews).set({ isVerified: true }).where(eq(reviews.id, input.reviewId));
     return { success: true };
   }),
   // Admin: get all reviews
   adminList: authedQuery.query(async () => {
-    const db = getDb();
+    const db = getDb2();
     const items = await db.select().from(reviews).orderBy(desc(reviews.createdAt)).limit(100);
     return items;
   })
@@ -33381,40 +33390,40 @@ var featuredRouter = createRouter({
       limit: external_exports.number().min(1).max(50).default(20)
     })
   ).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const term = `%${input.q}%`;
-    const featured = await db.select().from(merchants).where(
+    const featured = await db.select().from(merchants2).where(
       and(
-        eq(merchants.isFeatured, true),
-        eq(merchants.status, "active"),
+        eq(merchants2.isFeatured, true),
+        eq(merchants2.status, "active"),
         or(
-          like(merchants.businessNameAr, term),
-          like(merchants.businessName, term),
-          like(merchants.category, term),
-          like(merchants.city, term),
-          like(merchants.country, term),
-          like(merchants.tags, term),
-          like(merchants.description, term),
-          like(merchants.descriptionAr, term)
+          like(merchants2.businessNameAr, term),
+          like(merchants2.businessName, term),
+          like(merchants2.category, term),
+          like(merchants2.city, term),
+          like(merchants2.country, term),
+          like(merchants2.tags, term),
+          like(merchants2.description, term),
+          like(merchants2.descriptionAr, term)
         )
       )
-    ).orderBy(desc(merchants.rating)).limit(input.limit);
-    const regular = await db.select().from(merchants).where(
+    ).orderBy(desc(merchants2.rating)).limit(input.limit);
+    const regular = await db.select().from(merchants2).where(
       and(
-        eq(merchants.isFeatured, false),
-        eq(merchants.status, "active"),
+        eq(merchants2.isFeatured, false),
+        eq(merchants2.status, "active"),
         or(
-          like(merchants.businessNameAr, term),
-          like(merchants.businessName, term),
-          like(merchants.category, term),
-          like(merchants.city, term),
-          like(merchants.country, term),
-          like(merchants.tags, term),
-          like(merchants.description, term),
-          like(merchants.descriptionAr, term)
+          like(merchants2.businessNameAr, term),
+          like(merchants2.businessName, term),
+          like(merchants2.category, term),
+          like(merchants2.city, term),
+          like(merchants2.country, term),
+          like(merchants2.tags, term),
+          like(merchants2.description, term),
+          like(merchants2.descriptionAr, term)
         )
       )
-    ).orderBy(desc(merchants.rating)).limit(input.limit);
+    ).orderBy(desc(merchants2.rating)).limit(input.limit);
     try {
       await db.execute(
         sql`INSERT INTO search_analytics (query, city, category, result_count, created_at) 
@@ -33434,29 +33443,29 @@ var featuredRouter = createRouter({
    * Get featured merchants for a city
    */
   byCity: publicQuery.input(external_exports.object({ city: external_exports.string(), limit: external_exports.number().default(10) })).query(async ({ input }) => {
-    const db = getDb();
-    const featured = await db.select().from(merchants).where(
+    const db = getDb2();
+    const featured = await db.select().from(merchants2).where(
       and(
-        eq(merchants.city, input.city),
-        eq(merchants.isFeatured, true),
-        eq(merchants.status, "active")
+        eq(merchants2.city, input.city),
+        eq(merchants2.isFeatured, true),
+        eq(merchants2.status, "active")
       )
-    ).orderBy(desc(merchants.rating)).limit(input.limit);
-    const organic = await db.select().from(merchants).where(
+    ).orderBy(desc(merchants2.rating)).limit(input.limit);
+    const organic = await db.select().from(merchants2).where(
       and(
-        eq(merchants.city, input.city),
-        eq(merchants.isFeatured, false),
-        eq(merchants.status, "active")
+        eq(merchants2.city, input.city),
+        eq(merchants2.isFeatured, false),
+        eq(merchants2.status, "active")
       )
-    ).orderBy(desc(merchants.rating)).limit(input.limit);
+    ).orderBy(desc(merchants2.rating)).limit(input.limit);
     return { featured, organic };
   }),
   /**
    * Toggle featured status (admin only)
    */
   toggle: publicQuery.input(external_exports.object({ id: external_exports.number(), featured: external_exports.boolean() })).mutation(async ({ input }) => {
-    const db = getDb();
-    await db.update(merchants).set({ isFeatured: input.featured }).where(eq(merchants.id, input.id));
+    const db = getDb2();
+    await db.update(merchants2).set({ isFeatured: input.featured }).where(eq(merchants2.id, input.id));
     return { success: true };
   })
 });
@@ -33465,7 +33474,7 @@ var analyticsRouter = createRouter({
    * Get recent search queries (admin secret)
    */
   recentSearches: publicQuery.query(async () => {
-    const db = getDb();
+    const db = getDb2();
     try {
       const rows = await db.execute(
         sql`SELECT query, city, result_count, created_at 
@@ -33482,7 +33491,7 @@ var analyticsRouter = createRouter({
    * Get popular searches (admin secret)
    */
   popularSearches: publicQuery.query(async () => {
-    const db = getDb();
+    const db = getDb2();
     try {
       const rows = await db.execute(
         sql`SELECT query, COUNT(*) as count 
@@ -33500,14 +33509,14 @@ var analyticsRouter = createRouter({
    * Get stats (admin secret)
    */
   stats: publicQuery.query(async () => {
-    const db = getDb();
+    const db = getDb2();
     try {
       const [totalSearches, totalMerchants, featuredCount, citiesCount] = await Promise.all([
         db.execute(
           sql`SELECT COUNT(*) as count FROM search_analytics`
         ),
-        db.select({ count: sql`count(*)` }).from(merchants),
-        db.select({ count: sql`count(*)` }).from(merchants).where(eq(merchants.isFeatured, true)),
+        db.select({ count: sql`count(*)` }).from(merchants2),
+        db.select({ count: sql`count(*)` }).from(merchants2).where(eq(merchants2.isFeatured, true)),
         db.execute(
           sql`SELECT COUNT(DISTINCT city) as count FROM merchants WHERE status = 'active'`
         )
@@ -33540,7 +33549,7 @@ var emergencyRouter = createRouter({
       limit: external_exports.number().min(1).max(100).default(50)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     try {
       const conditions = [eq(emergencyContacts.isActive, true)];
       if (input?.country) {
@@ -33562,7 +33571,7 @@ var emergencyRouter = createRouter({
   }),
   // Get by country
   byCountry: publicQuery.input(external_exports.object({ country: external_exports.string() })).query(async ({ input }) => {
-    const db = getDb();
+    const db = getDb2();
     const items = await db.select().from(emergencyContacts).where(
       and(
         eq(emergencyContacts.isActive, true),
@@ -33587,7 +33596,7 @@ var emergencyRouter = createRouter({
   }),
   // Seed emergency contacts (run once)
   seed: publicQuery.mutation(async () => {
-    const db = getDb();
+    const db = getDb2();
     const emergencyData = [
       // ═══════════════════════════════════════════
       // 🇫🇷 FRANCE - PARIS
@@ -34148,7 +34157,7 @@ var users2 = {
 
 // api/queries/users.ts
 async function findUserByUnionId(unionId) {
-  const rows = await getDb().select().from(users).where(eq(users.unionId, unionId)).limit(1);
+  const rows = await getDb2().select().from(users).where(eq(users.unionId, unionId)).limit(1);
   return rows.at(0);
 }
 async function upsertUser(data) {
@@ -34161,7 +34170,7 @@ async function upsertUser(data) {
     values2.role = "admin";
     updateSet.role = "admin";
   }
-  await getDb().insert(users).values(values2).onConflictDoUpdate({
+  await getDb2().insert(users).values(values2).onConflictDoUpdate({
     target: users.unionId,
     set: updateSet
   });

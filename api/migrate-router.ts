@@ -224,7 +224,7 @@ export const migrateRouter = createRouter({
     }
   }),
 
-  // Batch insert merchants
+  // Batch insert merchants using Drizzle ORM
   batchInsert: publicQuery
     .input(z.object({
       merchants: z.array(z.object({
@@ -240,30 +240,41 @@ export const migrateRouter = createRouter({
       }))
     }))
     .mutation(async ({ input }) => {
-      const client = postgres(env.databaseUrl, {
-        ssl: env.isProduction ? { rejectUnauthorized: false } : false,
-        max: 1,
-      });
+      const db = getDb();
       let inserted = 0;
       try {
         for (const m of input.merchants) {
-          const slug = `${m.businessNameAr.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, '-').substring(0, 40)}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-          await client`
-            INSERT INTO merchants ("businessName", "businessNameAr", "shortDescription", "description", "descriptionAr",
-              "category", "country", "city", "address", "addressAr", "phone", "website",
-              "status", "slug", "isFeatured", "isVerified", "rating", "reviewCount", "createdAt", "updatedAt")
-            VALUES (${m.businessName || m.businessNameAr}, ${m.businessNameAr}, ${m.description?.substring(0, 160)}, ${m.description}, ${m.description},
-              ${m.category}, ${m.country}, ${m.city}, ${m.address || m.city}, ${m.address || m.city},
-              ${m.phone || null}, ${m.website || null},
-              'active', ${slug}, false, true, ${(3.5 + Math.random() * 1.5).toFixed(1)}, ${Math.floor(Math.random() * 40) + 5}, NOW(), NOW())
-            ON CONFLICT DO NOTHING
-          `;
+          const slugBase = m.businessNameAr.toLowerCase()
+            .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
+            .substring(0, 40);
+          const slug = `${slugBase}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+          await db.insert(merchants).values({
+            businessName: m.businessName || m.businessNameAr,
+            businessNameAr: m.businessNameAr,
+            shortDescription: m.description?.substring(0, 160) || m.businessNameAr,
+            description: m.description,
+            descriptionAr: m.description,
+            category: m.category,
+            country: m.country,
+            city: m.city,
+            address: m.address || m.city,
+            addressAr: m.address || m.city,
+            phone: m.phone || null,
+            website: m.website || null,
+            status: 'active',
+            slug: slug,
+            isFeatured: false,
+            isVerified: true,
+            rating: String((3.5 + Math.random() * 1.5).toFixed(1)),
+            reviewCount: Math.floor(Math.random() * 40) + 5,
+            tags: m.description?.substring(0, 200) || '',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
           inserted++;
         }
-        await client.end();
         return { success: true, inserted };
       } catch (error: any) {
-        await client.end();
         return { success: false, message: error?.message, inserted };
       }
     }),
