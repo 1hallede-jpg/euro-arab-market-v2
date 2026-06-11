@@ -33357,28 +33357,10 @@ var migrateRouter = createRouter({
         const rating = String((3.5 + Math.random() * 1.5).toFixed(1));
         const reviews2 = Math.floor(Math.random() * 40) + 5;
         const tagsVal = m.description?.substring(0, 200) || "";
-        const values2 = [
-          name,
-          m.businessNameAr,
-          shortDesc,
-          desc2,
-          desc2,
-          m.category,
-          m.country,
-          m.city,
-          addr,
-          addr,
-          phoneVal,
-          m.website || null,
-          "active",
-          slug,
-          false,
-          true,
-          rating,
-          reviews2,
-          tagsVal
-        ];
-        await client`INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, address_ar, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES (${values2[0]}, ${values2[1]}, ${values2[2]}, ${values2[3]}, ${values2[4]}, ${values2[5]}, ${values2[6]}, ${values2[7]}, ${values2[8]}, ${values2[9]}, ${values2[10]}, ${values2[11]}, ${values2[12]}, ${values2[13]}, ${values2[14]}, ${values2[15]}, ${values2[16]}, ${values2[17]}, ${values2[18]}, NOW(), NOW()) ON CONFLICT DO NOTHING`;
+        await client.unsafe(
+          "INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, address_ar, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW()) ON CONFLICT DO NOTHING",
+          [name, m.businessNameAr, shortDesc, desc2, desc2, m.category, m.country, m.city, addr, addr, phoneVal, m.website || null, "active", slug, false, true, rating, reviews2, tagsVal]
+        );
         inserted++;
       }
       await client.end();
