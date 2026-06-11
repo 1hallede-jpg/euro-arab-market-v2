@@ -34441,10 +34441,8 @@ app.use("/api/trpc/*", async (c) => {
 });
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 var possiblePaths = [
-  path.join(process.cwd(), "dist", "public"),
-  path.join(process.cwd(), "public"),
-  "/opt/render/project/src/public",
-  "/opt/render/project/public"
+  path.join(process.cwd(), "dist"),
+  path.join(process.cwd(), "dist", "public")
 ];
 var publicPath = "";
 for (const p of possiblePaths) {
