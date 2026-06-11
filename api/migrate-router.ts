@@ -190,11 +190,31 @@ export const migrateRouter = createRouter({
         WHERE slug IS NULL
       `);
 
-      // 3. Generate shortDescription from description
+      // 3. Generate shortDescription from city + category
       const r3 = await client.unsafe(`
         UPDATE merchants 
-        SET "shortDescription" = substring(description from 1 for 160)
-        WHERE "shortDescription" IS NULL AND description IS NOT NULL
+        SET "shortDescription" = CASE category
+          WHEN 'restaurant' THEN 'مطعم عربي حلال'
+          WHEN 'supermarket' THEN 'سوبرماركت حلال'
+          WHEN 'sweets' THEN 'حلويات شرقية'
+          WHEN 'barber' THEN 'صالون حلاقة'
+          WHEN 'butcher' THEN 'جزار حلال'
+          WHEN 'bakery' THEN 'مخبز عربي'
+          WHEN 'cafe' THEN 'مقهى عربي'
+          WHEN 'clothing' THEN 'ملابس عربية'
+          WHEN 'electronics' THEN 'إلكترونيات'
+          WHEN 'pharmacy' THEN 'صيدلية'
+          WHEN 'halal_grocery' THEN 'بقالة حلال'
+          WHEN 'shisha_lounge' THEN 'مقهى شيشة'
+          WHEN 'travel_agency' THEN 'وكالة سفر'
+          WHEN 'money_transfer' THEN 'تحويل أموال'
+          WHEN 'mosque' THEN 'مسجد'
+          WHEN 'cultural_center' THEN 'مركز ثقافي'
+          WHEN 'car_dealer' THEN 'سيارات'
+          WHEN 'repair_shop' THEN 'ورشة إصلاح'
+          ELSE 'متجر عربي'
+        END || ' في ' || city
+        WHERE "shortDescription" IS NULL OR length("shortDescription") > 80
       `);
 
       await client.end();

@@ -33149,8 +33149,28 @@ var migrateRouter = createRouter({
       `);
       const r3 = await client.unsafe(`
         UPDATE merchants 
-        SET "shortDescription" = substring(description from 1 for 160)
-        WHERE "shortDescription" IS NULL AND description IS NOT NULL
+        SET "shortDescription" = CASE category
+          WHEN 'restaurant' THEN '\u0645\u0637\u0639\u0645 \u0639\u0631\u0628\u064A \u062D\u0644\u0627\u0644'
+          WHEN 'supermarket' THEN '\u0633\u0648\u0628\u0631\u0645\u0627\u0631\u0643\u062A \u062D\u0644\u0627\u0644'
+          WHEN 'sweets' THEN '\u062D\u0644\u0648\u064A\u0627\u062A \u0634\u0631\u0642\u064A\u0629'
+          WHEN 'barber' THEN '\u0635\u0627\u0644\u0648\u0646 \u062D\u0644\u0627\u0642\u0629'
+          WHEN 'butcher' THEN '\u062C\u0632\u0627\u0631 \u062D\u0644\u0627\u0644'
+          WHEN 'bakery' THEN '\u0645\u062E\u0628\u0632 \u0639\u0631\u0628\u064A'
+          WHEN 'cafe' THEN '\u0645\u0642\u0647\u0649 \u0639\u0631\u0628\u064A'
+          WHEN 'clothing' THEN '\u0645\u0644\u0627\u0628\u0633 \u0639\u0631\u0628\u064A\u0629'
+          WHEN 'electronics' THEN '\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A\u0627\u062A'
+          WHEN 'pharmacy' THEN '\u0635\u064A\u062F\u0644\u064A\u0629'
+          WHEN 'halal_grocery' THEN '\u0628\u0642\u0627\u0644\u0629 \u062D\u0644\u0627\u0644'
+          WHEN 'shisha_lounge' THEN '\u0645\u0642\u0647\u0649 \u0634\u064A\u0634\u0629'
+          WHEN 'travel_agency' THEN '\u0648\u0643\u0627\u0644\u0629 \u0633\u0641\u0631'
+          WHEN 'money_transfer' THEN '\u062A\u062D\u0648\u064A\u0644 \u0623\u0645\u0648\u0627\u0644'
+          WHEN 'mosque' THEN '\u0645\u0633\u062C\u062F'
+          WHEN 'cultural_center' THEN '\u0645\u0631\u0643\u0632 \u062B\u0642\u0627\u0641\u064A'
+          WHEN 'car_dealer' THEN '\u0633\u064A\u0627\u0631\u0627\u062A'
+          WHEN 'repair_shop' THEN '\u0648\u0631\u0634\u0629 \u0625\u0635\u0644\u0627\u062D'
+          ELSE '\u0645\u062A\u062C\u0631 \u0639\u0631\u0628\u064A'
+        END || ' \u0641\u064A ' || city
+        WHERE "shortDescription" IS NULL OR length("shortDescription") > 80
       `);
       await client.end();
       return {
