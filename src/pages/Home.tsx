@@ -293,7 +293,7 @@ export default function Home() {
 
       {/* ─── Center Content ─── */}
       <main
-        className="flex-1 flex flex-col items-center justify-center px-4 -mt-12"
+        className="flex-1 flex flex-col items-center justify-center px-4"
         style={{ zIndex: 10 }}
       >
         {/* Lamp Image - BIG */}
@@ -313,12 +313,12 @@ export default function Home() {
         <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-1 tracking-tight text-center">
           يورو عرب ماركت
         </h1>
-        <p className="text-gray-400 text-base md:text-lg mb-10 text-center">
+        <p className="text-gray-400 text-base md:text-lg mb-8 text-center">
           محرك البحث للعالم العربي في أوروبا
         </p>
 
         {/* Search Bar — integrated with lamp */}
-        <form onSubmit={onSearch} className="w-full max-w-xl mb-5">
+        <form onSubmit={onSearch} className="w-full max-w-xl mb-4">
           <div
             className={`relative flex items-center bg-white rounded-2xl shadow-lg transition-all duration-300 border-2 ${
               foc
@@ -347,7 +347,7 @@ export default function Home() {
           </div>
 
           {/* Buttons */}
-          <div className="flex items-center justify-center gap-3 mt-5">
+          <div className="flex items-center justify-center gap-3 mt-4">
             <Button
               type="submit"
               className="bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-black font-bold rounded-full px-10 shadow-lg shadow-amber-500/25"
@@ -367,9 +367,25 @@ export default function Home() {
         </form>
 
         {/* Hint */}
-        <p className="text-gray-300 text-xs mt-6">
+        <p className="text-gray-300 text-xs mt-4 mb-6">
           جرب: مطعم حلال في باريس — جزار في برلين — سوبرماركت في لندن
         </p>
+
+        {/* ─── AD SPOT: Place Your Ad Here ─── */}
+        <Link
+          to="/add-store"
+          className="group w-full max-w-xl"
+        >
+          <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-2xl p-5 text-center hover:border-amber-300 hover:from-amber-50/30 hover:to-amber-50/50 transition-all duration-300 group-hover:shadow-md">
+            <p className="text-gray-400 text-sm font-medium group-hover:text-amber-600 transition-colors">
+              <span className="inline-block mr-2">📢</span>
+              ضع إعلانك هنا — اسم علامتك التجارية
+            </p>
+            <p className="text-gray-300 text-xs mt-1 group-hover:text-amber-400 transition-colors">
+              احجز مكانك لمدة أسبوع | تواصل معنا للتفاصيل
+            </p>
+          </div>
+        </Link>
       </main>
 
       {/* ─── Footer ─── */}
@@ -379,13 +395,13 @@ export default function Home() {
             أضف متجرك
           </Link>
           <span className="text-gray-200">|</span>
-          <Link to="/stores" className="hover:text-amber-500 transition">
-            المتاجر
-          </Link>
-          <span className="text-gray-200">|</span>
           <Link to="/terms" className="hover:text-amber-500 transition">
             الشروط والخصوصية
           </Link>
+          <span className="text-gray-200">|</span>
+          <a href="mailto:info@euroarabmarket.com" className="hover:text-amber-500 transition">
+            إعلانات
+          </a>
           <span className="text-gray-200">|</span>
           <span>يورو عرب ماركت © 2026</span>
         </div>
