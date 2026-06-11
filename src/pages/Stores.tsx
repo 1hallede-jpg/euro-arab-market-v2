@@ -26,8 +26,27 @@ const categoryNamesAr: Record<string, string> = {
   clothing: "ملابس",
   electronics: "إلكترونيات",
   pharmacy: "صيدليات",
+  halal_grocery: "بقالة حلال",
+  shisha_lounge: "مقاهي شيشة",
+  travel_agency: "وكالات سفر",
+  money_transfer: "تحويل أموال",
+  mosque: "مساجد",
+  cultural_center: "مراكز ثقافية",
+  car_dealer: "سيارات",
+  repair_shop: "ورش إصلاح",
   other: "أخرى",
 };
+
+// Extract a short name from description
+function getDisplayName(m: any): string {
+  if (m.businessNameAr) return m.businessNameAr;
+  if (m.businessName) return m.businessName;
+  if (m.description) {
+    const desc = m.description.replace(/^يقدم\s+/g, '');
+    return desc.length > 40 ? desc.substring(0, 40) + '...' : desc;
+  }
+  return `${categoryNamesAr[m.category] || m.category || 'متجر'} - ${m.city || ''}`;
+}
 
 export default function Stores() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -220,16 +239,19 @@ export default function Stores() {
                   </div>
                 </div>
                 <CardContent className="p-4">
-                  <h3 className="font-semibold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors text-sm">
-                    {merchant.businessNameAr || merchant.businessName}
+                  <h3 className="font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors text-base leading-snug">
+                    {getDisplayName(merchant)}
                   </h3>
+                  <Badge variant="outline" className="text-[10px] border-emerald-200 text-emerald-600 bg-emerald-50/50 mb-2">
+                    {categoryNamesAr[merchant.category] || merchant.category || "متجر"}
+                  </Badge>
                   <p className="text-xs text-gray-500 mb-3 line-clamp-2">
                     {merchant.descriptionAr || merchant.description}
                   </p>
                   <div className="flex items-center justify-between text-xs text-gray-400">
                     <div className="flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
-                      {merchant.city}
+                      {merchant.city}{merchant.country ? `، ${merchant.country}` : ''}
                     </div>
                     <div className="flex items-center gap-1">
                       <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />

@@ -13,7 +13,6 @@ import {
 const quickLinks = [
   { href: "/", label: "الرئيسية", icon: Home },
   { href: "/stores", label: "المتاجر العربية", icon: Store },
-  { href: "/jobs", label: "المهن العربية", icon: Briefcase },
   { href: "/sindbad", label: "سندباد - المساعد الذكي", icon: Sparkles },
 ];
 

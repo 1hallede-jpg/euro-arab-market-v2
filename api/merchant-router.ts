@@ -50,7 +50,10 @@ export const merchantRouter = createRouter({
             ${merchants.businessNameAr} ILIKE ${term} OR
             ${merchants.description} ILIKE ${term} OR
             ${merchants.descriptionAr} ILIKE ${term} OR
-            ${merchants.tags} ILIKE ${term}
+            ${merchants.tags} ILIKE ${term} OR
+            ${merchants.city} ILIKE ${term} OR
+            ${merchants.country} ILIKE ${term} OR
+            ${merchants.address} ILIKE ${term}
           )`);
         }
 

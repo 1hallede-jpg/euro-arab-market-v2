@@ -30074,7 +30074,10 @@ var merchantRouter = createRouter({
             ${merchants.businessNameAr} ILIKE ${term} OR
             ${merchants.description} ILIKE ${term} OR
             ${merchants.descriptionAr} ILIKE ${term} OR
-            ${merchants.tags} ILIKE ${term}
+            ${merchants.tags} ILIKE ${term} OR
+            ${merchants.city} ILIKE ${term} OR
+            ${merchants.country} ILIKE ${term} OR
+            ${merchants.address} ILIKE ${term}
           )`);
       }
       const where = conditions.length > 1 ? and(...conditions) : conditions[0];
@@ -33086,6 +33089,52 @@ var migrateRouter = createRouter({
       await client.unsafe(`CREATE INDEX IF NOT EXISTS idx_emergency_city ON emergency_contacts(city)`);
       await client.end();
       return { success: true, message: "emergency_contacts table created" };
+    } catch (error48) {
+      await client.end();
+      return { success: false, message: error48?.message };
+    }
+  }),
+  // Fix missing business names - copy description to businessNameAr and generate slugs
+  fixNames: publicQuery.mutation(async () => {
+    const client = src_default(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1
+    });
+    try {
+      const r1 = await client.unsafe(`
+        UPDATE merchants 
+        SET "businessNameAr" = CASE 
+          WHEN description IS NOT NULL AND length(description) > 0 
+          THEN substring(description from 1 for 40)
+          ELSE '\u0645\u062A\u062C\u0631 \u0639\u0631\u0628\u064A #' || id::text
+        END,
+        "businessName" = CASE 
+          WHEN description IS NOT NULL AND length(description) > 0 
+          THEN substring(description from 1 for 40)
+          ELSE 'Arab Store #' || id::text
+        END
+        WHERE "businessNameAr" IS NULL OR "businessNameAr" = ''
+      `);
+      const r2 = await client.unsafe(`
+        UPDATE merchants 
+        SET slug = lower(regexp_replace(
+          coalesce("businessNameAr", 'store-' || id::text), 
+          '[^a-zA-Z0-9\\u0600-\\u06FF]+', '-', 'g'
+        )) || '-' || id::text || '-' || extract(epoch from now())::bigint::text
+        WHERE slug IS NULL
+      `);
+      const r3 = await client.unsafe(`
+        UPDATE merchants 
+        SET "shortDescription" = substring(description from 1 for 160)
+        WHERE "shortDescription" IS NULL AND description IS NOT NULL
+      `);
+      await client.end();
+      return {
+        success: true,
+        namesFixed: r1.count || 0,
+        slugsFixed: r2.count || 0,
+        descriptionsFixed: r3.count || 0
+      };
     } catch (error48) {
       await client.end();
       return { success: false, message: error48?.message };

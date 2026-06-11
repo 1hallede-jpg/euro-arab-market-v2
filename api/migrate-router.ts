@@ -138,6 +138,59 @@ export const migrateRouter = createRouter({
     }
   }),
 
+  // Fix missing business names - copy description to businessNameAr and generate slugs
+  fixNames: publicQuery.mutation(async () => {
+    const client = postgres(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1,
+    });
+    try {
+      // 1. Copy description to businessNameAr where businessNameAr is null
+      const r1 = await client.unsafe(`
+        UPDATE merchants 
+        SET "businessNameAr" = CASE 
+          WHEN description IS NOT NULL AND length(description) > 0 
+          THEN substring(description from 1 for 40)
+          ELSE 'متجر عربي #' || id::text
+        END,
+        "businessName" = CASE 
+          WHEN description IS NOT NULL AND length(description) > 0 
+          THEN substring(description from 1 for 40)
+          ELSE 'Arab Store #' || id::text
+        END
+        WHERE "businessNameAr" IS NULL OR "businessNameAr" = ''
+      `);
+
+      // 2. Generate slugs for merchants with null slug
+      const r2 = await client.unsafe(`
+        UPDATE merchants 
+        SET slug = lower(regexp_replace(
+          coalesce("businessNameAr", 'store-' || id::text), 
+          '[^a-zA-Z0-9\\u0600-\\u06FF]+', '-', 'g'
+        )) || '-' || id::text || '-' || extract(epoch from now())::bigint::text
+        WHERE slug IS NULL
+      `);
+
+      // 3. Generate shortDescription from description
+      const r3 = await client.unsafe(`
+        UPDATE merchants 
+        SET "shortDescription" = substring(description from 1 for 160)
+        WHERE "shortDescription" IS NULL AND description IS NOT NULL
+      `);
+
+      await client.end();
+      return { 
+        success: true, 
+        namesFixed: r1.count || 0,
+        slugsFixed: r2.count || 0,
+        descriptionsFixed: r3.count || 0
+      };
+    } catch (error: any) {
+      await client.end();
+      return { success: false, message: error?.message };
+    }
+  }),
+
   // Create search_analytics table
   createAnalytics: publicQuery.mutation(async () => {
     const client = postgres(env.databaseUrl, {

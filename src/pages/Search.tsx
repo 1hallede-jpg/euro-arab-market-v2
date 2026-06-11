@@ -53,6 +53,17 @@ const cities = [
   "كوبنهاغن", "ستوكهولم", "أوسلو", "زيورخ", "بودابست",
 ];
 
+// Extract a short name from description
+function getDisplayName(m: any): string {
+  if (m.businessNameAr) return m.businessNameAr;
+  if (m.businessName) return m.businessName;
+  if (m.description) {
+    const desc = m.description.replace(/^يقدم\s+/g, '');
+    return desc.length > 50 ? desc.substring(0, 50) + '...' : desc;
+  }
+  return `${categoryNamesAr[m.category] || m.category || 'متجر'} - ${m.city || ''}`;
+}
+
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
@@ -320,7 +331,7 @@ export default function SearchPage() {
 /* ─── Merchant Ad Card ─── */
 function MerchantCard({ merchant: m }: { merchant: any }) {
   const detailUrl = `/stores/${m.id}`;
-  const displayName = m.businessNameAr?.trim() || m.businessName?.trim() || `متجر #${m.id}`;
+  const displayName = getDisplayName(m);
   const displayDesc = m.shortDescription?.trim() || m.descriptionAr?.trim() || m.description?.trim() || "";
   const displayAddress = [m.address, m.city, m.country].filter(Boolean).join(", ");
 

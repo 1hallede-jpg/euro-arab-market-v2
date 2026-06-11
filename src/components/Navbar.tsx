@@ -25,7 +25,6 @@ import {
 const navLinks = [
   { href: "/", label: "الرئيسية", icon: Home },
   { href: "/stores", label: "المتاجر", icon: Store },
-  { href: "/jobs", label: "المهن", icon: Briefcase },
   { href: "/sindbad", label: "سندباد", icon: Sparkles },
 ];
 
