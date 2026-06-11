@@ -33357,26 +33357,8 @@ var migrateRouter = createRouter({
         const rating = String((3.5 + Math.random() * 1.5).toFixed(1));
         const reviews2 = Math.floor(Math.random() * 40) + 5;
         const tagsVal = m.description?.substring(0, 200) || "";
-        console.log("[batchInsert] name=", name, "desc=", desc2.substring(0, 30));
-        await client`
-            INSERT INTO merchants (
-              business_name, business_name_ar,
-              short_description, description, description_ar,
-              category, country, city, address, address_ar,
-              phone, website, status, slug,
-              is_featured, is_verified,
-              rating, review_count, tags,
-              created_at, updated_at
-            ) VALUES (
-              ${name}, ${m.businessNameAr},
-              ${shortDesc}, ${desc2}, ${desc2},
-              ${m.category}, ${m.country}, ${m.city}, ${addr}, ${addr},
-              ${phoneVal}, ${m.website || null}, 'active', ${slug},
-              false, true,
-              ${rating}, ${reviews2}, ${tagsVal},
-              NOW(), NOW()
-            ) ON CONFLICT DO NOTHING
-          `;
+        const sqlQuery = `INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, address_ar, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES ('${name.replace(/'/g, "''")}', '${m.businessNameAr.replace(/'/g, "''")}', '${shortDesc.replace(/'/g, "''")}', '${desc2.replace(/'/g, "''")}', '${desc2.replace(/'/g, "''")}', '${m.category}', '${m.country}', '${m.city}', '${addr.replace(/'/g, "''")}', '${addr.replace(/'/g, "''")}', '${phoneVal.replace(/'/g, "''")}', ${m.website ? "'" + m.website.replace(/'/g, "''") + "'" : "null"}, 'active', '${slug}', false, true, '${rating}', ${reviews2}, '${tagsVal.replace(/'/g, "''")}', NOW(), NOW()) ON CONFLICT DO NOTHING`;
+        await client.unsafe(sqlQuery);
         inserted++;
       }
       await client.end();
