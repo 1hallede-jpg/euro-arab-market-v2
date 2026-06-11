@@ -226,7 +226,7 @@ export const migrateRouter = createRouter({
     }
   }),
 
-  // Batch insert merchants using Drizzle ORM
+  // Batch insert merchants using raw SQL
   batchInsert: publicQuery
     .input(z.object({
       merchants: z.array(z.object({
@@ -242,41 +242,31 @@ export const migrateRouter = createRouter({
       }))
     }))
     .mutation(async ({ input }) => {
-      const db = getDb();
+      const client = postgres(env.databaseUrl, {
+        ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+        max: 1,
+      });
       let inserted = 0;
       try {
         for (const m of input.merchants) {
-          const slugBase = m.businessNameAr.toLowerCase()
-            .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
-            .substring(0, 40);
+          const name = (m.businessName || m.businessNameAr).replace(/'/g, "''");
+          const nameAr = m.businessNameAr.replace(/'/g, "''");
+          const desc = m.description.replace(/'/g, "''").substring(0, 500);
+          const shortDesc = desc.substring(0, 160);
+          const addr = (m.address || m.city).replace(/'/g, "''");
+          const phone = (m.phone || '').replace(/'/g, "''");
+          const slugBase = nameAr.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, '-').substring(0, 40);
           const slug = `${slugBase}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-          await db.insert(merchants).values({
-            businessName: m.businessName || m.businessNameAr,
-            businessNameAr: m.businessNameAr,
-            shortDescription: m.description?.substring(0, 160) || m.businessNameAr,
-            description: m.description,
-            descriptionAr: m.description,
-            category: m.category,
-            country: m.country,
-            city: m.city,
-            address: m.address || m.city,
-            addressAr: m.address || m.city,
-            phone: m.phone || null,
-            website: m.website || null,
-            status: 'active',
-            slug: slug,
-            isFeatured: false,
-            isVerified: true,
-            rating: String((3.5 + Math.random() * 1.5).toFixed(1)),
-            reviewCount: Math.floor(Math.random() * 40) + 5,
-            tags: m.description?.substring(0, 200) || '',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
+          const rating = (3.5 + Math.random() * 1.5).toFixed(1);
+          const reviews = Math.floor(Math.random() * 40) + 5;
+          
+          await client.unsafe(`INSERT INTO merchants ("businessName", "businessNameAr", "shortDescription", description, "descriptionAr", category, country, city, address, "addressAr", phone, website, status, slug, "isFeatured", "isVerified", rating, "reviewCount", tags, "createdAt", "updatedAt") VALUES ('${name}', '${nameAr}', '${shortDesc}', '${desc}', '${desc}', '${m.category}', '${m.country}', '${m.city}', '${addr}', '${addr}', '${phone}', null, 'active', '${slug}', false, true, '${rating}', ${reviews}, '${desc.substring(0, 200)}', NOW(), NOW()) ON CONFLICT DO NOTHING`);
           inserted++;
         }
+        await client.end();
         return { success: true, inserted };
       } catch (error: any) {
+        await client.end();
         return { success: false, message: error?.message, inserted };
       }
     }),
