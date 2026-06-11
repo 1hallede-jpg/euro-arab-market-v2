@@ -239,14 +239,11 @@ export default function Stores() {
                   </div>
                 </div>
                 <CardContent className="p-4">
-                  <h3 className="font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors text-base leading-snug">
+                  <h3 className="font-bold text-gray-900 mb-1 group-hover:text-emerald-700 transition-colors text-base leading-snug line-clamp-2">
                     {getDisplayName(merchant)}
                   </h3>
-                  <Badge variant="outline" className="text-[10px] border-emerald-200 text-emerald-600 bg-emerald-50/50 mb-2">
-                    {categoryNamesAr[merchant.category] || merchant.category || "متجر"}
-                  </Badge>
                   <p className="text-xs text-gray-500 mb-3 line-clamp-2">
-                    {merchant.descriptionAr || merchant.description}
+                    {categoryNamesAr[merchant.category] || merchant.category || "متجر"} • {merchant.city}{merchant.country ? `، ${merchant.country}` : ''}
                   </p>
                   <div className="flex items-center justify-between text-xs text-gray-400">
                     <div className="flex items-center gap-1">
