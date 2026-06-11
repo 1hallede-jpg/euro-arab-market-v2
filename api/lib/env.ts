@@ -17,7 +17,7 @@ export const env = {
   appSecret: getEnv("APP_SECRET", "sk-euro-arab-secret-2024"),
   isProduction: detectIsProduction(),
   databaseUrl: getEnv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/euroarabmarket"),
-  kimiAuthUrl: getEnv("KIMI_AUTH_URL", ""),
-  kimiOpenUrl: getEnv("KIMI_OPEN_URL", ""),
+  kimiAuthUrl: getEnv("KIMI_AUTH_URL", "https://kimi.moonshot.cn"),
+  kimiOpenUrl: getEnv("KIMI_OPEN_URL", "https://kimi.moonshot.cn"),
   ownerUnionId: getEnv("OWNER_UNION_ID", ""),
 };
