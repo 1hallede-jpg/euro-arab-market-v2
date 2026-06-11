@@ -30201,7 +30201,16 @@ var merchantRouter = createRouter({
       { id: 7, name: "\u0645\u0642\u0627\u0647\u064A", nameEn: "cafe", icon: "Coffee", color: "#8b5cf6", count: 0 },
       { id: 8, name: "\u0645\u0644\u0627\u0628\u0633", nameEn: "clothing", icon: "Shirt", color: "#ec4899", count: 0 },
       { id: 9, name: "\u0625\u0644\u0643\u062A\u0631\u0648\u0646\u064A\u0627\u062A", nameEn: "electronics", icon: "Smartphone", color: "#06b6d4", count: 0 },
-      { id: 10, name: "\u0635\u064A\u062F\u0644\u064A\u0627\u062A", nameEn: "pharmacy", icon: "Pill", color: "#10b981", count: 0 }
+      { id: 10, name: "\u0635\u064A\u062F\u0644\u064A\u0627\u062A", nameEn: "pharmacy", icon: "Pill", color: "#10b981", count: 0 },
+      { id: 11, name: "\u0628\u0642\u0627\u0644\u0629 \u062D\u0644\u0627\u0644", nameEn: "halal_grocery", icon: "ShoppingBag", color: "#22c55e", count: 0 },
+      { id: 12, name: "\u0645\u0642\u0627\u0647\u064A \u0634\u064A\u0634\u0629", nameEn: "shisha_lounge", icon: "Flame", color: "#8b5cf6", count: 0 },
+      { id: 13, name: "\u0648\u0643\u0627\u0644\u0627\u062A \u0633\u0641\u0631", nameEn: "travel_agency", icon: "Plane", color: "#06b6d4", count: 0 },
+      { id: 14, name: "\u062A\u062D\u0648\u064A\u0644 \u0623\u0645\u0648\u0627\u0644", nameEn: "money_transfer", icon: "Banknote", color: "#10b981", count: 0 },
+      { id: 15, name: "\u0645\u0633\u0627\u062C\u062F", nameEn: "mosque", icon: "Landmark", color: "#f59e0b", count: 0 },
+      { id: 16, name: "\u0645\u0631\u0627\u0643\u0632 \u062B\u0642\u0627\u0641\u064A\u0629", nameEn: "cultural_center", icon: "BookOpen", color: "#3b82f6", count: 0 },
+      { id: 17, name: "\u0633\u064A\u0627\u0631\u0627\u062A", nameEn: "car_dealer", icon: "Car", color: "#06b6d4", count: 0 },
+      { id: 18, name: "\u0648\u0631\u0634 \u0625\u0635\u0644\u0627\u062D", nameEn: "repair_shop", icon: "Wrench", color: "#6b7280", count: 0 },
+      { id: 19, name: "\u0623\u062E\u0631\u0649", nameEn: "other", icon: "Store", color: "#6b7280", count: 0 }
     ];
     for (const cat of categories) {
       const result = await db.select({ count: sql`count(*)` }).from(merchants).where(and(eq(merchants.category, cat.nameEn), eq(merchants.status, "active")));

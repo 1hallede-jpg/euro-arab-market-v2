@@ -243,6 +243,15 @@ export const merchantRouter = createRouter({
       { id: 8, name: "ملابس", nameEn: "clothing", icon: "Shirt", color: "#ec4899", count: 0 },
       { id: 9, name: "إلكترونيات", nameEn: "electronics", icon: "Smartphone", color: "#06b6d4", count: 0 },
       { id: 10, name: "صيدليات", nameEn: "pharmacy", icon: "Pill", color: "#10b981", count: 0 },
+      { id: 11, name: "بقالة حلال", nameEn: "halal_grocery", icon: "ShoppingBag", color: "#22c55e", count: 0 },
+      { id: 12, name: "مقاهي شيشة", nameEn: "shisha_lounge", icon: "Flame", color: "#8b5cf6", count: 0 },
+      { id: 13, name: "وكالات سفر", nameEn: "travel_agency", icon: "Plane", color: "#06b6d4", count: 0 },
+      { id: 14, name: "تحويل أموال", nameEn: "money_transfer", icon: "Banknote", color: "#10b981", count: 0 },
+      { id: 15, name: "مساجد", nameEn: "mosque", icon: "Landmark", color: "#f59e0b", count: 0 },
+      { id: 16, name: "مراكز ثقافية", nameEn: "cultural_center", icon: "BookOpen", color: "#3b82f6", count: 0 },
+      { id: 17, name: "سيارات", nameEn: "car_dealer", icon: "Car", color: "#06b6d4", count: 0 },
+      { id: 18, name: "ورش إصلاح", nameEn: "repair_shop", icon: "Wrench", color: "#6b7280", count: 0 },
+      { id: 19, name: "أخرى", nameEn: "other", icon: "Store", color: "#6b7280", count: 0 },
     ];
 
     // Get actual counts
