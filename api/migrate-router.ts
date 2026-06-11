@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
 import { env } from "./lib/env";
+import { getDb } from "./queries/connection";
 import postgres from "postgres";
 
 export const migrateRouter = createRouter({

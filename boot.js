@@ -30014,7 +30014,7 @@ function needsSsl(url2) {
   if (url2.includes("localhost") || url2.includes("127.0.0.1")) return false;
   return env.isProduction;
 }
-function getDb2() {
+function getDb() {
   if (!instance) {
     const useSsl = needsSsl(env.databaseUrl);
     console.log("[DB] DATABASE_URL:", env.databaseUrl.substring(0, 30) + "...");
@@ -30050,7 +30050,7 @@ var merchantRouter = createRouter({
     }).optional()
   ).query(async ({ input }) => {
     try {
-      const db = getDb2();
+      const db = getDb();
       let query = db.select().from(merchants2);
       const conditions = [];
       const targetStatus = input?.status || "active";
@@ -30094,7 +30094,7 @@ var merchantRouter = createRouter({
   }),
   // Get single merchant by ID
   getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const merchant = await db.select().from(merchants2).where(eq(merchants2.id, input.id)).limit(1);
     if (!merchant[0]) {
       throw new Error("Merchant not found");
@@ -30108,7 +30108,7 @@ var merchantRouter = createRouter({
   // Get merchant by slug or id
   getBySlug: publicQuery.input(external_exports.object({ slug: external_exports.string() })).query(async ({ input }) => {
     try {
-      const db = getDb2();
+      const db = getDb();
       let result = await db.select().from(merchants2).where(eq(merchants2.slug, input.slug)).limit(1);
       if (!result[0] && /^\d+$/.test(input.slug)) {
         result = await db.select().from(merchants2).where(eq(merchants2.id, parseInt(input.slug))).limit(1);
@@ -30128,7 +30128,7 @@ var merchantRouter = createRouter({
   // Get merchant by ID
   getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
     try {
-      const db = getDb2();
+      const db = getDb();
       const result = await db.select().from(merchants2).where(eq(merchants2.id, input.id)).limit(1);
       return result[0] || null;
     } catch (error48) {
@@ -30172,7 +30172,7 @@ var merchantRouter = createRouter({
       userId: external_exports.number().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const slug = input.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
     const result = await db.insert(merchants2).values({
       ...input,
@@ -30185,12 +30185,12 @@ var merchantRouter = createRouter({
   }),
   // Get featured merchants
   featured: publicQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     return db.select().from(merchants2).where(and(eq(merchants2.status, "active"), eq(merchants2.isVerified, true))).orderBy(desc(merchants2.rating)).limit(6);
   }),
   // Get categories with counts
   categories: publicQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     const categories = [
       { id: 1, name: "\u0645\u0637\u0627\u0639\u0645 \u0639\u0631\u0628\u064A\u0629", nameEn: "restaurant", icon: "Utensils", color: "#ef4444", count: 0 },
       { id: 2, name: "\u0633\u0648\u0628\u0631\u0645\u0627\u0631\u0643\u062A \u062D\u0644\u0627\u0644", nameEn: "supermarket", icon: "ShoppingCart", color: "#22c55e", count: 0 },
@@ -30220,7 +30220,7 @@ var merchantRouter = createRouter({
   }),
   // Get cities list
   cities: publicQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     const result = await db.select({
       city: merchants2.city,
       country: merchants2.country,
@@ -30244,7 +30244,7 @@ var merchantRouter = createRouter({
       contactName: external_exports.string().optional().nullable()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const baseSlug = (input.businessName || input.businessNameAr).toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").replace(/(^-|-$)/g, "");
     const slug = `${baseSlug}-${Date.now()}-${Math.floor(Math.random() * 1e3)}`;
     await db.insert(merchants2).values({
@@ -30286,7 +30286,7 @@ var jobRouter = createRouter({
       offset: external_exports.number().min(0).default(0)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const conditions = [];
     if (input?.category) {
       conditions.push(eq(jobs.category, input.category));
@@ -30332,7 +30332,7 @@ var jobRouter = createRouter({
   }),
   // Get single job by ID
   getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const job = await db.select().from(jobs).where(eq(jobs.id, input.id)).limit(1);
     if (!job[0]) {
       throw new Error("Job not found");
@@ -30380,7 +30380,7 @@ var jobRouter = createRouter({
       userId: external_exports.number().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const slug = input.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
     const result = await db.insert(jobs).values({
       ...input,
@@ -30393,7 +30393,7 @@ var jobRouter = createRouter({
   }),
   // Get job categories
   categories: publicQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     const categories = [
       { id: 1, name: "\u0628\u0646\u0627\u0621", nameEn: "construction", icon: "HardHat", color: "#f59e0b", count: 0 },
       { id: 2, name: "\u0642\u064A\u0627\u062F\u0629", nameEn: "driving", icon: "Car", color: "#3b82f6", count: 0 },
@@ -30419,7 +30419,7 @@ var jobRouter = createRouter({
   }),
   // Get recent jobs
   recent: publicQuery.input(external_exports.object({ limit: external_exports.number().default(6) }).optional()).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     return db.select().from(jobs).where(eq(jobs.status, "open")).orderBy(desc(jobs.createdAt)).limit(input?.limit || 6);
   })
 });
@@ -30437,7 +30437,7 @@ var searchRouter = createRouter({
       limit: external_exports.number().min(1).max(50).default(20)
     })
   ).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const searchTerm = `%${input.query}%`;
     const results = { merchants: [], jobs: [], total: 0 };
     if (input.type === "all" || input.type === "merchants") {
@@ -30528,7 +30528,7 @@ var searchRouter = createRouter({
   }),
   // Get suggestions based on query
   suggestions: publicQuery.input(external_exports.object({ query: external_exports.string().min(1) })).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const searchTerm = `%${input.query}%`;
     const [merchantResults, jobResults] = await Promise.all([
       db.select({
@@ -30706,7 +30706,7 @@ var sindbadRouter = createRouter({
       userId: external_exports.number().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const sessionId = input.sessionId || createSessionId(input.userId);
     await db.insert(chatMessages).values({
       userId: input.userId,
@@ -30760,12 +30760,12 @@ var sindbadRouter = createRouter({
   }),
   // Get chat history for a session
   history: publicQuery.input(external_exports.object({ sessionId: external_exports.string() })).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     return db.select().from(chatMessages).where(eq(chatMessages.sessionId, input.sessionId)).orderBy(chatMessages.createdAt);
   }),
   // Get user's daily wishes status
   wishesStatus: publicQuery.input(external_exports.object({ userId: external_exports.number().optional() }).optional()).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     if (!input?.userId) {
       return {
         wishesUsed: 0,
@@ -30795,7 +30795,7 @@ var sindbadRouter = createRouter({
 var adminRouter = createRouter({
   // Dashboard stats
   stats: adminQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     const [
       usersCount,
       merchantsCount,
@@ -30832,7 +30832,7 @@ var adminRouter = createRouter({
       offset: external_exports.number().default(0)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const conditions = [];
     if (input?.status) {
       conditions.push(eq(merchants2.status, input.status));
@@ -30861,13 +30861,13 @@ var adminRouter = createRouter({
       status: external_exports.enum(["pending", "active", "suspended", "rejected"])
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.update(merchants2).set({ status: input.status, updatedAt: /* @__PURE__ */ new Date() }).where(eq(merchants2.id, input.id));
     return { success: true };
   }),
   // Delete merchant
   deleteMerchant: adminQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.delete(merchants2).where(eq(merchants2.id, input.id));
     return { success: true };
   }),
@@ -30880,7 +30880,7 @@ var adminRouter = createRouter({
       offset: external_exports.number().default(0)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const conditions = [];
     if (input?.status) {
       conditions.push(eq(jobs.status, input.status));
@@ -30909,13 +30909,13 @@ var adminRouter = createRouter({
       status: external_exports.enum(["open", "closed", "filled", "paused"])
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.update(jobs).set({ status: input.status, updatedAt: /* @__PURE__ */ new Date() }).where(eq(jobs.id, input.id));
     return { success: true };
   }),
   // Delete job
   deleteJob: adminQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.delete(jobs).where(eq(jobs.id, input.id));
     return { success: true };
   }),
@@ -30928,7 +30928,7 @@ var adminRouter = createRouter({
       offset: external_exports.number().default(0)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const conditions = [];
     if (input?.role) {
       conditions.push(eq(users.role, input.role));
@@ -30953,13 +30953,13 @@ var adminRouter = createRouter({
       role: external_exports.enum(["user", "admin"])
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.update(users).set({ role: input.role, updatedAt: /* @__PURE__ */ new Date() }).where(eq(users.id, input.id));
     return { success: true };
   }),
   // Get recent activity
   recentActivity: adminQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     const [recentMerchants, recentJobs, recentUsers, recentReviews] = await Promise.all([
       db.select().from(merchants2).orderBy(desc(merchants2.createdAt)).limit(5),
       db.select().from(jobs).orderBy(desc(jobs.createdAt)).limit(5),
@@ -31016,13 +31016,13 @@ var adminRouter = createRouter({
     })
   ).mutation(async ({ input }) => {
     const { id, ...data } = input;
-    const db = getDb2();
+    const db = getDb();
     await db.update(merchants2).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where(eq(merchants2.id, id));
     return { success: true };
   }),
   // Get search analytics
   searchAnalytics: adminQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     const popularSearches = await db.select({
       query: searchLogs.query,
       count: sql`count(*)`
@@ -32738,7 +32738,7 @@ var subscriptionRouter = createRouter({
       paymentId: external_exports.string().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const now = /* @__PURE__ */ new Date();
     const expiresAt = new Date(now);
     if (input.billingCycle === "yearly") {
@@ -32757,12 +32757,12 @@ var subscriptionRouter = createRouter({
   }),
   // Get merchant subscription
   getByMerchant: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     return db.select().from(subscriptions).where(eq(subscriptions.merchantId, input.merchantId)).orderBy(desc(subscriptions.createdAt)).limit(1);
   }),
   // Check if subscription is active
   checkStatus: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const sub = await db.select().from(subscriptions).where(
       and(
         eq(subscriptions.merchantId, input.merchantId),
@@ -32781,13 +32781,13 @@ var subscriptionRouter = createRouter({
   }),
   // Cancel subscription
   cancel: publicQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.update(subscriptions).set({ status: "cancelled", cancelledAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).where(eq(subscriptions.id, input.id));
     return { success: true };
   }),
   // List all subscriptions (admin)
   list: publicQuery.input(external_exports.object({ status: external_exports.string().optional() }).optional()).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const conditions = [];
     if (input?.status) {
       conditions.push(eq(subscriptions.status, input.status));
@@ -32811,7 +32811,7 @@ var claimRouter = createRouter({
       message: external_exports.string().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const existing = await db.select().from(claims).where(
       and(
         eq(claims.merchantId, input.merchantId),
@@ -32830,7 +32830,7 @@ var claimRouter = createRouter({
   }),
   // Get claims by merchant
   getByMerchant: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     return db.select().from(claims).where(eq(claims.merchantId, input.merchantId)).orderBy(desc(claims.createdAt));
   }),
   // Approve claim (admin)
@@ -32840,7 +32840,7 @@ var claimRouter = createRouter({
       reviewedBy: external_exports.number()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.update(claims).set({
       status: "approved",
       reviewedBy: input.reviewedBy,
@@ -32864,7 +32864,7 @@ var claimRouter = createRouter({
       rejectionReason: external_exports.string()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.update(claims).set({
       status: "rejected",
       reviewedBy: input.reviewedBy,
@@ -32875,7 +32875,7 @@ var claimRouter = createRouter({
   }),
   // List all claims (admin)
   list: publicQuery.input(external_exports.object({ status: external_exports.string().optional() }).optional()).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const conditions = [];
     if (input?.status) {
       conditions.push(eq(claims.status, input.status));
@@ -32944,7 +32944,7 @@ var merchantsData = [
 ];
 var seedRouter = createRouter({
   runSeed: publicQuery.mutation(async () => {
-    const db = getDb2();
+    const db = getDb();
     const existingCount = await db.select({ count: sql`count(*)` }).from(merchants2);
     const count2 = existingCount[0]?.count || 0;
     if (count2 >= 50) {
@@ -32967,7 +32967,7 @@ var seedRouter = createRouter({
     return { success: true, message: `Inserted ${inserted} merchants!`, count: inserted, alreadySeeded: false };
   }),
   status: publicQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     const result = await db.select({ count: sql`count(*)` }).from(merchants2);
     return { count: result[0]?.count || 0 };
   })
@@ -33311,7 +33311,7 @@ var migrateRouter = createRouter({
 var reviewsRouter = createRouter({
   // Get reviews for a merchant
   list: publicQuery.input(external_exports.object({ merchantId: external_exports.number() })).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const items = await db.select().from(reviews).where(eq(reviews.merchantId, input.merchantId)).orderBy(desc(reviews.createdAt));
     const stats = await db.select({
       avgRating: avg(reviews.rating),
@@ -33331,7 +33331,7 @@ var reviewsRouter = createRouter({
       comment: external_exports.string().min(1).max(1e3)
     })
   ).mutation(async ({ input, ctx }) => {
-    const db = getDb2();
+    const db = getDb();
     const userId = ctx.user.id;
     const existing = await db.select().from(reviews).where(
       sql`${reviews.userId} = ${userId} AND ${reviews.merchantId} = ${input.merchantId}`
@@ -33355,7 +33355,7 @@ var reviewsRouter = createRouter({
   }),
   // Delete own review
   delete: authedQuery.input(external_exports.object({ reviewId: external_exports.number() })).mutation(async ({ input, ctx }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.delete(reviews).where(
       sql`${reviews.id} = ${input.reviewId} AND ${reviews.userId} = ${ctx.user.id}`
     );
@@ -33363,13 +33363,13 @@ var reviewsRouter = createRouter({
   }),
   // Admin: verify a review
   verify: authedQuery.input(external_exports.object({ reviewId: external_exports.number() })).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.update(reviews).set({ isVerified: true }).where(eq(reviews.id, input.reviewId));
     return { success: true };
   }),
   // Admin: get all reviews
   adminList: authedQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     const items = await db.select().from(reviews).orderBy(desc(reviews.createdAt)).limit(100);
     return items;
   })
@@ -33390,7 +33390,7 @@ var featuredRouter = createRouter({
       limit: external_exports.number().min(1).max(50).default(20)
     })
   ).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const term = `%${input.q}%`;
     const featured = await db.select().from(merchants2).where(
       and(
@@ -33443,7 +33443,7 @@ var featuredRouter = createRouter({
    * Get featured merchants for a city
    */
   byCity: publicQuery.input(external_exports.object({ city: external_exports.string(), limit: external_exports.number().default(10) })).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const featured = await db.select().from(merchants2).where(
       and(
         eq(merchants2.city, input.city),
@@ -33464,7 +33464,7 @@ var featuredRouter = createRouter({
    * Toggle featured status (admin only)
    */
   toggle: publicQuery.input(external_exports.object({ id: external_exports.number(), featured: external_exports.boolean() })).mutation(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     await db.update(merchants2).set({ isFeatured: input.featured }).where(eq(merchants2.id, input.id));
     return { success: true };
   })
@@ -33474,7 +33474,7 @@ var analyticsRouter = createRouter({
    * Get recent search queries (admin secret)
    */
   recentSearches: publicQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     try {
       const rows = await db.execute(
         sql`SELECT query, city, result_count, created_at 
@@ -33491,7 +33491,7 @@ var analyticsRouter = createRouter({
    * Get popular searches (admin secret)
    */
   popularSearches: publicQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     try {
       const rows = await db.execute(
         sql`SELECT query, COUNT(*) as count 
@@ -33509,7 +33509,7 @@ var analyticsRouter = createRouter({
    * Get stats (admin secret)
    */
   stats: publicQuery.query(async () => {
-    const db = getDb2();
+    const db = getDb();
     try {
       const [totalSearches, totalMerchants, featuredCount, citiesCount] = await Promise.all([
         db.execute(
@@ -33549,7 +33549,7 @@ var emergencyRouter = createRouter({
       limit: external_exports.number().min(1).max(100).default(50)
     }).optional()
   ).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     try {
       const conditions = [eq(emergencyContacts.isActive, true)];
       if (input?.country) {
@@ -33571,7 +33571,7 @@ var emergencyRouter = createRouter({
   }),
   // Get by country
   byCountry: publicQuery.input(external_exports.object({ country: external_exports.string() })).query(async ({ input }) => {
-    const db = getDb2();
+    const db = getDb();
     const items = await db.select().from(emergencyContacts).where(
       and(
         eq(emergencyContacts.isActive, true),
@@ -33596,7 +33596,7 @@ var emergencyRouter = createRouter({
   }),
   // Seed emergency contacts (run once)
   seed: publicQuery.mutation(async () => {
-    const db = getDb2();
+    const db = getDb();
     const emergencyData = [
       // ═══════════════════════════════════════════
       // 🇫🇷 FRANCE - PARIS
@@ -34157,7 +34157,7 @@ var users2 = {
 
 // api/queries/users.ts
 async function findUserByUnionId(unionId) {
-  const rows = await getDb2().select().from(users).where(eq(users.unionId, unionId)).limit(1);
+  const rows = await getDb().select().from(users).where(eq(users.unionId, unionId)).limit(1);
   return rows.at(0);
 }
 async function upsertUser(data) {
@@ -34170,7 +34170,7 @@ async function upsertUser(data) {
     values2.role = "admin";
     updateSet.role = "admin";
   }
-  await getDb2().insert(users).values(values2).onConflictDoUpdate({
+  await getDb().insert(users).values(values2).onConflictDoUpdate({
     target: users.unionId,
     set: updateSet
   });
