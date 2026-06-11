@@ -11,6 +11,7 @@ import { seedRouter } from "./seed-router";
 import { migrateRouter } from "./migrate-router";
 import { reviewsRouter } from "./reviews-router";
 import { featuredRouter, analyticsRouter } from "./featured-router";
+import { emergencyRouter } from "./emergency-router";
 import { createRouter, publicQuery } from "./middleware";
 
 export const appRouter = createRouter({
@@ -29,6 +30,7 @@ export const appRouter = createRouter({
   reviews: reviewsRouter,
   featured: featuredRouter,
   analytics: analyticsRouter,
+  emergency: emergencyRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -275,6 +275,32 @@ export const searchLogs = pgTable("search_logs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+// ==================== EMERGENCY CONTACTS ====================
+export const emergencyTypeEnum = pgEnum("emergency_type", [
+  "embassy", "hospital", "police", "fire", "pharmacy_24h", 
+  "tourist_police", "airport", "lost_card", "taxi", "other",
+]);
+
+export const emergencyContacts = pgTable("emergency_contacts", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  nameAr: varchar("nameAr", { length: 255 }),
+  type: emergencyTypeEnum("type").notNull(),
+  phone: varchar("phone", { length: 50 }).notNull(),
+  phoneSecondary: varchar("phoneSecondary", { length: 50 }),
+  country: varchar("country", { length: 100 }).notNull(),
+  city: varchar("city", { length: 100 }),
+  address: text("address"),
+  description: text("description"),
+  descriptionAr: text("descriptionAr"),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
+export type EmergencyContact = typeof emergencyContacts.$inferSelect;
+export type InsertEmergencyContact = typeof emergencyContacts.$inferInsert;
+
 // ==================== FAVORITES ====================
 export const favorites = pgTable("favorites", {
   id: serial("id").primaryKey(),

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
-import { merchants, jobs } from "../db/schema";
+import { merchants, jobs, emergencyContacts } from "../db/schema";
 import { like, or, and, eq, sql, desc } from "drizzle-orm";
 
 export const searchRouter = createRouter({
@@ -86,7 +86,36 @@ export const searchRouter = createRouter({
           .orderBy(desc(jobs.createdAt));
       }
 
-      results.total = results.merchants.length + results.jobs.length;
+      // Search emergency contacts
+      const emergencyConditions = [
+        or(
+          like(emergencyContacts.name, searchTerm),
+          like(emergencyContacts.nameAr, searchTerm),
+          like(emergencyContacts.description, searchTerm),
+          like(emergencyContacts.descriptionAr, searchTerm),
+          like(emergencyContacts.phone, searchTerm),
+          like(emergencyContacts.city, searchTerm),
+          like(emergencyContacts.country, searchTerm),
+          like(emergencyContacts.address, searchTerm)
+        ),
+        eq(emergencyContacts.isActive, true),
+      ];
+
+      if (input.country) {
+        emergencyConditions.push(eq(emergencyContacts.country, input.country));
+      }
+      if (input.city) {
+        emergencyConditions.push(eq(emergencyContacts.city, input.city));
+      }
+
+      results.emergency = await db
+        .select()
+        .from(emergencyContacts)
+        .where(and(...emergencyConditions))
+        .limit(input.limit)
+        .orderBy(emergencyContacts.type, emergencyContacts.city);
+
+      results.total = results.merchants.length + results.jobs.length + (results.emergency?.length || 0);
 
       return results;
     }),

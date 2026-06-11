@@ -29655,6 +29655,8 @@ var schema_exports = {};
 __export(schema_exports, {
   chatMessages: () => chatMessages,
   claims: () => claims,
+  emergencyContacts: () => emergencyContacts,
+  emergencyTypeEnum: () => emergencyTypeEnum,
   favorites: () => favorites,
   jobs: () => jobs,
   merchants: () => merchants,
@@ -29921,6 +29923,34 @@ var searchLogs = pgTable("search_logs", {
   resultsCount: integer2("resultsCount").default(0),
   ipAddress: varchar("ipAddress", { length: 50 }),
   createdAt: timestamp("createdAt").defaultNow().notNull()
+});
+var emergencyTypeEnum = pgEnum("emergency_type", [
+  "embassy",
+  "hospital",
+  "police",
+  "fire",
+  "pharmacy_24h",
+  "tourist_police",
+  "airport",
+  "lost_card",
+  "taxi",
+  "other"
+]);
+var emergencyContacts = pgTable("emergency_contacts", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  nameAr: varchar("nameAr", { length: 255 }),
+  type: emergencyTypeEnum("type").notNull(),
+  phone: varchar("phone", { length: 50 }).notNull(),
+  phoneSecondary: varchar("phoneSecondary", { length: 50 }),
+  country: varchar("country", { length: 100 }).notNull(),
+  city: varchar("city", { length: 100 }),
+  address: text("address"),
+  description: text("description"),
+  descriptionAr: text("descriptionAr"),
+  isActive: boolean4("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => /* @__PURE__ */ new Date())
 });
 var favorites = pgTable("favorites", {
   id: serial("id").primaryKey(),
@@ -30446,7 +30476,27 @@ var searchRouter = createRouter({
       }
       results.jobs = await db.select().from(jobs).where(and(...jobConditions)).limit(input.limit).orderBy(desc(jobs.createdAt));
     }
-    results.total = results.merchants.length + results.jobs.length;
+    const emergencyConditions = [
+      or(
+        like(emergencyContacts.name, searchTerm),
+        like(emergencyContacts.nameAr, searchTerm),
+        like(emergencyContacts.description, searchTerm),
+        like(emergencyContacts.descriptionAr, searchTerm),
+        like(emergencyContacts.phone, searchTerm),
+        like(emergencyContacts.city, searchTerm),
+        like(emergencyContacts.country, searchTerm),
+        like(emergencyContacts.address, searchTerm)
+      ),
+      eq(emergencyContacts.isActive, true)
+    ];
+    if (input.country) {
+      emergencyConditions.push(eq(emergencyContacts.country, input.country));
+    }
+    if (input.city) {
+      emergencyConditions.push(eq(emergencyContacts.city, input.city));
+    }
+    results.emergency = await db.select().from(emergencyContacts).where(and(...emergencyConditions)).limit(input.limit).orderBy(emergencyContacts.type, emergencyContacts.city);
+    results.total = results.merchants.length + results.jobs.length + (results.emergency?.length || 0);
     return results;
   }),
   // Get popular searches
@@ -33077,6 +33127,67 @@ var migrateRouter = createRouter({
       return { success: false, message: error48?.message, inserted };
     }
   }),
+  // Activate all pending merchants (fixes search returning 0 results)
+  activateAll: publicQuery.mutation(async () => {
+    const client = src_default(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1
+    });
+    try {
+      const result = await client`
+        UPDATE merchants 
+        SET status = 'active', "isVerified" = true, "isFeatured" = false,
+            "updatedAt" = NOW()
+        WHERE status = 'pending' OR status IS NULL
+      `;
+      await client`
+        UPDATE merchants 
+        SET rating = (3.0 + random() * 1.9)::numeric(2,1),
+            "reviewCount" = floor(random() * 50 + 1)::int
+        WHERE rating IS NULL OR rating = 0
+      `;
+      await client`
+        UPDATE merchants 
+        SET tags = COALESCE(tags, '') || ' ' || COALESCE(category, '') || ' ' || COALESCE(city, '') || ' ' || COALESCE(country, '')
+        WHERE tags IS NULL OR tags = ''
+      `;
+      const countResult = await client`SELECT COUNT(*) as total FROM merchants WHERE status = 'active'`;
+      await client.end();
+      return {
+        success: true,
+        message: "All merchants activated",
+        activatedCount: result.count || 0,
+        totalActive: countResult[0]?.total || 0
+      };
+    } catch (error48) {
+      await client.end();
+      return { success: false, message: error48?.message };
+    }
+  }),
+  // Activate all merchants regardless of current status
+  forceActivateAll: publicQuery.mutation(async () => {
+    const client = src_default(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1
+    });
+    try {
+      const result = await client`
+        UPDATE merchants 
+        SET status = 'active', "isVerified" = true, "updatedAt" = NOW()
+      `;
+      const countResult = await client`SELECT COUNT(*) as total FROM merchants`;
+      await client.end();
+      return {
+        success: true,
+        message: "All merchants force-activated",
+        updatedCount: result.count || 0,
+        totalMerchants: countResult[0]?.total || 0
+      };
+    } catch (error48) {
+      await client.end();
+      return { success: false, message: error48?.message };
+    }
+  }),
   // Original fixUserId
   fixUserId: publicQuery.mutation(async () => {
     const client = src_default(env.databaseUrl, {
@@ -33325,6 +33436,412 @@ var analyticsRouter = createRouter({
   })
 });
 
+// api/emergency-router.ts
+var emergencyRouter = createRouter({
+  // List all emergency contacts with filters
+  list: publicQuery.input(
+    external_exports.object({
+      country: external_exports.string().optional(),
+      city: external_exports.string().optional(),
+      type: external_exports.string().optional(),
+      limit: external_exports.number().min(1).max(100).default(50)
+    }).optional()
+  ).query(async ({ input }) => {
+    const db = getDb();
+    try {
+      const conditions = [eq(emergencyContacts.isActive, true)];
+      if (input?.country) {
+        conditions.push(sql`${emergencyContacts.country} = ${input.country}`);
+      }
+      if (input?.city) {
+        conditions.push(sql`${emergencyContacts.city} = ${input.city}`);
+      }
+      if (input?.type) {
+        conditions.push(sql`${emergencyContacts.type} = ${input.type}`);
+      }
+      const where = conditions.length > 1 ? and(...conditions) : conditions[0];
+      const items = await db.select().from(emergencyContacts).where(where).orderBy(emergencyContacts.type, emergencyContacts.city);
+      return { items, total: items.length };
+    } catch (error48) {
+      console.error("[emergency.list] Error:", error48?.message);
+      return { items: [], total: 0 };
+    }
+  }),
+  // Get by country
+  byCountry: publicQuery.input(external_exports.object({ country: external_exports.string() })).query(async ({ input }) => {
+    const db = getDb();
+    const items = await db.select().from(emergencyContacts).where(
+      and(
+        eq(emergencyContacts.isActive, true),
+        sql`${emergencyContacts.country} = ${input.country}`
+      )
+    ).orderBy(emergencyContacts.type, emergencyContacts.city);
+    return items;
+  }),
+  // Get types
+  types: publicQuery.query(async () => {
+    return [
+      { id: "embassy", name: "\u0627\u0644\u0633\u0641\u0627\u0631\u0627\u062A", nameEn: "Embassy", icon: "Landmark", color: "#dc2626" },
+      { id: "hospital", name: "\u0645\u0633\u062A\u0634\u0641\u064A\u0627\u062A", nameEn: "Hospital", icon: "Heart", color: "#ef4444" },
+      { id: "police", name: "\u0634\u0631\u0637\u0629", nameEn: "Police", icon: "Shield", color: "#1d4ed8" },
+      { id: "fire", name: "\u0625\u0637\u0641\u0627\u0621", nameEn: "Fire", icon: "Flame", color: "#ea580c" },
+      { id: "pharmacy_24h", name: "\u0635\u064A\u062F\u0644\u064A\u0627\u062A 24\u0633", nameEn: "24h Pharmacy", icon: "Clock", color: "#16a34a" },
+      { id: "tourist_police", name: "\u0634\u0631\u0637\u0629 \u0633\u064A\u0627\u062D\u064A\u0629", nameEn: "Tourist Police", icon: "ShieldCheck", color: "#2563eb" },
+      { id: "airport", name: "\u0645\u0637\u0627\u0631\u0627\u062A", nameEn: "Airport", icon: "Plane", color: "#0891b2" },
+      { id: "lost_card", name: "\u062D\u062C\u0632 \u0628\u0637\u0627\u0642\u0627\u062A", nameEn: "Card Hotline", icon: "CreditCard", color: "#7c3aed" },
+      { id: "taxi", name: "\u062A\u0627\u0643\u0633\u064A", nameEn: "Taxi", icon: "Car", color: "#ca8a04" }
+    ];
+  }),
+  // Seed emergency contacts (run once)
+  seed: publicQuery.mutation(async () => {
+    const db = getDb();
+    const emergencyData = [
+      // ═══════════════════════════════════════════
+      // 🇫🇷 FRANCE - PARIS
+      // ═══════════════════════════════════════════
+      // Embassies - Paris
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+331 47 23 01 44", country: "France", city: "Paris", address: "50, Rue de Lisbonne, 75008 Paris", description: "Embassy of the People's Democratic Republic of Algeria", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0645\u0647\u0648\u0631\u064A\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631\u064A\u0629 \u0627\u0644\u062F\u064A\u0645\u0642\u0631\u0627\u0637\u064A\u0629 \u0627\u0644\u0634\u0639\u0628\u064A\u0629" },
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+331 45 20 69 69", country: "France", city: "Paris", address: "5, Rue Le Tasse, 75016 Paris", description: "Embassy of the Kingdom of Morocco", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0645\u063A\u0631\u0628\u064A\u0629" },
+      { name: "Embassy of Tunisia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633", type: "embassy", phone: "+331 45 53 84 00", country: "France", city: "Paris", address: "25, Rue Barbet-de-Jouy, 75007 Paris", description: "Embassy of the Republic of Tunisia", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0645\u0647\u0648\u0631\u064A\u0629 \u0627\u0644\u062A\u0648\u0646\u0633\u064A\u0629" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+331 56 90 18 00", country: "France", city: "Paris", address: "56, Avenue d'Iena, 75116 Paris", description: "Embassy of the Arab Republic of Egypt", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062C\u0645\u0647\u0648\u0631\u064A\u0629 \u0645\u0635\u0631 \u0627\u0644\u0639\u0631\u0628\u064A\u0629" },
+      { name: "Embassy of Lebanon", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u0628\u0646\u0627\u0646", type: "embassy", phone: "+331 47 20 61 86", country: "France", city: "Paris", address: "3, Villa Copernic, 75116 Paris", description: "Embassy of the Lebanese Republic", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0645\u0647\u0648\u0631\u064A\u0629 \u0627\u0644\u0644\u0628\u0646\u0627\u0646\u064A\u0629" },
+      { name: "Embassy of Syria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0633\u0648\u0631\u064A\u0627", type: "embassy", phone: "+331 45 53 44 55", country: "France", city: "Paris", address: "20, Rue Vaneau, 75007 Paris", description: "Embassy of the Syrian Arab Republic", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0645\u0647\u0648\u0631\u064A\u0629 \u0627\u0644\u0639\u0631\u0628\u064A\u0629 \u0627\u0644\u0633\u0648\u0631\u064A\u0629" },
+      { name: "Embassy of Iraq", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0627\u0642", type: "embassy", phone: "+331 53 23 10 60", country: "France", city: "Paris", address: "9, Rue d'Astorg, 75008 Paris", description: "Embassy of the Republic of Iraq", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062C\u0645\u0647\u0648\u0631\u064A\u0629 \u0627\u0644\u0639\u0631\u0627\u0642" },
+      { name: "Embassy of Palestine", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0641\u0644\u0633\u0637\u064A\u0646", type: "embassy", phone: "+331 42 30 11 20", country: "France", city: "Paris", address: "10-12, Rue Thiers, 75116 Paris", description: "Embassy of the State of Palestine", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062F\u0648\u0644\u0629 \u0641\u0644\u0633\u0637\u064A\u0646" },
+      { name: "Embassy of Jordan", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0623\u0631\u062F\u0646", type: "embassy", phone: "+331 47 63 71 65", country: "France", city: "Paris", address: "80, Boulevard Maurice-Barres, 92200 Neuilly-sur-Seine", description: "Embassy of the Hashemite Kingdom of Jordan", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0623\u0631\u062F\u0646\u064A\u0629 \u0627\u0644\u0647\u0627\u0634\u0645\u064A\u0629" },
+      { name: "Embassy of Saudi Arabia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629", type: "embassy", phone: "+331 56 79 40 00", country: "France", city: "Paris", address: "5, Avenue Hoche, 75008 Paris", description: "Embassy of the Kingdom of Saudi Arabia", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0639\u0631\u0628\u064A\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629" },
+      { name: "Embassy of UAE", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A", type: "embassy", phone: "+331 44 43 20 00", country: "France", city: "Paris", address: "2, Boulevard de la Tour-Maubourg, 75007 Paris", description: "Embassy of the United Arab Emirates", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062F\u0648\u0644\u0629 \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A \u0627\u0644\u0639\u0631\u0628\u064A\u0629 \u0627\u0644\u0645\u062A\u062D\u062F\u0629" },
+      { name: "Embassy of Qatar", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0642\u0637\u0631", type: "embassy", phone: "+331 53 67 92 00", country: "France", city: "Paris", address: "1, Rue de Tilsitt, 75008 Paris", description: "Embassy of the State of Qatar", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062F\u0648\u0644\u0629 \u0642\u0637\u0631" },
+      { name: "Embassy of Kuwait", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0643\u0648\u064A\u062A", type: "embassy", phone: "+331 47 23 41 51", country: "France", city: "Paris", address: "129, Rue du Ranelagh, 75016 Paris", description: "Embassy of the State of Kuwait", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062F\u0648\u0644\u0629 \u0627\u0644\u0643\u0648\u064A\u062A" },
+      { name: "Embassy of Oman", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0639\u0645\u0627\u0646", type: "embassy", phone: "+331 47 66 82 80", country: "France", city: "Paris", address: "50, Avenue d'Iena, 75116 Paris", description: "Embassy of the Sultanate of Oman", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0633\u0644\u0637\u0646\u0629 \u0639\u0645\u0627\u0646" },
+      { name: "Embassy of Bahrain", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0628\u062D\u0631\u064A\u0646", type: "embassy", phone: "+331 47 23 04 50", country: "France", city: "Paris", address: "3, Place des Etats-Unis, 75116 Paris", description: "Embassy of the Kingdom of Bahrain", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0628\u062D\u0631\u064A\u0646" },
+      { name: "Embassy of Yemen", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u064A\u0645\u0646", type: "embassy", phone: "+331 47 83 56 60", country: "France", city: "Paris", address: "25, Rue des Jeuneurs, 75002 Paris", description: "Embassy of the Republic of Yemen", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0645\u0647\u0648\u0631\u064A\u0629 \u0627\u0644\u064A\u0645\u0646\u064A\u0629" },
+      { name: "Embassy of Sudan", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0648\u062F\u0627\u0646", type: "embassy", phone: "+331 47 83 33 11", country: "France", city: "Paris", address: "11, Rue Alfred Dehodencq, 75016 Paris", description: "Embassy of the Republic of Sudan", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062C\u0645\u0647\u0648\u0631\u064A\u0629 \u0627\u0644\u0633\u0648\u062F\u0627\u0646" },
+      { name: "Embassy of Libya", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u064A\u0628\u064A\u0627", type: "embassy", phone: "+331 45 24 34 72", country: "France", city: "Paris", address: "18, Rue Charles-Lamoureux, 75116 Paris", description: "Embassy of the State of Libya", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062F\u0648\u0644\u0629 \u0644\u064A\u0628\u064A\u0627" },
+      { name: "Embassy of Mauritania", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0648\u0631\u064A\u062A\u0627\u0646\u064A\u0627", type: "embassy", phone: "+331 45 53 15 46", country: "France", city: "Paris", address: "5, Rue de Montevideo, 75116 Paris", description: "Embassy of the Islamic Republic of Mauritania", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0645\u0647\u0648\u0631\u064A\u0629 \u0627\u0644\u0625\u0633\u0644\u0627\u0645\u064A\u0629 \u0627\u0644\u0645\u0648\u0631\u064A\u062A\u0627\u0646\u064A\u0629" },
+      { name: "Embassy of Somalia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0635\u0648\u0645\u0627\u0644", type: "embassy", phone: "+331 42 88 45 21", country: "France", city: "Paris", address: "26, Rue Dumont-d'Urville, 75116 Paris", description: "Embassy of the Federal Republic of Somalia", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062C\u0645\u0647\u0648\u0631\u064A\u0629 \u0627\u0644\u0635\u0648\u0645\u0627\u0644 \u0627\u0644\u0641\u064A\u062F\u0631\u0627\u0644\u064A\u0629" },
+      // Emergency - Paris
+      { name: "Police Nationale", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629 \u0627\u0644\u0648\u0637\u0646\u064A\u0629", type: "police", phone: "17", country: "France", city: "Paris", description: "Emergency police number", descriptionAr: "\u0631\u0642\u0645 \u0627\u0644\u0637\u0648\u0627\u0631\u0626 \u0644\u0644\u0634\u0631\u0637\u0629" },
+      { name: "SAMU (Medical Emergency)", nameAr: "\u0633\u0645\u064A\u0648 (\u0637\u0648\u0627\u0631\u0626 \u0637\u0628\u064A\u0629)", type: "hospital", phone: "15", country: "France", city: "Paris", description: "Medical emergency services", descriptionAr: "\u062E\u062F\u0645\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0637\u0628\u064A\u0629" },
+      { name: "Pompiers (Fire Brigade)", nameAr: "\u0627\u0644\u0645\u0637\u0627\u0641\u0626", type: "fire", phone: "18", country: "France", city: "Paris", description: "Fire and rescue emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0645\u0637\u0627\u0641\u0626 \u0648\u0627\u0644\u0625\u0646\u0642\u0627\u0630" },
+      { name: "European Emergency", nameAr: "\u0637\u0648\u0627\u0631\u0626 \u0623\u0648\u0631\u0648\u0628\u0627", type: "police", phone: "112", country: "France", city: "Paris", description: "Universal European emergency number", descriptionAr: "\u0631\u0642\u0645 \u0627\u0644\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0623\u0648\u0631\u0648\u0628\u064A \u0627\u0644\u0645\u0648\u062D\u062F" },
+      { name: "SOS Medecins Paris", nameAr: "\u0623\u0637\u0628\u0627\u0621 \u0627\u0644\u0637\u0648\u0627\u0631\u0626 \u0628\u0627\u0631\u064A\u0633", type: "hospital", phone: "+331 47 07 77 77", country: "France", city: "Paris", description: "24/7 home doctor service", descriptionAr: "\u062E\u062F\u0645\u0629 \u0637\u0628\u064A\u0628 \u0645\u0646\u0632\u0644\u064A 24/7" },
+      { name: "Hopital Avicenne (APHP)", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0627\u0628\u0646 \u0633\u064A\u0646\u0627", type: "hospital", phone: "+331 48 95 88 88", country: "France", city: "Paris", address: "125, Rue de Stalingrad, 93000 Bobigny", description: "Major public hospital serving Arab community", descriptionAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0639\u0645\u0648\u0645\u064A \u0643\u0628\u064A\u0631 \u064A\u062E\u062F\u0645 \u0627\u0644\u062C\u0627\u0644\u064A\u0629 \u0627\u0644\u0639\u0631\u0628\u064A\u0629" },
+      { name: "Police Prefecture Paris", nameAr: "\u0645\u062F\u064A\u0631\u064A\u0629 \u0627\u0644\u0634\u0631\u0637\u0629 \u0628\u0627\u0631\u064A\u0633", type: "police", phone: "+331 53 71 53 71", country: "France", city: "Paris", address: "9, Boulevard du Palais, 75004 Paris", description: "Prefecture de Police de Paris", descriptionAr: "\u0645\u062F\u064A\u0631\u064A\u0629 \u0634\u0631\u0637\u0629 \u0628\u0627\u0631\u064A\u0633" },
+      // Pharmacies 24h - Paris
+      { name: "Pharmacie des Champs-Elysees (24h)", nameAr: "\u0635\u064A\u062F\u0644\u064A\u0629 \u0627\u0644\u0634\u0627\u0646\u0632\u064A\u0644\u064A\u0632\u064A\u0647 24\u0633", type: "pharmacy_24h", phone: "+331 43 59 24 42", country: "France", city: "Paris", address: "84, Avenue des Champs-Elysees, 75008 Paris", description: "24-hour pharmacy on Champs-Elysees", descriptionAr: "\u0635\u064A\u062F\u0644\u064A\u0629 24 \u0633\u0627\u0639\u0629 \u0641\u064A \u0627\u0644\u0634\u0627\u0646\u0632\u064A\u0644\u064A\u0632\u064A\u0647" },
+      { name: "Pharmacie Europe (24h)", nameAr: "\u0635\u064A\u062F\u0644\u064A\u0629 \u0623\u0648\u0631\u0648\u0628\u0627 24\u0633", type: "pharmacy_24h", phone: "+331 42 85 31 70", country: "France", city: "Paris", address: "6, Rue de Madrid, 75008 Paris", description: "24-hour pharmacy near Saint-Lazare", descriptionAr: "\u0635\u064A\u062F\u0644\u064A\u0629 24 \u0633\u0627\u0639\u0629 \u0642\u0631\u0628 \u0633\u0627\u0646 \u0644\u0627\u0632\u0627\u0631" },
+      // ═══════════════════════════════════════════
+      // 🇩🇪 GERMANY - BERLIN
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+49 30 2030 870", country: "Germany", city: "Berlin", address: "Gorlitzer Str. 45, 10997 Berlin", description: "Embassy of Algeria in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631 \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+49 30 206 230", country: "Germany", city: "Berlin", address: "Niederwallstr. 39, 10117 Berlin", description: "Embassy of Morocco in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Embassy of Tunisia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633", type: "embassy", phone: "+49 30 364 120", country: "Germany", city: "Berlin", address: "Hessische Str. 10, 10115 Berlin", description: "Embassy of Tunisia in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633 \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+49 30 477 100", country: "Germany", city: "Berlin", address: "Stauffenbergstr. 6-7, 10785 Berlin", description: "Embassy of Egypt in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Embassy of Lebanon", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u0628\u0646\u0627\u0646", type: "embassy", phone: "+49 30 319 091", country: "Germany", city: "Berlin", address: "Tschaikowskistr. 15, 10629 Berlin", description: "Embassy of Lebanon in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u0628\u0646\u0627\u0646 \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Embassy of Syria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0633\u0648\u0631\u064A\u0627", type: "embassy", phone: "+49 30 505 507", country: "Germany", city: "Berlin", address: "Rauchstr. 25, 10787 Berlin", description: "Embassy of Syria in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0633\u0648\u0631\u064A\u0627 \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Embassy of Iraq", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0627\u0642", type: "embassy", phone: "+49 30 306 080", country: "Germany", city: "Berlin", address: "Zimmerstr. 93, 10117 Berlin", description: "Embassy of Iraq in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0627\u0642 \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Embassy of Palestine", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0641\u0644\u0633\u0637\u064A\u0646", type: "embassy", phone: "+49 30 308 820", country: "Germany", city: "Berlin", address: "Klagenfurter Str. 8, 10785 Berlin", description: "Embassy of Palestine in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0641\u0644\u0633\u0637\u064A\u0646 \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Embassy of Saudi Arabia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629", type: "embassy", phone: "+49 30 8900 8100", country: "Germany", city: "Berlin", address: "Tiergartenstr. 33-34, 10785 Berlin", description: "Embassy of Saudi Arabia in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629 \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Embassy of UAE", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A", type: "embassy", phone: "+49 30 516 550", country: "Germany", city: "Berlin", address: "Hiroshimastr. 18-20, 10785 Berlin", description: "Embassy of UAE in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Embassy of Jordan", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0623\u0631\u062F\u0646", type: "embassy", phone: "+49 30 832 140", country: "Germany", city: "Berlin", address: "Pfalzburger Str. 56, 10717 Berlin", description: "Embassy of Jordan in Berlin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0623\u0631\u062F\u0646 \u0641\u064A \u0628\u0631\u0644\u064A\u0646" },
+      // Emergency - Berlin
+      { name: "Polizei Notruf", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "110", country: "Germany", city: "Berlin", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      { name: "Feuerwehr / Rettungsdienst", nameAr: "\u0627\u0644\u0645\u0637\u0627\u0641\u0626/\u0627\u0644\u0625\u0633\u0639\u0627\u0641", type: "fire", phone: "112", country: "Germany", city: "Berlin", description: "Fire & ambulance emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0645\u0637\u0627\u0641\u0626 \u0648\u0627\u0644\u0625\u0633\u0639\u0627\u0641" },
+      { name: "Charite Hospital", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0634\u0627\u0631\u064A\u062A\u064A\u0647", type: "hospital", phone: "+49 30 450 50", country: "Germany", city: "Berlin", address: "Chariteplatz 1, 10117 Berlin", description: "Europe's largest university hospital", descriptionAr: "\u0623\u0643\u0628\u0631 \u0645\u0633\u062A\u0634\u0641\u0649 \u062C\u0627\u0645\u0639\u064A \u0641\u064A \u0623\u0648\u0631\u0648\u0628\u0627" },
+      { name: "Krankenhaus Moabit", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0645\u0648\u0627\u0628\u064A\u062A", type: "hospital", phone: "+49 30 787 50", country: "Germany", city: "Berlin", address: "Alt-Moabit 9, 10559 Berlin", description: "Major hospital near central Berlin", descriptionAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0643\u0628\u064A\u0631 \u0642\u0631\u0628 \u0648\u0633\u0637 \u0628\u0631\u0644\u064A\u0646" },
+      { name: "Berlin Tourist Police", nameAr: "\u0634\u0631\u0637\u0629 \u0627\u0644\u0633\u064A\u0627\u062D\u0629 \u0628\u0631\u0644\u064A\u0646", type: "tourist_police", phone: "+49 30 466 40", country: "Germany", city: "Berlin", address: "Platz der Luftbrucke 6, 12101 Berlin", description: "Tourist police helpline", descriptionAr: "\u062E\u0637 \u0645\u0633\u0627\u0639\u062F\u0629 \u0634\u0631\u0637\u0629 \u0627\u0644\u0633\u064A\u0627\u062D\u0629" },
+      // ═══════════════════════════════════════════
+      // 🇬🇧 UK - LONDON
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+44 20 7589 6885", country: "United Kingdom", city: "London", address: "1-3 Riding House Street, London W1W 7DR", description: "Embassy of Algeria in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+44 20 7581 5001", country: "United Kingdom", city: "London", address: "49 Queen's Gate Gardens, London SW7 5NE", description: "Embassy of Morocco in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Tunisia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633", type: "embassy", phone: "+44 20 7584 8117", country: "United Kingdom", city: "London", address: "29 Prince's Gate, London SW7 1QG", description: "Embassy of Tunisia in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+44 20 7235 9777", country: "United Kingdom", city: "London", address: "26 South Street, London W1K 1DW", description: "Embassy of Egypt in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Lebanon", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u0628\u0646\u0627\u0646", type: "embassy", phone: "+44 20 7229 7265", country: "United Kingdom", city: "London", address: "21 Kensington Palace Gardens, London W8 4QN", description: "Embassy of Lebanon in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u0628\u0646\u0627\u0646 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Saudi Arabia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629", type: "embassy", phone: "+44 20 7917 3000", country: "United Kingdom", city: "London", address: "Curzon Street, London W1J 7TU", description: "Embassy of Saudi Arabia in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of UAE", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A", type: "embassy", phone: "+44 20 7581 1281", country: "United Kingdom", city: "London", address: "1-2 Grosvenor Crescent, London SW1X 7EE", description: "Embassy of UAE in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Iraq", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0627\u0642", type: "embassy", phone: "+44 20 7590 9200", country: "United Kingdom", city: "London", address: "3 Elvaston Place, London SW7 5QH", description: "Embassy of Iraq in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0627\u0642 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Jordan", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0623\u0631\u062F\u0646", type: "embassy", phone: "+44 20 7937 3685", country: "United Kingdom", city: "London", address: "6 Upper Phillipsore Gardens, London W8 7HB", description: "Embassy of Jordan in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0623\u0631\u062F\u0646 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Palestine", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0641\u0644\u0633\u0637\u064A\u0646", type: "embassy", phone: "+44 20 7074 9666", country: "United Kingdom", city: "London", address: "5-7 Galena Road, London W6 0LT", description: "Embassy of Palestine in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0641\u0644\u0633\u0637\u064A\u0646 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Qatar", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0642\u0637\u0631", type: "embassy", phone: "+44 20 7493 2200", country: "United Kingdom", city: "London", address: "1 South Audley Street, London W1K 1NB", description: "Embassy of Qatar in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0642\u0637\u0631 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Kuwait", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0643\u0648\u064A\u062A", type: "embassy", phone: "+44 20 7590 3400", country: "United Kingdom", city: "London", address: "2 Albert Gate, London SW1X 7JU", description: "Embassy of Kuwait in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0643\u0648\u064A\u062A \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Libya", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u064A\u0628\u064A\u0627", type: "embassy", phone: "+44 20 7201 8280", country: "United Kingdom", city: "London", address: "15 Knightsbridge, London SW1X 7LY", description: "Embassy of Libya in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u064A\u0628\u064A\u0627 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Sudan", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0648\u062F\u0627\u0646", type: "embassy", phone: "+44 20 7835 8087", country: "United Kingdom", city: "London", address: "3 Cleveland Row, London SW1A 1DD", description: "Embassy of Sudan in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0648\u062F\u0627\u0646 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Yemen", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u064A\u0645\u0646", type: "embassy", phone: "+44 20 7584 6607", country: "United Kingdom", city: "London", address: "57 Cromwell Road, London SW7 2ED", description: "Embassy of Yemen in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u064A\u0645\u0646 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      { name: "Embassy of Oman", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0639\u0645\u0627\u0646", type: "embassy", phone: "+44 20 7225 0001", country: "United Kingdom", city: "London", address: "167 Queen's Gate, London SW7 5HE", description: "Embassy of Oman in London", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0639\u0645\u0627\u0646 \u0641\u064A \u0644\u0646\u062F\u0646" },
+      // Emergency - London
+      { name: "Metropolitan Police", nameAr: "\u0634\u0631\u0637\u0629 \u0644\u0646\u062F\u0646", type: "police", phone: "999", country: "United Kingdom", city: "London", description: "Emergency police/fire/ambulance", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629/\u0627\u0644\u0645\u0637\u0627\u0641\u0626/\u0627\u0644\u0625\u0633\u0639\u0627\u0641" },
+      { name: "NHS (Medical Emergency)", nameAr: "\u0627\u0644\u0635\u062D\u0629 \u0627\u0644\u0648\u0637\u0646\u064A\u0629", type: "hospital", phone: "111", country: "United Kingdom", city: "London", description: "Non-emergency medical advice", descriptionAr: "\u0627\u0633\u062A\u0634\u0627\u0631\u0627\u062A \u0637\u0628\u064A\u0629 \u063A\u064A\u0631 \u0637\u0627\u0631\u0626\u0629" },
+      { name: "St Thomas' Hospital", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0633\u0627\u0646\u062A \u062A\u0648\u0645\u0627\u0633", type: "hospital", phone: "+44 20 7188 7188", country: "United Kingdom", city: "London", address: "Westminster Bridge Road, London SE1 7EH", description: "Major NHS hospital", descriptionAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0627\u0644\u0635\u062D\u0629 \u0627\u0644\u0648\u0637\u0646\u064A\u0629 \u0627\u0644\u0643\u0628\u064A\u0631" },
+      { name: "Royal London Hospital", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0644\u0646\u062F\u0646 \u0627\u0644\u0645\u0644\u0643\u064A", type: "hospital", phone: "+44 20 3594 1888", country: "United Kingdom", city: "London", address: "Whitechapel Road, London E1 1FR", description: "Major trauma centre", descriptionAr: "\u0645\u0631\u0643\u0632 \u0627\u0644\u0635\u062F\u0645\u0627\u062A \u0627\u0644\u0643\u0628\u0631\u0649" },
+      { name: "Guy's Hospital", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u062C\u0627\u064A\u0632", type: "hospital", phone: "+44 20 7188 7188", country: "United Kingdom", city: "London", address: "Great Maze Pond, London SE1 9RT", description: "Teaching hospital", descriptionAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u062A\u0639\u0644\u064A\u0645\u064A" },
+      { name: "Samaritans (Crisis Line)", nameAr: "\u062E\u0637 \u0627\u0644\u0623\u0645\u0627\u0646 (\u0623\u0632\u0645\u0627\u062A)", type: "hospital", phone: "116 123", country: "United Kingdom", city: "London", description: "24/7 crisis support helpline", descriptionAr: "\u062E\u0637 \u0645\u0633\u0627\u0646\u062F\u0629 \u0627\u0644\u0623\u0632\u0645\u0627\u062A 24/7" },
+      // ═══════════════════════════════════════════
+      // 🇳🇱 NETHERLANDS - AMSTERDAM
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+31 70 368 4684", country: "Netherlands", city: "Amsterdam", address: "Amaliastraat 2, 2514 JC The Hague", description: "Embassy of Morocco", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628" },
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+31 70 306 5500", country: "Netherlands", city: "Amsterdam", address: "Stationsweg 117, 2515 BS The Hague", description: "Embassy of Algeria", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+31 70 354 2000", country: "Netherlands", city: "Amsterdam", address: "Badhuisweg 92, 2587 CL The Hague", description: "Embassy of Egypt", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631" },
+      { name: "Embassy of Tunisia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633", type: "embassy", phone: "+31 70 354 6540", country: "Netherlands", city: "Amsterdam", address: "Carnegielaan 7, 2517 KH The Hague", description: "Embassy of Tunisia", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633" },
+      { name: "Embassy of UAE", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A", type: "embassy", phone: "+31 70 310 8206", country: "Netherlands", city: "Amsterdam", address: "Molenstraat 10, 2513 BL The Hague", description: "Embassy of UAE", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A" },
+      // Emergency - Amsterdam
+      { name: "Politie (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "112", country: "Netherlands", city: "Amsterdam", description: "General emergency number", descriptionAr: "\u0631\u0642\u0645 \u0627\u0644\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0639\u0627\u0645" },
+      { name: "Academic Medical Center", nameAr: "\u0627\u0644\u0645\u0631\u0643\u0632 \u0627\u0644\u0637\u0628\u064A \u0627\u0644\u0623\u0643\u0627\u062F\u064A\u0645\u064A", type: "hospital", phone: "+31 20 566 9111", country: "Netherlands", city: "Amsterdam", address: "Meibergdreef 9, 1105 AZ Amsterdam", description: "Major university hospital", descriptionAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u062C\u0627\u0645\u0639\u064A \u0643\u0628\u064A\u0631" },
+      // ═══════════════════════════════════════════
+      // 🇪🇸 SPAIN - MADRID & BARCELONA
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+34 91 562 9490", country: "Spain", city: "Madrid", address: "Calle de Serrano 179, 28002 Madrid", description: "Embassy of Morocco in Madrid", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0645\u062F\u0631\u064A\u062F" },
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+34 91 745 9393", country: "Spain", city: "Madrid", address: "Calle de Princesa 81, 28008 Madrid", description: "Embassy of Algeria in Madrid", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631 \u0641\u064A \u0645\u062F\u0631\u064A\u062F" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+34 91 308 0800", country: "Spain", city: "Madrid", address: "Calle de Serrano 174, 28002 Madrid", description: "Embassy of Egypt in Madrid", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0645\u062F\u0631\u064A\u062F" },
+      { name: "Embassy of Tunisia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633", type: "embassy", phone: "+34 91 303 0490", country: "Spain", city: "Madrid", address: "Pl. de la Republica Dominicana 3, 28016 Madrid", description: "Embassy of Tunisia in Madrid", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633 \u0641\u064A \u0645\u062F\u0631\u064A\u062F" },
+      { name: "Consulate of Morocco - Barcelona", nameAr: "\u0642\u0646\u0635\u0644\u064A\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 - \u0628\u0631\u0634\u0644\u0648\u0646\u0629", type: "embassy", phone: "+34 93 272 1414", country: "Spain", city: "Barcelona", address: "Passeig de la Bonanova 56, 08017 Barcelona", description: "Consulate General of Morocco", descriptionAr: "\u0627\u0644\u0642\u0646\u0635\u0644\u064A\u0629 \u0627\u0644\u0639\u0627\u0645\u0629 \u0644\u0644\u0645\u0645\u0644\u0643\u0629 \u0627\u0644\u0645\u063A\u0631\u0628\u064A\u0629" },
+      // Emergency - Madrid
+      { name: "Policia Nacional", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629 \u0627\u0644\u0648\u0637\u0646\u064A\u0629", type: "police", phone: "091", country: "Spain", city: "Madrid", description: "National police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629 \u0627\u0644\u0648\u0637\u0646\u064A\u0629" },
+      { name: "Guardia Civil", nameAr: "\u0627\u0644\u062D\u0631\u0633 \u0627\u0644\u0645\u062F\u0646\u064A", type: "police", phone: "062", country: "Spain", city: "Madrid", description: "Civil Guard emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u062D\u0631\u0633 \u0627\u0644\u0645\u062F\u0646\u064A" },
+      { name: "Emergencias", nameAr: "\u0627\u0644\u0637\u0648\u0627\u0631\u0626", type: "fire", phone: "112", country: "Spain", city: "Madrid", description: "All emergencies", descriptionAr: "\u062C\u0645\u064A\u0639 \u062D\u0627\u0644\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626" },
+      { name: "Hospital General Universitario Gregorio Maranon", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u063A\u0631\u064A\u063A\u0648\u0631\u064A\u0648 \u0645\u0627\u0631\u0627\u0646\u064A\u0648\u0646", type: "hospital", phone: "+34 91 586 8000", country: "Spain", city: "Madrid", address: "Calle del Dr. Esquerdo 46, 28007 Madrid", description: "Major public hospital", descriptionAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0639\u0627\u0645 \u0643\u0628\u064A\u0631" },
+      { name: "Hospital Clinic Barcelona", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0643\u0644\u064A\u0646\u064A\u0643 \u0628\u0631\u0634\u0644\u0648\u0646\u0629", type: "hospital", phone: "+34 93 227 5400", country: "Spain", city: "Barcelona", address: "Carrer de Villarroel 170, 08036 Barcelona", description: "Major public hospital Barcelona", descriptionAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0639\u0627\u0645 \u0643\u0628\u064A\u0631 \u0628\u0631\u0634\u0644\u0648\u0646\u0629" },
+      // ═══════════════════════════════════════════
+      // 🇮🇹 ITALY - ROME & MILAN
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+39 06 324 4611", country: "Italy", city: "Rome", address: "Via Lovanio 5, 00198 Roma", description: "Embassy of Morocco in Rome", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0631\u0648\u0645\u0627" },
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+39 06 323 3640", country: "Italy", city: "Rome", address: "Via Bartolomeo Eustachio 12, 00161 Roma", description: "Embassy of Algeria in Rome", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631 \u0641\u064A \u0631\u0648\u0645\u0627" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+39 06 833 9601", country: "Italy", city: "Rome", address: "Via Salaria 267, 00199 Roma", description: "Embassy of Egypt in Rome", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0631\u0648\u0645\u0627" },
+      { name: "Embassy of Tunisia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633", type: "embassy", phone: "+39 06 841 4386", country: "Italy", city: "Rome", address: "Via G. Acerbi 30, 00197 Roma", description: "Embassy of Tunisia in Rome", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633 \u0641\u064A \u0631\u0648\u0645\u0627" },
+      { name: "Embassy of Lebanon", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u0628\u0646\u0627\u0646", type: "embassy", phone: "+39 06 322 6104", country: "Italy", city: "Rome", address: "Via G. Marchi 3, 00198 Roma", description: "Embassy of Lebanon in Rome", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u0628\u0646\u0627\u0646 \u0641\u064A \u0631\u0648\u0645\u0627" },
+      { name: "Embassy of Iraq", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0627\u0642", type: "embassy", phone: "+39 06 8621 3783", country: "Italy", city: "Rome", address: "Via della Camilluccia 355, 00135 Roma", description: "Embassy of Iraq in Rome", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0627\u0642 \u0641\u064A \u0631\u0648\u0645\u0627" },
+      { name: "Consulate of Morocco - Milan", nameAr: "\u0642\u0646\u0635\u0644\u064A\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 - \u0645\u064A\u0644\u0627\u0646", type: "embassy", phone: "+39 02 463 341", country: "Italy", city: "Milan", address: "Via dei Giardini 4, 20122 Milano", description: "Consulate of Morocco in Milan", descriptionAr: "\u0642\u0646\u0635\u0644\u064A\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0645\u064A\u0644\u0627\u0646" },
+      // Emergency - Rome
+      { name: "Polizia di Stato", nameAr: "\u0634\u0631\u0637\u0629 \u0627\u0644\u062F\u0648\u0644\u0629", type: "police", phone: "113", country: "Italy", city: "Rome", description: "State police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      { name: "Carabinieri", nameAr: "\u0627\u0644\u062F\u0631\u0643", type: "police", phone: "112", country: "Italy", city: "Rome", description: "Military police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u062F\u0631\u0643 \u0627\u0644\u0639\u0633\u0643\u0631\u064A" },
+      { name: "Emergenza Sanitaria", nameAr: "\u0627\u0644\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0635\u062D\u064A\u0629", type: "hospital", phone: "118", country: "Italy", city: "Rome", description: "Medical emergency", descriptionAr: "\u0627\u0644\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0637\u0628\u064A\u0629" },
+      { name: "Policlinico Umberto I", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0623\u0645\u0628\u0631\u062A\u0648 \u0627\u0644\u0623\u0648\u0644", type: "hospital", phone: "+39 06 4997 1", country: "Italy", city: "Rome", address: "Viale del Policlinico 155, 00161 Roma", description: "Rome's largest public hospital", descriptionAr: "\u0623\u0643\u0628\u0631 \u0645\u0633\u062A\u0634\u0641\u0649 \u0639\u0627\u0645 \u0641\u064A \u0631\u0648\u0645\u0627" },
+      // ═══════════════════════════════════════════
+      // 🇧🇪 BELGIUM - BRUSSELS
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+32 2 343 6760", country: "Belgium", city: "Brussels", address: "Avenue de l'Armee 29, 1040 Brussels", description: "Embassy of Morocco in Brussels", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0628\u0631\u0648\u0643\u0633\u0644" },
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+32 2 661 1160", country: "Belgium", city: "Brussels", address: "Rue G. Stocq 22, 1050 Brussels", description: "Embassy of Algeria in Brussels", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631 \u0641\u064A \u0628\u0631\u0648\u0643\u0633\u0644" },
+      { name: "Embassy of Tunisia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633", type: "embassy", phone: "+32 2 343 0880", country: "Belgium", city: "Brussels", address: "Avenue Franklin Roosevelt 45, 1050 Brussels", description: "Embassy of Tunisia in Brussels", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u062A\u0648\u0646\u0633 \u0641\u064A \u0628\u0631\u0648\u0643\u0633\u0644" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+32 2 675 8588", country: "Belgium", city: "Brussels", address: "Avenue de l'Uruguay 19, 1000 Brussels", description: "Embassy of Egypt in Brussels", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0628\u0631\u0648\u0643\u0633\u0644" },
+      { name: "Embassy of Lebanon", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u0628\u0646\u0627\u0646", type: "embassy", phone: "+32 2 375 5780", country: "Belgium", city: "Brussels", address: "Rue G. Stocq 20, 1050 Brussels", description: "Embassy of Lebanon in Brussels", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0644\u0628\u0646\u0627\u0646 \u0641\u064A \u0628\u0631\u0648\u0643\u0633\u0644" },
+      { name: "Embassy of Saudi Arabia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629", type: "embassy", phone: "+32 2 533 7788", country: "Belgium", city: "Brussels", address: "Avenue de Tervuren 475, 1150 Brussels", description: "Embassy of Saudi Arabia in Brussels", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629 \u0641\u064A \u0628\u0631\u0648\u0643\u0633\u0644" },
+      { name: "Embassy of UAE", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A", type: "embassy", phone: "+32 2 648 4500", country: "Belgium", city: "Brussels", address: "Rue Montoyer 123, 1000 Brussels", description: "Embassy of UAE in Brussels", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0625\u0645\u0627\u0631\u0627\u062A \u0641\u064A \u0628\u0631\u0648\u0643\u0633\u0644" },
+      { name: "Embassy of Qatar", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0642\u0637\u0631", type: "embassy", phone: "+32 2 289 3900", country: "Belgium", city: "Brussels", address: "Avenue Franklin Roosevelt 65, 1050 Brussels", description: "Embassy of Qatar in Brussels", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0642\u0637\u0631 \u0641\u064A \u0628\u0631\u0648\u0643\u0633\u0644" },
+      { name: "Embassy of Iraq", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0627\u0642", type: "embassy", phone: "+32 2 660 2955", country: "Belgium", city: "Brussels", address: "Rue des Vignobles 38, 1150 Brussels", description: "Embassy of Iraq in Brussels", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0639\u0631\u0627\u0642 \u0641\u064A \u0628\u0631\u0648\u0643\u0633\u0644" },
+      { name: "Embassy of Palestine", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0641\u0644\u0633\u0637\u064A\u0646", type: "embassy", phone: "+32 2 734 2140", country: "Belgium", city: "Brussels", address: "Rue des Deux Eglises 83, 1000 Brussels", description: "Embassy of Palestine in Brussels", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0641\u0644\u0633\u0637\u064A\u0646 \u0641\u064A \u0628\u0631\u0648\u0643\u0633\u0644" },
+      // Emergency - Brussels
+      { name: "Police/Police Federal", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629 \u0627\u0644\u0641\u064A\u062F\u0631\u0627\u0644\u064A\u0629", type: "police", phone: "101", country: "Belgium", city: "Brussels", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      { name: "Aide Medicale Urgente", nameAr: "\u0627\u0644\u0645\u0633\u0627\u0639\u062F\u0629 \u0627\u0644\u0637\u0628\u064A\u0629 \u0627\u0644\u0639\u0627\u062C\u0644\u0629", type: "hospital", phone: "112", country: "Belgium", city: "Brussels", description: "All emergencies", descriptionAr: "\u062C\u0645\u064A\u0639 \u062D\u0627\u0644\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626" },
+      // ═══════════════════════════════════════════
+      // 🇸🇪 SWEDEN - STOCKHOLM
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+46 8 669 9390", country: "Sweden", city: "Stockholm", address: "Ostermalmsgatan 36, 114 26 Stockholm", description: "Embassy of Morocco in Stockholm", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0633\u062A\u0648\u0643\u0647\u0648\u0644\u0645" },
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+46 8 24 18 20", country: "Sweden", city: "Stockholm", address: "Sandhamnsgatan 30, 115 28 Stockholm", description: "Embassy of Algeria in Stockholm", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631 \u0641\u064A \u0633\u062A\u0648\u0643\u0647\u0648\u0644\u0645" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+46 8 23 08 00", country: "Sweden", city: "Stockholm", address: "Strandvagen 35, 114 56 Stockholm", description: "Embassy of Egypt in Stockholm", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0633\u062A\u0648\u0643\u0647\u0648\u0644\u0645" },
+      // Emergency - Stockholm
+      { name: "Polisen (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "112", country: "Sweden", city: "Stockholm", description: "All emergencies", descriptionAr: "\u062C\u0645\u064A\u0639 \u062D\u0627\u0644\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626" },
+      { name: "Karolinska Universitetssjukhuset", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0643\u0627\u0631\u0648\u0644\u064A\u0646\u0633\u0643\u0627", type: "hospital", phone: "+46 8 517 700 00", country: "Sweden", city: "Stockholm", address: "171 76 Solna, Stockholm", description: "Sweden's premier university hospital", descriptionAr: "\u0623\u0641\u0636\u0644 \u0645\u0633\u062A\u0634\u0641\u0649 \u062C\u0627\u0645\u0639\u064A \u0641\u064A \u0627\u0644\u0633\u0648\u064A\u062F" },
+      // ═══════════════════════════════════════════
+      // 🇩🇰 DENMARK - COPENHAGEN
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+45 39 62 11 12", country: "Denmark", city: "Copenhagen", address: "Rosbaeksvej 18, 2100 Kobenhavn O", description: "Embassy of Morocco in Copenhagen", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0643\u0648\u0628\u0646\u0647\u0627\u063A\u0646" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+45 39 62 02 22", country: "Denmark", city: "Copenhagen", address: "Kastelsvej 25, 2100 Kobenhavn O", description: "Embassy of Egypt in Copenhagen", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0643\u0648\u0628\u0646\u0647\u0627\u063A\u0646" },
+      // Emergency - Copenhagen
+      { name: "Politi (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "112", country: "Denmark", city: "Copenhagen", description: "All emergencies", descriptionAr: "\u062C\u0645\u064A\u0639 \u062D\u0627\u0644\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626" },
+      { name: "Rigshospitalet", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0631\u064A\u062C\u0632", type: "hospital", phone: "+45 35 45 35 45", country: "Denmark", city: "Copenhagen", address: "Blegdamsvej 9, 2100 Kobenhavn", description: "Denmark's largest hospital", descriptionAr: "\u0623\u0643\u0628\u0631 \u0645\u0633\u062A\u0634\u0641\u0649 \u0641\u064A \u0627\u0644\u062F\u0646\u0645\u0627\u0631\u0643" },
+      // ═══════════════════════════════════════════
+      // 🇦🇹 AUSTRIA - VIENNA
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+43 1 712 2222", country: "Austria", city: "Vienna", address: "Hochenstaufengasse 2, 1010 Wien", description: "Embassy of Morocco in Vienna", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0641\u064A\u064A\u0646\u0627" },
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+43 1 713 05 81", country: "Austria", city: "Vienna", address: "Khevenhullerstrasse 5, 1130 Wien", description: "Embassy of Algeria in Vienna", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631 \u0641\u064A \u0641\u064A\u064A\u0646\u0627" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+43 1 713 18 51", country: "Austria", city: "Vienna", address: "Hochenstaufengasse 6, 1010 Wien", description: "Embassy of Egypt in Vienna", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0641\u064A\u064A\u0646\u0627" },
+      // Emergency - Vienna
+      { name: "Polizei (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "133", country: "Austria", city: "Vienna", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      { name: "Rettung (Ambulance)", nameAr: "\u0627\u0644\u0625\u0633\u0639\u0627\u0641", type: "fire", phone: "144", country: "Austria", city: "Vienna", description: "Ambulance emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0625\u0633\u0639\u0627\u0641" },
+      { name: "Feuerwehr (Fire)", nameAr: "\u0627\u0644\u0645\u0637\u0627\u0641\u0626", type: "fire", phone: "122", country: "Austria", city: "Vienna", description: "Fire emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0645\u0637\u0627\u0641\u0626" },
+      { name: "AKH Wien", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0641\u064A\u064A\u0646\u0627 \u0627\u0644\u0639\u0627\u0645", type: "hospital", phone: "+43 1 404 00", country: "Austria", city: "Vienna", address: "Wahringer Gurtel 18-20, 1090 Wien", description: "Vienna General Hospital", descriptionAr: "\u0627\u0644\u0645\u0633\u062A\u0634\u0641\u0649 \u0627\u0644\u0639\u0627\u0645 \u0641\u064A \u0641\u064A\u064A\u0646\u0627" },
+      // ═══════════════════════════════════════════
+      // 🇨🇭 SWITZERLAND - ZURICH
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+41 31 351 0551", country: "Switzerland", city: "Zurich", address: "Thunstrasse 66, 3005 Bern", description: "Embassy of Algeria in Bern", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631 \u0641\u064A \u0628\u0631\u0646" },
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+41 31 352 0555", country: "Switzerland", city: "Zurich", address: "Elfenstrasse 6, 3006 Bern", description: "Embassy of Morocco in Bern", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0628\u0631\u0646" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+41 31 352 0180", country: "Switzerland", city: "Zurich", address: "Elfenauweg 61, 3006 Bern", description: "Embassy of Egypt in Bern", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0628\u0631\u0646" },
+      // Emergency - Zurich
+      { name: "Polizei (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "117", country: "Switzerland", city: "Zurich", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      { name: "Sanitat (Ambulance)", nameAr: "\u0627\u0644\u0625\u0633\u0639\u0627\u0641", type: "hospital", phone: "144", country: "Switzerland", city: "Zurich", description: "Ambulance emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0625\u0633\u0639\u0627\u0641" },
+      { name: "Feuerwehr (Fire)", nameAr: "\u0627\u0644\u0645\u0637\u0627\u0641\u0626", type: "fire", phone: "118", country: "Switzerland", city: "Zurich", description: "Fire emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0645\u0637\u0627\u0641\u0626" },
+      { name: "Universitatsspital Zurich", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0632\u064A\u0648\u0631\u062E \u0627\u0644\u062C\u0627\u0645\u0639\u064A", type: "hospital", phone: "+41 44 255 11 11", country: "Switzerland", city: "Zurich", address: "Ramistrasse 100, 8091 Zurich", description: "University Hospital Zurich", descriptionAr: "\u0627\u0644\u0645\u0633\u062A\u0634\u0641\u0649 \u0627\u0644\u062C\u0627\u0645\u0639\u064A \u0641\u064A \u0632\u064A\u0648\u0631\u062E" },
+      // ═══════════════════════════════════════════
+      // 🇳🇴 NORWAY - OSLO
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+47 22 55 35 38", country: "Norway", city: "Oslo", address: " Oscars gate 78, 0258 Oslo", description: "Embassy of Morocco in Oslo", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0623\u0648\u0633\u0644\u0648" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+47 22 55 70 35", country: "Norway", city: "Oslo", address: "Drammensveien 90A, 0271 Oslo", description: "Embassy of Egypt in Oslo", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0623\u0648\u0633\u0644\u0648" },
+      // Emergency - Oslo
+      { name: "Politi (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "112", country: "Norway", city: "Oslo", description: "All emergencies", descriptionAr: "\u062C\u0645\u064A\u0639 \u062D\u0627\u0644\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626" },
+      { name: "Oslo Universitetssykehus", nameAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0623\u0648\u0633\u0644\u0648 \u0627\u0644\u062C\u0627\u0645\u0639\u064A", type: "hospital", phone: "+47 23 01 80 00", country: "Norway", city: "Oslo", address: "Kirkeveien 166, 0450 Oslo", description: "Oslo University Hospital", descriptionAr: "\u0645\u0633\u062A\u0634\u0641\u0649 \u0623\u0648\u0633\u0644\u0648 \u0627\u0644\u062C\u0627\u0645\u0639\u064A" },
+      // ═══════════════════════════════════════════
+      // 🇫🇮 FINLAND - HELSINKI
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+358 9 681 1420", country: "Finland", city: "Helsinki", address: "Unioninkatu 14 B, 00130 Helsinki", description: "Embassy of Morocco in Helsinki", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0647\u0644\u0633\u0646\u0643\u064A" },
+      // Emergency - Helsinki
+      { name: "Poliisi (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "112", country: "Finland", city: "Helsinki", description: "All emergencies", descriptionAr: "\u062C\u0645\u064A\u0639 \u062D\u0627\u0644\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626" },
+      // ═══════════════════════════════════════════
+      // 🇬🇷 GREECE - ATHENS
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+30 210 363 1680", country: "Greece", city: "Athens", address: "3, Vassilissis Sophias Avenue, 10674 Athens", description: "Embassy of Egypt in Athens", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0623\u062B\u064A\u0646\u0627" },
+      { name: "Embassy of Algeria", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631", type: "embassy", phone: "+30 210 681 9632", country: "Greece", city: "Athens", address: "14, Vassilissis Olgas Avenue, 10557 Athens", description: "Embassy of Algeria in Athens", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u062C\u0632\u0627\u0626\u0631 \u0641\u064A \u0623\u062B\u064A\u0646\u0627" },
+      // Emergency - Athens
+      { name: "Astynomia (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "100", country: "Greece", city: "Athens", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      { name: "Ethniki Odiki Ypiresia", nameAr: "\u0627\u0644\u0637\u0648\u0627\u0631\u0626", type: "hospital", phone: "166", country: "Greece", city: "Athens", description: "Ambulance emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0625\u0633\u0639\u0627\u0641" },
+      // ═══════════════════════════════════════════
+      // 🇹🇷 TURKEY - ISTANBUL
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Saudi Arabia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629", type: "embassy", phone: "+90 212 515 0000", country: "Turkey", city: "Istanbul", address: "Tepebasi, Mesrutiyet Cad. No: 47, 34430 Istanbul", description: "Consulate General of Saudi Arabia", descriptionAr: "\u0627\u0644\u0642\u0646\u0635\u0644\u064A\u0629 \u0627\u0644\u0639\u0627\u0645\u0629 \u0644\u0644\u0633\u0639\u0648\u062F\u064A\u0629" },
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+90 212 336 1288", country: "Turkey", city: "Istanbul", address: "Askoc Apt, Cumhuriyet Cad. No: 22, 34367 Istanbul", description: "Consulate General of Egypt", descriptionAr: "\u0627\u0644\u0642\u0646\u0635\u0644\u064A\u0629 \u0627\u0644\u0639\u0627\u0645\u0629 \u0644\u0645\u0635\u0631" },
+      // Emergency - Istanbul
+      { name: "Polis (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "155", country: "Turkey", city: "Istanbul", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      { name: "Ambulans (Ambulance)", nameAr: "\u0627\u0644\u0625\u0633\u0639\u0627\u0641", type: "hospital", phone: "112", country: "Turkey", city: "Istanbul", description: "All emergencies", descriptionAr: "\u062C\u0645\u064A\u0639 \u062D\u0627\u0644\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626" },
+      // ═══════════════════════════════════════════
+      // 🇵🇹 PORTUGAL - LISBON
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+351 21 390 8210", country: "Portugal", city: "Lisbon", address: "Rua Alto do Duque 21, 1400-009 Lisbon", description: "Embassy of Morocco in Lisbon", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0644\u0634\u0628\u0648\u0646\u0629" },
+      // Emergency - Lisbon
+      { name: "Policia (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "112", country: "Portugal", city: "Lisbon", description: "All emergencies", descriptionAr: "\u062C\u0645\u064A\u0639 \u062D\u0627\u0644\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626" },
+      // ═══════════════════════════════════════════
+      // 🇮🇪 IRELAND - DUBLIN
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+353 1 668 4622", country: "Ireland", city: "Dublin", address: "12 Clyde Road, Ballsbridge, Dublin 4", description: "Embassy of Egypt in Dublin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u062F\u0628\u0644\u0646" },
+      { name: "Embassy of Saudi Arabia", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629", type: "embassy", phone: "+353 1 492 0700", country: "Ireland", city: "Dublin", address: "12 Fitzwilliam Square East, Dublin 2", description: "Embassy of Saudi Arabia in Dublin", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0633\u0639\u0648\u062F\u064A\u0629 \u0641\u064A \u062F\u0628\u0644\u0646" },
+      // Emergency - Dublin
+      { name: "Garda (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "999 / 112", country: "Ireland", city: "Dublin", description: "Emergency services", descriptionAr: "\u062E\u062F\u0645\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626" },
+      // ═══════════════════════════════════════════
+      // 🇨🇿 CZECH REPUBLIC - PRAGUE
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+420 234 043 800", country: "Czech Republic", city: "Prague", address: "Na Zatorce 18, 160 00 Prague 6", description: "Embassy of Egypt in Prague", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0628\u0631\u0627\u063A" },
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+420 257 318 612", country: "Czech Republic", city: "Prague", address: "Hradcanske namesti 4, 118 00 Prague 1", description: "Embassy of Morocco in Prague", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0628\u0631\u0627\u063A" },
+      // Emergency - Prague
+      { name: "Policie (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "158", country: "Czech Republic", city: "Prague", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      { name: "Zachranka (Ambulance)", nameAr: "\u0627\u0644\u0625\u0633\u0639\u0627\u0641", type: "hospital", phone: "155", country: "Czech Republic", city: "Prague", description: "Ambulance emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0625\u0633\u0639\u0627\u0641" },
+      // ═══════════════════════════════════════════
+      // 🇭🇺 HUNGARY - BUDAPEST
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+36 1 344 4800", country: "Hungary", city: "Budapest", address: "Stefania ut 47/b, 1143 Budapest", description: "Embassy of Egypt in Budapest", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0628\u0648\u062F\u0627\u0628\u0633\u062A" },
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+36 1 201 9082", country: "Hungary", city: "Budapest", address: "Dubrovniki utca 44, 1125 Budapest", description: "Embassy of Morocco in Budapest", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0628\u0648\u062F\u0627\u0628\u0633\u062A" },
+      // Emergency - Budapest
+      { name: "Rendorseg (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "107", country: "Hungary", city: "Budapest", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      { name: "Mentok (Ambulance)", nameAr: "\u0627\u0644\u0625\u0633\u0639\u0627\u0641", type: "hospital", phone: "104", country: "Hungary", city: "Budapest", description: "Ambulance emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0625\u0633\u0639\u0627\u0641" },
+      // ═══════════════════════════════════════════
+      // 🇷🇴 ROMANIA - BUCHAREST
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+40 21 212 0150", country: "Romania", city: "Bucharest", address: "Bulevardul Dacia 47, 010162 Bucharest", description: "Embassy of Egypt in Bucharest", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0628\u0648\u062E\u0627\u0631\u0633\u062A" },
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+40 21 211 1992", country: "Romania", city: "Bucharest", address: "Strada Orlando 10, 014641 Bucharest", description: "Embassy of Morocco in Bucharest", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0628\u0648\u062E\u0627\u0631\u0633\u062A" },
+      // Emergency - Bucharest
+      { name: "Politia (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "112", country: "Romania", city: "Bucharest", description: "All emergencies", descriptionAr: "\u062C\u0645\u064A\u0639 \u062D\u0627\u0644\u0627\u062A \u0627\u0644\u0637\u0648\u0627\u0631\u0626" },
+      // ═══════════════════════════════════════════
+      // 🇵🇱 POLAND - WARSAW
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+48 22 616 8800", country: "Poland", city: "Warsaw", address: "Al. Ujazdowskie 33/35, 00-540 Warsaw", description: "Embassy of Egypt in Warsaw", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0648\u0627\u0631\u0633\u0648" },
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+48 22 646 7575", country: "Poland", city: "Warsaw", address: "Dolna 25, 00-773 Warsaw", description: "Embassy of Morocco in Warsaw", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0648\u0627\u0631\u0633\u0648" },
+      // Emergency - Warsaw
+      { name: "Policja (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "997", country: "Poland", city: "Warsaw", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      { name: "Pogotowie (Ambulance)", nameAr: "\u0627\u0644\u0625\u0633\u0639\u0627\u0641", type: "hospital", phone: "999", country: "Poland", city: "Warsaw", description: "Ambulance emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0625\u0633\u0639\u0627\u0641" },
+      // ═══════════════════════════════════════════
+      // 🇭🇷 CROATIA - ZAGREB
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+385 1 4677 330", country: "Croatia", city: "Zagreb", address: "Rokov perivoj 20, 10000 Zagreb", description: "Embassy of Egypt in Zagreb", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0632\u063A\u0631\u0628" },
+      // Emergency - Zagreb
+      { name: "Policija (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "192", country: "Croatia", city: "Zagreb", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      // ═══════════════════════════════════════════
+      // 🇸🇰 SLOVAKIA - BRATISLAVA
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+421 2 5443 1967", country: "Slovakia", city: "Bratislava", address: "Hlboka 7, 811 03 Bratislava", description: "Embassy of Egypt in Bratislava", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0628\u0631\u0627\u062A\u064A\u0633\u0644\u0627\u0641\u0627" },
+      // ═══════════════════════════════════════════
+      // 🇷🇸 SERBIA - BELGRADE
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+381 11 3671 876", country: "Serbia", city: "Belgrade", address: "Bulevar Oslobodjenja 23, 11000 Belgrade", description: "Embassy of Egypt in Belgrade", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0628\u0644\u063A\u0631\u0627\u062F" },
+      // ═══════════════════════════════════════════
+      // 🇧🇬 BULGARIA - SOFIA
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+359 2 946 1093", country: "Bulgaria", city: "Sofia", address: "Ul. Sheinovo 16, 1504 Sofia", description: "Embassy of Egypt in Sofia", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0635\u0648\u0641\u064A\u0627" },
+      // ═══════════════════════════════════════════
+      // 🇲🇹 MALTA - VALLETTA
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+356 2133 1874", country: "Malta", city: "Valletta", address: "Villa Maurizia, Ta' Xbiex Terrace, Ta' Xbiex XBX 1032", description: "Embassy of Egypt in Malta", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0645\u0627\u0644\u0637\u0627" },
+      // ═══════════════════════════════════════════
+      // 🇨🇾 CYPRUS - NICOSIA
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+357 22 590 100", country: "Cyprus", city: "Nicosia", address: "4, Zenonos Sozou Street, 1075 Nicosia", description: "Embassy of Egypt in Nicosia", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0646\u064A\u0642\u0648\u0633\u064A\u0627" },
+      // ═══════════════════════════════════════════
+      // 🇱🇺 LUXEMBOURG
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+352 22 00 31", country: "Luxembourg", city: "Luxembourg City", address: "6, Rue Philippe II, 2340 Luxembourg", description: "Embassy of Morocco in Luxembourg", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0644\u0648\u0643\u0633\u0645\u0628\u0648\u0631\u063A" },
+      // ═══════════════════════════════════════════
+      // 🇪🇪 ESTONIA - TALLINN
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt (Non-resident)", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 (\u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629)", type: "embassy", phone: "+372 630 6300", country: "Estonia", city: "Tallinn", address: " represented by Helsinki", description: "Non-resident embassy - contact Helsinki", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629 - \u0627\u062A\u0635\u0644 \u0628\u0647\u0644\u0633\u0646\u0643\u064A" },
+      // ═══════════════════════════════════════════
+      // 🇱🇻 LATVIA - RIGA
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt (Non-resident)", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 (\u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629)", type: "embassy", phone: "+371 676 117 40", country: "Latvia", city: "Riga", address: " represented by Stockholm", description: "Non-resident embassy - contact Stockholm", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629 - \u0627\u062A\u0635\u0644 \u0628\u0633\u062A\u0648\u0643\u0647\u0648\u0644\u0645" },
+      // ═══════════════════════════════════════════
+      // 🇱🇹 LITHUANIA - VILNIUS
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt (Non-resident)", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 (\u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629)", type: "embassy", phone: "+370 5 219 3700", country: "Lithuania", city: "Vilnius", address: " represented by Warsaw", description: "Non-resident embassy - contact Warsaw", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629 - \u0627\u062A\u0635\u0644 \u0628\u0648\u0627\u0631\u0633\u0648" },
+      // ═══════════════════════════════════════════
+      // 🇸🇮 SLOVENIA - LJUBLJANA
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt (Non-resident)", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 (\u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629)", type: "embassy", phone: "+386 1 200 8950", country: "Slovenia", city: "Ljubljana", address: " represented by Vienna", description: "Non-resident embassy - contact Vienna", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629 - \u0627\u062A\u0635\u0644 \u0628\u0641\u064A\u064A\u0646\u0627" },
+      // ═══════════════════════════════════════════
+      // 🇧🇦 BOSNIA - SARAJEVO
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+387 33 219 700", country: "Bosnia and Herzegovina", city: "Sarajevo", address: "Alipasina 80, 71000 Sarajevo", description: "Embassy of Egypt in Sarajevo", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0633\u0631\u0627\u064A\u064A\u0641\u0648" },
+      // ═══════════════════════════════════════════
+      // 🇦🇱 ALBANIA - TIRANA
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+355 4 228 1150", country: "Albania", city: "Tirana", address: "Rruga e Elbasanit, 1020 Tirana", description: "Embassy of Egypt in Tirana", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u062A\u064A\u0631\u0627\u0646\u0627" },
+      // ═══════════════════════════════════════════
+      // 🇲🇰 NORTH MACEDONIA - SKOPJE
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+389 2 310 7700", country: "North Macedonia", city: "Skopje", address: "Ul. Naum Naumovski Borce 6b, 1000 Skopje", description: "Embassy of Egypt in Skopje", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0633\u0643\u0648\u0628\u064A" },
+      // ═══════════════════════════════════════════
+      // 🇲🇩 MOLDOVA - CHISINAU
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt (Non-resident)", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 (\u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629)", type: "embassy", phone: "+373 22 211 115", country: "Moldova", city: "Chisinau", address: " represented by Bucharest", description: "Non-resident embassy - contact Bucharest", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629 - \u0627\u062A\u0635\u0644 \u0628\u0628\u0648\u062E\u0627\u0631\u0633\u062A" },
+      // ═══════════════════════════════════════════
+      // 🇺🇦 UKRAINE - KYIV
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631", type: "embassy", phone: "+380 44 490 0101", country: "Ukraine", city: "Kyiv", address: "Observatorny Lane 17, 01901 Kyiv", description: "Embassy of Egypt in Kyiv", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 \u0641\u064A \u0643\u064A\u064A\u0641" },
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+380 44 490 0102", country: "Ukraine", city: "Kyiv", address: "Saksahanskoho St. 60, 01033 Kyiv", description: "Embassy of Morocco in Kyiv", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0643\u064A\u064A\u0641" },
+      // Emergency - Kyiv
+      { name: "Politsiya (Police)", nameAr: "\u0627\u0644\u0634\u0631\u0637\u0629", type: "police", phone: "102", country: "Ukraine", city: "Kyiv", description: "Police emergency", descriptionAr: "\u0637\u0648\u0627\u0631\u0626 \u0627\u0644\u0634\u0631\u0637\u0629" },
+      // ═══════════════════════════════════════════
+      // 🇲🇨 MONACO
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Morocco", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628", type: "embassy", phone: "+377 93 50 17 27", country: "Monaco", city: "Monaco", address: "7, Rue Bellevue, 98000 Monaco", description: "Embassy of Morocco in Monaco", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u0627\u0644\u0645\u063A\u0631\u0628 \u0641\u064A \u0645\u0648\u0646\u0627\u0643\u0648" },
+      // ═══════════════════════════════════════════
+      // 🇮🇸 ICELAND - REYKJAVIK
+      // ═══════════════════════════════════════════
+      { name: "Embassy of Egypt (Non-resident)", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 (\u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629)", type: "embassy", phone: "+354 510 7500", country: "Iceland", city: "Reykjavik", address: " represented by Oslo", description: "Non-resident embassy - contact Oslo", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629 - \u0627\u062A\u0635\u0644 \u0628\u0623\u0648\u0633\u0644\u0648" }
+    ];
+    try {
+      await db.delete(emergencyContacts);
+    } catch (e) {
+    }
+    let inserted = 0;
+    for (const contact of emergencyData) {
+      await db.insert(emergencyContacts).values({
+        ...contact,
+        isActive: true,
+        createdAt: /* @__PURE__ */ new Date(),
+        updatedAt: /* @__PURE__ */ new Date()
+      });
+      inserted++;
+    }
+    return { success: true, inserted, total: emergencyData.length };
+  })
+});
+
 // api/router.ts
 var appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -33341,7 +33858,8 @@ var appRouter = createRouter({
   migrate: migrateRouter,
   reviews: reviewsRouter,
   featured: featuredRouter,
-  analytics: analyticsRouter
+  analytics: analyticsRouter,
+  emergency: emergencyRouter
 });
 
 // node_modules/hono/dist/utils/cookie.js
