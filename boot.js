@@ -33859,6 +33859,36 @@ var emergencyRouter = createRouter({
       // ═══════════════════════════════════════════
       { name: "Embassy of Egypt (Non-resident)", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 (\u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629)", type: "embassy", phone: "+354 510 7500", country: "Iceland", city: "Reykjavik", address: " represented by Oslo", description: "Non-resident embassy - contact Oslo", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629 - \u0627\u062A\u0635\u0644 \u0628\u0623\u0648\u0633\u0644\u0648" }
     ];
+    const pgClient = src_default(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1
+    });
+    try {
+      await pgClient.unsafe(`
+        CREATE TABLE IF NOT EXISTS emergency_contacts (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          "nameAr" VARCHAR(255),
+          type VARCHAR(50) NOT NULL,
+          phone VARCHAR(50) NOT NULL,
+          "phoneSecondary" VARCHAR(50),
+          country VARCHAR(100) NOT NULL,
+          city VARCHAR(100),
+          address TEXT,
+          description TEXT,
+          "descriptionAr" TEXT,
+          "isActive" BOOLEAN DEFAULT true,
+          "createdAt" TIMESTAMP DEFAULT NOW(),
+          "updatedAt" TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      await pgClient.unsafe(`CREATE INDEX IF NOT EXISTS idx_emergency_type ON emergency_contacts(type)`);
+      await pgClient.unsafe(`CREATE INDEX IF NOT EXISTS idx_emergency_country ON emergency_contacts(country)`);
+      await pgClient.unsafe(`CREATE INDEX IF NOT EXISTS idx_emergency_city ON emergency_contacts(city)`);
+    } catch (e) {
+      console.log("[seed] Table creation note:", e.message);
+    }
+    await pgClient.end();
     try {
       await db.delete(emergencyContacts);
     } catch (e) {
