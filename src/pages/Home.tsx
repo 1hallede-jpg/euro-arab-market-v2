@@ -13,204 +13,209 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-// ============ PARTICLES BACKGROUND ============
-function ParticlesBackground() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
+/* ─── particles ─── */
+function ParticlesBg() {
+  const cvs = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const c = cvs.current;
+    if (!c) return;
+    const x = c.getContext("2d");
+    if (!x) return;
 
-    let w = (canvas.width = window.innerWidth);
-    let h = (canvas.height = window.innerHeight);
+    let W = (c.width = window.innerWidth);
+    let H = (c.height = window.innerHeight);
+    const P = Array.from({ length: 70 }, () => ({
+      px: Math.random() * W,
+      py: Math.random() * H,
+      r: Math.random() * 1.4 + 0.4,
+      vx: (Math.random() - 0.5) * 0.25,
+      vy: (Math.random() - 0.5) * 0.25,
+      a: Math.random() * 0.35 + 0.08,
+    }));
 
-    const particles: { x: number; y: number; r: number; dx: number; dy: number; alpha: number }[] = [];
-    for (let i = 0; i < 60; i++) {
-      particles.push({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        r: Math.random() * 1.5 + 0.5,
-        dx: (Math.random() - 0.5) * 0.3,
-        dy: (Math.random() - 0.5) * 0.3,
-        alpha: Math.random() * 0.4 + 0.1,
+    let rid = 0;
+    const loop = () => {
+      x.clearRect(0, 0, W, H);
+      P.forEach((p) => {
+        p.px += p.vx;
+        p.py += p.vy;
+        if (p.px < 0 || p.px > W) p.vx *= -1;
+        if (p.py < 0 || p.py > H) p.vy *= -1;
+        x.beginPath();
+        x.arc(p.px, p.py, p.r, 0, Math.PI * 2);
+        x.fillStyle = `rgba(212,175,55,${p.a})`;
+        x.fill();
       });
-    }
-
-    let animId: number;
-    const animate = () => {
-      ctx.clearRect(0, 0, w, h);
-      particles.forEach((p) => {
-        p.x += p.dx;
-        p.y += p.dy;
-        if (p.x < 0 || p.x > w) p.dx *= -1;
-        if (p.y < 0 || p.y > h) p.dy *= -1;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(212, 175, 55, ${p.alpha})`; // Gold
-        ctx.fill();
-      });
-      animId = requestAnimationFrame(animate);
+      rid = requestAnimationFrame(loop);
     };
-    animate();
+    loop();
 
-    const onResize = () => {
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
+    const onR = () => {
+      W = c.width = window.innerWidth;
+      H = c.height = window.innerHeight;
     };
-    window.addEventListener("resize", onResize);
+    window.addEventListener("resize", onR);
     return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener("resize", onResize);
+      cancelAnimationFrame(rid);
+      window.removeEventListener("resize", onR);
     };
   }, []);
-
   return (
     <canvas
-      ref={canvasRef}
+      ref={cvs}
       className="fixed inset-0 pointer-events-none"
       style={{ zIndex: 1 }}
     />
   );
 }
 
-// ============ SINDBAD CHAT ============
-function SindbadChat({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [messages, setMessages] = useState<
-    { role: "user" | "assistant"; content: string }[]
+/* ─── Sindbad Chat ─── */
+function SindbadChat({
+  open,
+  close,
+}: {
+  open: boolean;
+  close: () => void;
+}) {
+  const [msgs, setMsgs] = useState<
+    { role: "user" | "bot"; text: string }[]
   >([
     {
-      role: "assistant",
-      content:
-        "أنا سندباد، دليلك الذكي.\nاسألني عن أي متجر أو خدمة عربية في أوروبا...",
+      role: "bot",
+      text: "أنا سندباد 🪔\nدليلك الذكي للعالم العربي في أوروبا.\n\nاسألني عن أي متجر أو خدمة عربية...",
     },
   ]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { data: merchantData } = trpc.merchant.list.useQuery(
-    { status: "active", limit: 100 },
-    { enabled: isOpen }
+  const [inp, setInp] = useState("");
+  const [load, setLoad] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
+  const { data: mData } = trpc.merchant.list.useQuery(
+    { status: "active", limit: 200 },
+    { enabled: open }
   );
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [
+    msgs,
+  ]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
-    const userMsg = input.trim();
-    setInput("");
-    setMessages((p) => [...p, { role: "user", content: userMsg }]);
-    setIsLoading(true);
+    if (!inp.trim() || load) return;
+    const q = inp.trim();
+    setInp("");
+    setMsgs((p) => [...p, { role: "user", text: q }]);
+    setLoad(true);
 
-    const terms = userMsg.toLowerCase();
-    const matches =
-      merchantData?.items.filter((m) => {
-        const text = `${m.businessNameAr} ${m.businessName} ${m.category} ${m.city} ${m.country} ${m.tags}`.toLowerCase();
-        return terms.split(" ").some((t) => text.includes(t));
+    const t = q.toLowerCase();
+    const hits =
+      mData?.items.filter((m) => {
+        const txt = `${m.businessNameAr} ${m.businessName} ${m.category} ${m.city} ${m.country} ${m.tags}`.toLowerCase();
+        return t.split(/\s+/).some((w) => txt.includes(w));
       }) || [];
 
     setTimeout(() => {
       let r = "";
-      if (matches.length > 0) {
-        r = `وجدت ${matches.length} نتيجة:\n\n`;
-        matches.slice(0, 5).forEach((m, i) => {
+      if (hits.length > 0) {
+        r = `وجدت ${hits.length} نتيجة:\n\n`;
+        hits.slice(0, 5).forEach((m, i) => {
           r += `${i + 1}. **${m.businessNameAr || m.businessName}** — ${m.city}`;
           if (m.rating) r += ` ⭐${m.rating}`;
           if (m.phone) r += `\n   📞 ${m.phone}`;
+          if (m.whatsapp) r += `\n   💬 واتساب: ${m.whatsapp}`;
           r += "\n\n";
         });
       } else {
-        r = "لم أجد نتائج مباشرة.\n\nجرب: مطعم سوري في باريس، جزار حلال في برلين، سوبرماركت عربي في لندن...";
+        r =
+          "لم أجد نتائج مباشرة في بياناتنا.\n\nجرب البحث في جوجل أو اسأل بطريقة أخرى:\n• مطعم سوري باريس\n• جزار حلال برلين\n• سوبرماركت عربي لندن";
       }
-      setMessages((p) => [...p, { role: "assistant", content: r }]);
-      setIsLoading(false);
-    }, 700);
+      setMsgs((p) => [...p, { role: "bot", text: r }]);
+      setLoad(false);
+    }, 800);
   };
 
-  if (!isOpen) return null;
-
+  if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg h-[70vh] bg-[#1a1a2e] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-amber-500/20">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-amber-500/20 bg-gradient-to-r from-[#1a1a2e] to-[#16213e]">
+      <div className="w-full max-w-lg h-[72vh] bg-[#0f0f1a] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-amber-500/20">
+        {/* header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-amber-500/15 bg-[#16162a]">
           <div className="flex items-center gap-3">
-            <img src="/sindbad-icon.png" alt="" className="w-10 h-10" />
+            <img src="/sindbad-icon.png" className="w-9 h-9" alt="" />
             <div>
-              <h3 className="font-bold text-amber-400 text-lg">سندباد</h3>
-              <p className="text-xs text-amber-400/50">دليلك الذكي</p>
+              <h3 className="font-bold text-amber-400">سندباد</h3>
+              <p className="text-[10px] text-amber-400/40">
+                دليلك الذكي للعالم العربي
+              </p>
             </div>
           </div>
           <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
+            onClick={close}
+            className="p-2 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Messages */}
+        {/* messages */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {messages.map((msg, i) => (
+          {msgs.map((m, i) => (
             <div
               key={i}
-              className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+              className={`flex gap-3 ${m.role === "user" ? "flex-row-reverse" : ""}`}
             >
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                  msg.role === "assistant"
+                  m.role === "bot"
                     ? "bg-gradient-to-br from-amber-400 to-amber-600"
                     : "bg-gray-700"
                 }`}
               >
-                {msg.role === "assistant" ? (
+                {m.role === "bot" ? (
                   <Sparkles className="h-4 w-4 text-white" />
                 ) : (
                   <User className="h-4 w-4 text-gray-300" />
                 )}
               </div>
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-line ${
-                  msg.role === "assistant"
-                    ? "bg-[#16213e] text-gray-200 border border-amber-500/10"
-                    : "bg-amber-500 text-black font-medium"
+                className={`max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-line ${
+                  m.role === "bot"
+                    ? "bg-[#1e1e3a] text-gray-200 border border-amber-500/8"
+                    : "bg-gradient-to-r from-amber-400 to-amber-500 text-black font-semibold"
                 }`}
               >
-                {msg.content}
+                {m.text}
               </div>
             </div>
           ))}
-          {isLoading && (
+          {load && (
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
                 <Sparkles className="h-4 w-4 text-white" />
               </div>
-              <div className="bg-[#16213e] rounded-2xl px-4 py-3 border border-amber-500/10">
+              <div className="bg-[#1e1e3a] rounded-2xl px-4 py-3 border border-amber-500/8">
                 <Loader2 className="h-5 w-5 text-amber-400 animate-spin" />
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
+          <div ref={endRef} />
         </div>
 
-        {/* Input */}
-        <form onSubmit={handleSubmit} className="p-4 border-t border-amber-500/20 bg-[#1a1a2e]">
-          <div className="flex items-center gap-2 bg-[#16213e] rounded-full px-4 py-2 border border-amber-500/20">
+        {/* input */}
+        <form
+          onSubmit={onSend}
+          className="p-4 border-t border-amber-500/15 bg-[#16162a]"
+        >
+          <div className="flex items-center gap-2 bg-[#0f0f1a] rounded-full px-4 py-2 border border-amber-500/15 focus-within:border-amber-500/40 transition">
             <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
+              value={inp}
+              onChange={(e) => setInp(e.target.value)}
               placeholder="اسأل سندباد عن أي متجر..."
-              className="border-0 bg-transparent focus-visible:ring-0 text-right text-gray-200 placeholder:text-gray-500"
+              className="border-0 bg-transparent focus-visible:ring-0 text-right text-gray-200 placeholder:text-gray-600"
               dir="rtl"
             />
             <button
               type="submit"
-              disabled={isLoading || !input.trim()}
-              className="p-2 bg-gradient-to-r from-amber-400 to-amber-600 text-black rounded-full hover:from-amber-500 hover:to-amber-700 disabled:opacity-50 transition-all shrink-0"
+              disabled={load || !inp.trim()}
+              className="p-2 bg-gradient-to-r from-amber-400 to-amber-600 text-black rounded-full hover:from-amber-500 hover:to-amber-700 disabled:opacity-40 transition shrink-0"
             >
               <Send className="h-4 w-4" />
             </button>
@@ -221,46 +226,47 @@ function SindbadChat({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
   );
 }
 
-// ============ MAIN HOME PAGE ============
+/* ═══════════════ MAIN PAGE ═══════════════ */
 export default function Home() {
-  const navigate = useNavigate();
-  const [query, setQuery] = useState("");
-  const [showSindbad, setShowSindbad] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
+  const nav = useNavigate();
+  const [q, setQ] = useState("");
+  const [showBot, setShowBot] = useState(false);
+  const [foc, setFoc] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) navigate(`/search?q=${encodeURIComponent(query)}`);
+    if (q.trim()) nav(`/search?q=${encodeURIComponent(q)}`);
   };
 
   return (
-    <div
-      className="min-h-screen relative overflow-hidden flex flex-col"
-      dir="rtl"
-    >
-      <ParticlesBackground />
+    <div className="min-h-screen relative overflow-hidden flex flex-col bg-[#fafafa]" dir="rtl">
+      <ParticlesBg />
 
-      {/* Soft gradient overlay */}
+      {/* gold glow */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
           zIndex: 0,
           background:
-            "radial-gradient(ellipse 80% 60% at 50% 30%, rgba(212,175,55,0.06) 0%, transparent 70%)",
+            "radial-gradient(ellipse 70% 50% at 50% 35%, rgba(212,175,55,0.07) 0%, transparent 70%)",
         }}
       />
 
-      {/* Navbar */}
+      {/* ─── Navbar ─── */}
       <nav
         className="relative flex items-center justify-between px-8 py-5"
         style={{ zIndex: 10 }}
       >
-        <div className="flex items-center gap-2">
-          <img src="/sindbad-icon.png" alt="" className="w-7 h-7" />
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <img
+            src="/sindbad-icon.png"
+            className="w-7 h-7 group-hover:scale-110 transition-transform"
+            alt=""
+          />
           <span className="font-bold text-gray-700 text-sm tracking-wide">
             يورو عرب ماركت
           </span>
-        </div>
+        </Link>
         <div className="flex items-center gap-6 text-sm">
           <Link
             to="/stores"
@@ -268,74 +274,71 @@ export default function Home() {
           >
             المتاجر
           </Link>
-          <Link
-            to="#"
-            onClick={(e) => {
-              e.preventDefault();
-              setShowSindbad(true);
-            }}
-            className="text-amber-600 font-medium hover:text-amber-700 transition-colors flex items-center gap-1"
+          <button
+            onClick={() => setShowBot(true)}
+            className="text-amber-600 font-semibold hover:text-amber-700 transition-colors flex items-center gap-1"
           >
             <Sparkles className="h-3.5 w-3.5" />
             سندباد
-          </Link>
-          <Link
-            to="/admin"
-            className="text-gray-300 hover:text-gray-500 transition-colors text-xs"
+          </button>
+          <a
+            href="mailto:info@euroarabmarket.com"
+            className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            إدارة
-          </Link>
+            تواصل
+          </a>
         </div>
       </nav>
 
-      {/* Main Content */}
+      {/* ─── Center Content ─── */}
       <main
-        className="flex-1 flex flex-col items-center justify-center px-4 -mt-16"
+        className="flex-1 flex flex-col items-center justify-center px-4 -mt-12"
         style={{ zIndex: 10 }}
       >
-        {/* Sindbad Lamp */}
-        <div className="mb-6 animate-fade-in">
+        {/* Lamp Image - BIG */}
+        <div className="mb-2 animate-fade-in">
           <img
             src="/sindbad-icon.png"
             alt="سندباد"
-            className="w-28 h-28 md:w-36 md:h-36 drop-shadow-2xl"
+            className="w-36 h-36 md:w-44 md:h-44 drop-shadow-2xl"
             style={{
-              filter: "drop-shadow(0 8px 32px rgba(212,175,55,0.3))",
+              filter:
+                "drop-shadow(0 10px 40px rgba(212,175,55,0.35)) drop-shadow(0 0 80px rgba(212,175,55,0.15))",
             }}
           />
         </div>
 
         {/* Title */}
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2 tracking-tight text-center">
+        <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-1 tracking-tight text-center">
           يورو عرب ماركت
         </h1>
         <p className="text-gray-400 text-base md:text-lg mb-10 text-center">
           محرك البحث للعالم العربي في أوروبا
         </p>
 
-        {/* Search Box */}
-        <form onSubmit={handleSearch} className="w-full max-w-xl mb-4">
+        {/* Search Bar — integrated with lamp */}
+        <form onSubmit={onSearch} className="w-full max-w-xl mb-5">
           <div
-            className={`relative flex items-center bg-white rounded-full shadow-lg transition-all duration-300 border ${
-              isFocused
+            className={`relative flex items-center bg-white rounded-2xl shadow-lg transition-all duration-300 border-2 ${
+              foc
                 ? "border-amber-400 shadow-xl shadow-amber-500/20"
-                : "border-gray-200"
+                : "border-gray-200 hover:border-gray-300"
             }`}
           >
             <Search className="h-5 w-5 text-gray-400 mr-5 shrink-0" />
             <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onFocus={() => setFoc(true)}
+              onBlur={() => setFoc(false)}
               placeholder="ابحث عن مطاعم، متاجر، خدمات عربية..."
-              className="border-0 bg-transparent focus-visible:ring-0 text-right text-base py-6"
+              className="border-0 bg-transparent focus-visible:ring-0 text-right text-base py-7"
               dir="rtl"
             />
             <button
               type="button"
-              onClick={() => setShowSindbad(true)}
-              className="ml-2 p-2.5 rounded-full hover:bg-amber-50 text-amber-500 transition-colors shrink-0"
+              onClick={() => setShowBot(true)}
+              className="ml-2 p-3 rounded-xl hover:bg-amber-50 text-amber-500 transition-colors shrink-0"
               title="اسأل سندباد"
             >
               <Sparkles className="h-5 w-5" />
@@ -346,14 +349,14 @@ export default function Home() {
           <div className="flex items-center justify-center gap-3 mt-5">
             <Button
               type="submit"
-              className="bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-black font-medium rounded-full px-8 shadow-lg shadow-amber-500/30"
+              className="bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-black font-bold rounded-full px-10 shadow-lg shadow-amber-500/25"
             >
               بحث
             </Button>
             <Button
               type="button"
               variant="outline"
-              onClick={() => setShowSindbad(true)}
+              onClick={() => setShowBot(true)}
               className="rounded-full px-8 border-gray-300 text-gray-600 hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50/50"
             >
               <Sparkles className="h-4 w-4 ml-2" />
@@ -362,41 +365,41 @@ export default function Home() {
           </div>
         </form>
 
-        {/* Subtle hint */}
-        <p className="text-gray-300 text-xs mt-8">
-          جرب: مطعم حلال في باريس، جزار في برلين، سوبرماركت في لندن...
+        {/* Hint */}
+        <p className="text-gray-300 text-xs mt-6">
+          جرب: مطعم حلال في باريس — جزار في برلين — سوبرماركت في لندن
         </p>
       </main>
 
-      {/* Footer */}
-      <footer className="relative py-6 text-center" style={{ zIndex: 10 }}>
+      {/* ─── Footer ─── */}
+      <footer className="relative py-5 text-center" style={{ zIndex: 10 }}>
         <div className="flex items-center justify-center gap-6 text-xs text-gray-300">
-          <Link to="/add-store" className="hover:text-amber-500 transition-colors">
+          <Link to="/add-store" className="hover:text-amber-500 transition">
             أضف متجرك
           </Link>
           <span className="text-gray-200">|</span>
-          <Link to="/stores" className="hover:text-amber-500 transition-colors">
+          <Link to="/stores" className="hover:text-amber-500 transition">
             المتاجر
           </Link>
           <span className="text-gray-200">|</span>
-          <a href="mailto:info@euroarabmarket.com" className="hover:text-amber-500 transition-colors">
-            تواصل معنا
-          </a>
+          <Link to="/terms" className="hover:text-amber-500 transition">
+            الشروط والخصوصية
+          </Link>
+          <span className="text-gray-200">|</span>
+          <span>يورو عرب ماركت © 2026</span>
         </div>
       </footer>
 
-      {/* Sindbad Modal */}
-      <SindbadChat isOpen={showSindbad} onClose={() => setShowSindbad(false)} />
+      {/* ─── Sindbad Modal ─── */}
+      <SindbadChat open={showBot} close={() => setShowBot(false)} />
 
-      {/* CSS Animation */}
+      {/* Animation CSS */}
       <style>{`
         @keyframes fade-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(15px) scale(0.95); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .animate-fade-in {
-          animation: fade-in 0.8s ease-out;
-        }
+        .animate-fade-in { animation: fade-in 1s cubic-bezier(0.19,1,0.22,1); }
       `}</style>
     </div>
   );

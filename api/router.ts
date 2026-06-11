@@ -10,6 +10,7 @@ import { claimRouter } from "./claim-router";
 import { seedRouter } from "./seed-router";
 import { migrateRouter } from "./migrate-router";
 import { reviewsRouter } from "./reviews-router";
+import { featuredRouter, analyticsRouter } from "./featured-router";
 import { createRouter, publicQuery } from "./middleware";
 
 export const appRouter = createRouter({
@@ -26,6 +27,8 @@ export const appRouter = createRouter({
   seed: seedRouter,
   migrate: migrateRouter,
   reviews: reviewsRouter,
+  featured: featuredRouter,
+  analytics: analyticsRouter,
 });
 
 export type AppRouter = typeof appRouter;

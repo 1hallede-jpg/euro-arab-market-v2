@@ -11,11 +11,11 @@ var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc8) => {
+var __copyProps = (to, from, except, desc9) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
       if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc8 = __getOwnPropDesc(from, key)) || desc8.enumerable });
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc9 = __getOwnPropDesc(from, key)) || desc9.enumerable });
   }
   return to;
 };
@@ -4981,7 +4981,37 @@ var migrateRouter = createRouter({
       return { success: false, error: error?.message, results };
     }
   }),
-  // Original fixUserId (keep for compatibility)
+  // Create search_analytics table
+  createAnalytics: publicQuery.mutation(async () => {
+    const client = postgres2(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1
+    });
+    try {
+      await client.unsafe(`
+        CREATE TABLE IF NOT EXISTS search_analytics (
+          id SERIAL PRIMARY KEY,
+          query TEXT NOT NULL,
+          city TEXT,
+          category TEXT,
+          result_count INTEGER DEFAULT 0,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      await client.unsafe(`
+        CREATE INDEX IF NOT EXISTS idx_sa_query ON search_analytics(query)
+      `);
+      await client.unsafe(`
+        CREATE INDEX IF NOT EXISTS idx_sa_created ON search_analytics(created_at DESC)
+      `);
+      await client.end();
+      return { success: true, message: "search_analytics table created" };
+    } catch (error) {
+      await client.end();
+      return { success: false, message: error?.message };
+    }
+  }),
+  // Original fixUserId
   fixUserId: publicQuery.mutation(async () => {
     const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
@@ -5068,6 +5098,171 @@ var reviewsRouter = createRouter({
   })
 });
 
+// api/featured-router.ts
+import { z as z10 } from "zod";
+import { eq as eq9, desc as desc8, sql as sql8, and as and8, like as like5, or as or5 } from "drizzle-orm";
+var featuredRouter = createRouter({
+  /**
+   * Search merchants — FEATURED first, then organic, then fallback message
+   * Public endpoint — no auth required
+   */
+  search: publicQuery.input(
+    z10.object({
+      q: z10.string().min(1),
+      city: z10.string().optional(),
+      country: z10.string().optional(),
+      category: z10.string().optional(),
+      limit: z10.number().min(1).max(50).default(20)
+    })
+  ).query(async ({ input }) => {
+    const db = getDb();
+    const term = `%${input.q}%`;
+    const featured = await db.select().from(merchants).where(
+      and8(
+        eq9(merchants.isFeatured, true),
+        eq9(merchants.status, "active"),
+        or5(
+          like5(merchants.businessNameAr, term),
+          like5(merchants.businessName, term),
+          like5(merchants.category, term),
+          like5(merchants.city, term),
+          like5(merchants.country, term),
+          like5(merchants.tags, term),
+          like5(merchants.description, term),
+          like5(merchants.descriptionAr, term)
+        )
+      )
+    ).orderBy(desc8(merchants.rating)).limit(input.limit);
+    const regular = await db.select().from(merchants).where(
+      and8(
+        eq9(merchants.isFeatured, false),
+        eq9(merchants.status, "active"),
+        or5(
+          like5(merchants.businessNameAr, term),
+          like5(merchants.businessName, term),
+          like5(merchants.category, term),
+          like5(merchants.city, term),
+          like5(merchants.country, term),
+          like5(merchants.tags, term),
+          like5(merchants.description, term),
+          like5(merchants.descriptionAr, term)
+        )
+      )
+    ).orderBy(desc8(merchants.rating)).limit(input.limit);
+    try {
+      await db.execute(
+        sql8`INSERT INTO search_analytics (query, city, category, result_count, created_at) 
+              VALUES (${input.q}, ${input.city || null}, ${input.category || null}, ${featured.length + regular.length}, NOW())
+              ON CONFLICT DO NOTHING`
+      );
+    } catch {
+    }
+    return {
+      featured,
+      organic: regular,
+      total: featured.length + regular.length,
+      hasResults: featured.length + regular.length > 0
+    };
+  }),
+  /**
+   * Get featured merchants for a city
+   */
+  byCity: publicQuery.input(z10.object({ city: z10.string(), limit: z10.number().default(10) })).query(async ({ input }) => {
+    const db = getDb();
+    const featured = await db.select().from(merchants).where(
+      and8(
+        eq9(merchants.city, input.city),
+        eq9(merchants.isFeatured, true),
+        eq9(merchants.status, "active")
+      )
+    ).orderBy(desc8(merchants.rating)).limit(input.limit);
+    const organic = await db.select().from(merchants).where(
+      and8(
+        eq9(merchants.city, input.city),
+        eq9(merchants.isFeatured, false),
+        eq9(merchants.status, "active")
+      )
+    ).orderBy(desc8(merchants.rating)).limit(input.limit);
+    return { featured, organic };
+  }),
+  /**
+   * Toggle featured status (admin only)
+   */
+  toggle: publicQuery.input(z10.object({ id: z10.number(), featured: z10.boolean() })).mutation(async ({ input }) => {
+    const db = getDb();
+    await db.update(merchants).set({ isFeatured: input.featured }).where(eq9(merchants.id, input.id));
+    return { success: true };
+  })
+});
+var analyticsRouter = createRouter({
+  /**
+   * Get recent search queries (admin secret)
+   */
+  recentSearches: publicQuery.query(async () => {
+    const db = getDb();
+    try {
+      const rows = await db.execute(
+        sql8`SELECT query, city, result_count, created_at 
+            FROM search_analytics 
+            ORDER BY created_at DESC 
+            LIMIT 100`
+      );
+      return rows || [];
+    } catch {
+      return [];
+    }
+  }),
+  /**
+   * Get popular searches (admin secret)
+   */
+  popularSearches: publicQuery.query(async () => {
+    const db = getDb();
+    try {
+      const rows = await db.execute(
+        sql8`SELECT query, COUNT(*) as count 
+            FROM search_analytics 
+            GROUP BY query 
+            ORDER BY count DESC 
+            LIMIT 20`
+      );
+      return rows || [];
+    } catch {
+      return [];
+    }
+  }),
+  /**
+   * Get stats (admin secret)
+   */
+  stats: publicQuery.query(async () => {
+    const db = getDb();
+    try {
+      const [totalSearches, totalMerchants, featuredCount, citiesCount] = await Promise.all([
+        db.execute(
+          sql8`SELECT COUNT(*) as count FROM search_analytics`
+        ),
+        db.select({ count: sql8`count(*)` }).from(merchants),
+        db.select({ count: sql8`count(*)` }).from(merchants).where(eq9(merchants.isFeatured, true)),
+        db.execute(
+          sql8`SELECT COUNT(DISTINCT city) as count FROM merchants WHERE status = 'active'`
+        )
+      ]);
+      return {
+        totalSearches: totalSearches?.[0]?.count || 0,
+        totalMerchants: totalMerchants[0]?.count || 0,
+        featuredCount: featuredCount[0]?.count || 0,
+        citiesCount: citiesCount?.[0]?.count || 0
+      };
+    } catch {
+      return {
+        totalSearches: 0,
+        totalMerchants: 0,
+        featuredCount: 0,
+        citiesCount: 0
+      };
+    }
+  })
+});
+
 // api/router.ts
 var appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -5082,7 +5277,9 @@ var appRouter = createRouter({
   claim: claimRouter,
   seed: seedRouter,
   migrate: migrateRouter,
-  reviews: reviewsRouter
+  reviews: reviewsRouter,
+  featured: featuredRouter,
+  analytics: analyticsRouter
 });
 
 // api/kimi/auth.ts
@@ -5155,9 +5352,9 @@ var users2 = {
 };
 
 // api/queries/users.ts
-import { eq as eq9 } from "drizzle-orm";
+import { eq as eq10 } from "drizzle-orm";
 async function findUserByUnionId(unionId) {
-  const rows = await getDb().select().from(users).where(eq9(users.unionId, unionId)).limit(1);
+  const rows = await getDb().select().from(users).where(eq10(users.unionId, unionId)).limit(1);
   return rows.at(0);
 }
 async function upsertUser(data) {

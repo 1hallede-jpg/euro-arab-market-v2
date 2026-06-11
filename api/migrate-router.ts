@@ -31,7 +31,7 @@ export const migrateRouter = createRouter({
       max: 1,
     });
     const results: string[] = [];
-    
+
     const addColumn = async (table: string, column: string, type: string) => {
       try {
         await client.unsafe(`ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS "${column}" ${type}`);
@@ -42,7 +42,6 @@ export const migrateRouter = createRouter({
     };
 
     try {
-      // Core columns for merchants
       await addColumn("merchants", "userId", "bigint");
       await addColumn("merchants", "businessName", "varchar(255)");
       await addColumn("merchants", "businessNameAr", "varchar(255)");
@@ -102,7 +101,40 @@ export const migrateRouter = createRouter({
     }
   }),
 
-  // Original fixUserId (keep for compatibility)
+  // Create search_analytics table
+  createAnalytics: publicQuery.mutation(async () => {
+    const client = postgres(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1,
+    });
+    try {
+      await client.unsafe(`
+        CREATE TABLE IF NOT EXISTS search_analytics (
+          id SERIAL PRIMARY KEY,
+          query TEXT NOT NULL,
+          city TEXT,
+          category TEXT,
+          result_count INTEGER DEFAULT 0,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+
+      await client.unsafe(`
+        CREATE INDEX IF NOT EXISTS idx_sa_query ON search_analytics(query)
+      `);
+      await client.unsafe(`
+        CREATE INDEX IF NOT EXISTS idx_sa_created ON search_analytics(created_at DESC)
+      `);
+
+      await client.end();
+      return { success: true, message: "search_analytics table created" };
+    } catch (error: any) {
+      await client.end();
+      return { success: false, message: error?.message };
+    }
+  }),
+
+  // Original fixUserId
   fixUserId: publicQuery.mutation(async () => {
     const client = postgres(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
