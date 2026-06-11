@@ -240,9 +240,9 @@ export const merchantRouter = createRouter({
         city: z.string().min(1),
         address: z.string().optional(),
         phone: z.string().optional(),
-        whatsapp: z.string().optional(),
-        email: z.string().email().optional(),
-        contactName: z.string().optional(),
+        whatsapp: z.string().optional().nullable(),
+        email: z.string().email().optional().nullable(),
+        contactName: z.string().optional().nullable(),
       })
     )
     .mutation(async ({ input }) => {
