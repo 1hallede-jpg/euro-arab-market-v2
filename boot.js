@@ -29659,7 +29659,7 @@ __export(schema_exports, {
   emergencyTypeEnum: () => emergencyTypeEnum,
   favorites: () => favorites,
   jobs: () => jobs,
-  merchants: () => merchants2,
+  merchants: () => merchants,
   reviews: () => reviews,
   searchLogs: () => searchLogs,
   subscriptions: () => subscriptions,
@@ -29759,7 +29759,7 @@ var users = pgTable("users", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => /* @__PURE__ */ new Date()),
   lastSignInAt: timestamp("lastSignInAt").defaultNow().notNull()
 });
-var merchants2 = pgTable("merchants", {
+var merchants = pgTable("merchants", {
   // Basic Info
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id),
@@ -29862,7 +29862,7 @@ var jobs = pgTable("jobs", {
 var reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id),
-  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants2.id),
+  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants.id),
   jobId: bigint4("jobId", { mode: "number" }).references(() => jobs.id),
   rating: integer2("rating").notNull(),
   comment: text("comment"),
@@ -29872,7 +29872,7 @@ var reviews = pgTable("reviews", {
 var subscriptions = pgTable("subscriptions", {
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id).notNull(),
-  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants2.id).notNull(),
+  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants.id).notNull(),
   plan: subscriptionPlanEnum("plan").default("basic").notNull(),
   status: subscriptionStatusEnum("status").default("trial").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
@@ -29891,7 +29891,7 @@ var subscriptions = pgTable("subscriptions", {
 var claims = pgTable("claims", {
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id).notNull(),
-  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants2.id).notNull(),
+  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants.id).notNull(),
   status: claimStatusEnum("status").default("pending").notNull(),
   fullName: varchar("fullName", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
@@ -29955,7 +29955,7 @@ var emergencyContacts = pgTable("emergency_contacts", {
 var favorites = pgTable("favorites", {
   id: serial("id").primaryKey(),
   userId: bigint4("userId", { mode: "number" }).references(() => users.id).notNull(),
-  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants2.id),
+  merchantId: bigint4("merchantId", { mode: "number" }).references(() => merchants.id),
   jobId: bigint4("jobId", { mode: "number" }).references(() => jobs.id),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
@@ -29972,15 +29972,15 @@ __export(relations_exports, {
   usersRelations: () => usersRelations
 });
 var usersRelations = relations(users, ({ many }) => ({
-  merchants: many(merchants2),
+  merchants: many(merchants),
   jobs: many(jobs),
   reviews: many(reviews),
   chatMessages: many(chatMessages),
   searchLogs: many(searchLogs),
   favorites: many(favorites)
 }));
-var merchantsRelations = relations(merchants2, ({ one, many }) => ({
-  user: one(users, { fields: [merchants2.userId], references: [users.id] }),
+var merchantsRelations = relations(merchants, ({ one, many }) => ({
+  user: one(users, { fields: [merchants.userId], references: [users.id] }),
   reviews: many(reviews),
   favorites: many(favorites)
 }));
@@ -29990,7 +29990,7 @@ var jobsRelations = relations(jobs, ({ one, many }) => ({
 }));
 var reviewsRelations = relations(reviews, ({ one }) => ({
   user: one(users, { fields: [reviews.userId], references: [users.id] }),
-  merchant: one(merchants2, { fields: [reviews.merchantId], references: [merchants2.id] })
+  merchant: one(merchants, { fields: [reviews.merchantId], references: [merchants.id] })
 }));
 var chatMessagesRelations = relations(chatMessages, ({ one }) => ({
   user: one(users, { fields: [chatMessages.userId], references: [users.id] })
@@ -30000,7 +30000,7 @@ var searchLogsRelations = relations(searchLogs, ({ one }) => ({
 }));
 var favoritesRelations = relations(favorites, ({ one }) => ({
   user: one(users, { fields: [favorites.userId], references: [users.id] }),
-  merchant: one(merchants2, { fields: [favorites.merchantId], references: [merchants2.id] }),
+  merchant: one(merchants, { fields: [favorites.merchantId], references: [merchants.id] }),
   job: one(jobs, { fields: [favorites.jobId], references: [jobs.id] })
 }));
 
@@ -30051,38 +30051,38 @@ var merchantRouter = createRouter({
   ).query(async ({ input }) => {
     try {
       const db = getDb();
-      let query = db.select().from(merchants2);
+      let query = db.select().from(merchants);
       const conditions = [];
       const targetStatus = input?.status || "active";
-      conditions.push(sql`${merchants2.status} = ${targetStatus}`);
+      conditions.push(sql`${merchants.status} = ${targetStatus}`);
       if (input?.category) {
-        conditions.push(sql`${merchants2.category} = ${input.category}`);
+        conditions.push(sql`${merchants.category} = ${input.category}`);
       }
       if (input?.country) {
-        conditions.push(sql`${merchants2.country} = ${input.country}`);
+        conditions.push(sql`${merchants.country} = ${input.country}`);
       }
       if (input?.city) {
-        conditions.push(sql`${merchants2.city} = ${input.city}`);
+        conditions.push(sql`${merchants.city} = ${input.city}`);
       }
       if (input?.featured) {
-        conditions.push(sql`${merchants2.isFeatured} = true`);
+        conditions.push(sql`${merchants.isFeatured} = true`);
       }
       if (input?.search) {
         const term = `%${input.search}%`;
         conditions.push(sql`(
-            ${merchants2.businessName} ILIKE ${term} OR
-            ${merchants2.businessNameAr} ILIKE ${term} OR
-            ${merchants2.description} ILIKE ${term} OR
-            ${merchants2.descriptionAr} ILIKE ${term} OR
-            ${merchants2.tags} ILIKE ${term} OR
-            ${merchants2.city} ILIKE ${term} OR
-            ${merchants2.country} ILIKE ${term} OR
-            ${merchants2.address} ILIKE ${term}
+            ${merchants.businessName} ILIKE ${term} OR
+            ${merchants.businessNameAr} ILIKE ${term} OR
+            ${merchants.description} ILIKE ${term} OR
+            ${merchants.descriptionAr} ILIKE ${term} OR
+            ${merchants.tags} ILIKE ${term} OR
+            ${merchants.city} ILIKE ${term} OR
+            ${merchants.country} ILIKE ${term} OR
+            ${merchants.address} ILIKE ${term}
           )`);
       }
       const where = conditions.length > 1 ? and(...conditions) : conditions[0];
-      const items = await query.where(where).limit(input?.limit || 20).offset(input?.offset || 0).orderBy(desc(merchants2.id));
-      const countResult = await db.select({ count: sql`count(*)` }).from(merchants2).where(where);
+      const items = await query.where(where).limit(input?.limit || 20).offset(input?.offset || 0).orderBy(desc(merchants.id));
+      const countResult = await db.select({ count: sql`count(*)` }).from(merchants).where(where);
       return {
         items,
         total: countResult[0]?.count || 0
@@ -30095,7 +30095,7 @@ var merchantRouter = createRouter({
   // Get single merchant by ID
   getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
     const db = getDb();
-    const merchant = await db.select().from(merchants2).where(eq(merchants2.id, input.id)).limit(1);
+    const merchant = await db.select().from(merchants).where(eq(merchants.id, input.id)).limit(1);
     if (!merchant[0]) {
       throw new Error("Merchant not found");
     }
@@ -30109,12 +30109,12 @@ var merchantRouter = createRouter({
   getBySlug: publicQuery.input(external_exports.object({ slug: external_exports.string() })).query(async ({ input }) => {
     try {
       const db = getDb();
-      let result = await db.select().from(merchants2).where(eq(merchants2.slug, input.slug)).limit(1);
+      let result = await db.select().from(merchants).where(eq(merchants.slug, input.slug)).limit(1);
       if (!result[0] && /^\d+$/.test(input.slug)) {
-        result = await db.select().from(merchants2).where(eq(merchants2.id, parseInt(input.slug))).limit(1);
+        result = await db.select().from(merchants).where(eq(merchants.id, parseInt(input.slug))).limit(1);
       }
       if (!result[0]) {
-        result = await db.select().from(merchants2).where(sql`${merchants2.slug} ILIKE ${"%" + input.slug + "%"}`).limit(1);
+        result = await db.select().from(merchants).where(sql`${merchants.slug} ILIKE ${"%" + input.slug + "%"}`).limit(1);
       }
       if (!result[0]) {
         return null;
@@ -30129,7 +30129,7 @@ var merchantRouter = createRouter({
   getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
     try {
       const db = getDb();
-      const result = await db.select().from(merchants2).where(eq(merchants2.id, input.id)).limit(1);
+      const result = await db.select().from(merchants).where(eq(merchants.id, input.id)).limit(1);
       return result[0] || null;
     } catch (error48) {
       console.error("[getById] Error:", error48?.message);
@@ -30174,19 +30174,19 @@ var merchantRouter = createRouter({
   ).mutation(async ({ input }) => {
     const db = getDb();
     const slug = input.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
-    const result = await db.insert(merchants2).values({
+    const result = await db.insert(merchants).values({
       ...input,
       slug,
       status: "pending",
       createdAt: /* @__PURE__ */ new Date(),
       updatedAt: /* @__PURE__ */ new Date()
-    }).returning({ id: merchants2.id });
+    }).returning({ id: merchants.id });
     return { id: result[0].id, slug };
   }),
   // Get featured merchants
   featured: publicQuery.query(async () => {
     const db = getDb();
-    return db.select().from(merchants2).where(and(eq(merchants2.status, "active"), eq(merchants2.isVerified, true))).orderBy(desc(merchants2.rating)).limit(6);
+    return db.select().from(merchants).where(and(eq(merchants.status, "active"), eq(merchants.isVerified, true))).orderBy(desc(merchants.rating)).limit(6);
   }),
   // Get categories with counts
   categories: publicQuery.query(async () => {
@@ -30213,7 +30213,7 @@ var merchantRouter = createRouter({
       { id: 19, name: "\u0623\u062E\u0631\u0649", nameEn: "other", icon: "Store", color: "#6b7280", count: 0 }
     ];
     for (const cat of categories) {
-      const result = await db.select({ count: sql`count(*)` }).from(merchants2).where(and(eq(merchants2.category, cat.nameEn), eq(merchants2.status, "active")));
+      const result = await db.select({ count: sql`count(*)` }).from(merchants).where(and(eq(merchants.category, cat.nameEn), eq(merchants.status, "active")));
       cat.count = result[0]?.count || 0;
     }
     return categories;
@@ -30222,10 +30222,10 @@ var merchantRouter = createRouter({
   cities: publicQuery.query(async () => {
     const db = getDb();
     const result = await db.select({
-      city: merchants2.city,
-      country: merchants2.country,
+      city: merchants.city,
+      country: merchants.country,
       count: sql`count(*)`
-    }).from(merchants2).where(eq(merchants2.status, "active")).groupBy(merchants2.city, merchants2.country).orderBy(desc(sql`count(*)`));
+    }).from(merchants).where(eq(merchants.status, "active")).groupBy(merchants.city, merchants.country).orderBy(desc(sql`count(*)`));
     return result;
   }),
   // Submit store request (no auth required - public)
@@ -30247,7 +30247,7 @@ var merchantRouter = createRouter({
     const db = getDb();
     const baseSlug = (input.businessName || input.businessNameAr).toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").replace(/(^-|-$)/g, "");
     const slug = `${baseSlug}-${Date.now()}-${Math.floor(Math.random() * 1e3)}`;
-    await db.insert(merchants2).values({
+    await db.insert(merchants).values({
       businessName: input.businessName || input.businessNameAr,
       businessNameAr: input.businessNameAr,
       shortDescription: input.description.slice(0, 160),
@@ -30443,26 +30443,26 @@ var searchRouter = createRouter({
     if (input.type === "all" || input.type === "merchants") {
       const merchantConditions = [
         or(
-          like(merchants2.businessName, searchTerm),
-          like(merchants2.businessNameAr, searchTerm),
-          like(merchants2.description, searchTerm),
-          like(merchants2.descriptionAr, searchTerm),
-          like(merchants2.tags, searchTerm),
-          like(merchants2.city, searchTerm),
-          like(merchants2.country, searchTerm)
+          like(merchants.businessName, searchTerm),
+          like(merchants.businessNameAr, searchTerm),
+          like(merchants.description, searchTerm),
+          like(merchants.descriptionAr, searchTerm),
+          like(merchants.tags, searchTerm),
+          like(merchants.city, searchTerm),
+          like(merchants.country, searchTerm)
         ),
-        eq(merchants2.status, "active")
+        eq(merchants.status, "active")
       ];
       if (input.country) {
-        merchantConditions.push(eq(merchants2.country, input.country));
+        merchantConditions.push(eq(merchants.country, input.country));
       }
       if (input.city) {
-        merchantConditions.push(eq(merchants2.city, input.city));
+        merchantConditions.push(eq(merchants.city, input.city));
       }
       if (input.category) {
-        merchantConditions.push(eq(merchants2.category, input.category));
+        merchantConditions.push(eq(merchants.category, input.category));
       }
-      results.merchants = await db.select().from(merchants2).where(and(...merchantConditions)).limit(input.limit).orderBy(desc(merchants2.rating));
+      results.merchants = await db.select().from(merchants).where(and(...merchantConditions)).limit(input.limit).orderBy(desc(merchants.rating));
     }
     if (input.type === "all" || input.type === "jobs") {
       const jobConditions = [
@@ -30532,18 +30532,18 @@ var searchRouter = createRouter({
     const searchTerm = `%${input.query}%`;
     const [merchantResults, jobResults] = await Promise.all([
       db.select({
-        id: merchants2.id,
-        name: merchants2.businessName,
+        id: merchants.id,
+        name: merchants.businessName,
         type: sql`'merchant'`,
-        category: merchants2.category,
-        city: merchants2.city
-      }).from(merchants2).where(
+        category: merchants.category,
+        city: merchants.city
+      }).from(merchants).where(
         and(
           or(
-            like(merchants2.businessName, searchTerm),
-            like(merchants2.businessNameAr, searchTerm)
+            like(merchants.businessName, searchTerm),
+            like(merchants.businessNameAr, searchTerm)
           ),
-          eq(merchants2.status, "active")
+          eq(merchants.status, "active")
         )
       ).limit(5),
       db.select({
@@ -30806,10 +30806,10 @@ var adminRouter = createRouter({
       todaySearches
     ] = await Promise.all([
       db.select({ count: sql`count(*)` }).from(users),
-      db.select({ count: sql`count(*)` }).from(merchants2),
+      db.select({ count: sql`count(*)` }).from(merchants),
       db.select({ count: sql`count(*)` }).from(jobs),
       db.select({ count: sql`count(*)` }).from(reviews),
-      db.select({ count: sql`count(*)` }).from(merchants2).where(eq(merchants2.status, "pending")),
+      db.select({ count: sql`count(*)` }).from(merchants).where(eq(merchants.status, "pending")),
       db.select({ count: sql`count(*)` }).from(jobs).where(eq(jobs.status, "open")),
       db.select({ count: sql`count(*)` }).from(searchLogs).where(sql`DATE(${searchLogs.createdAt}) = DATE(NOW())`)
     ]);
@@ -30835,22 +30835,22 @@ var adminRouter = createRouter({
     const db = getDb();
     const conditions = [];
     if (input?.status) {
-      conditions.push(eq(merchants2.status, input.status));
+      conditions.push(eq(merchants.status, input.status));
     }
     if (input?.search) {
       const term = `%${input.search}%`;
       conditions.push(
         or(
-          like(merchants2.businessName, term),
-          like(merchants2.businessNameAr, term),
-          like(merchants2.email, term)
+          like(merchants.businessName, term),
+          like(merchants.businessNameAr, term),
+          like(merchants.email, term)
         )
       );
     }
     const where = conditions.length > 0 ? and(...conditions) : void 0;
     const [items, totalResult] = await Promise.all([
-      db.select().from(merchants2).where(where).limit(input?.limit || 50).offset(input?.offset || 0).orderBy(desc(merchants2.createdAt)),
-      db.select({ count: sql`count(*)` }).from(merchants2).where(where)
+      db.select().from(merchants).where(where).limit(input?.limit || 50).offset(input?.offset || 0).orderBy(desc(merchants.createdAt)),
+      db.select({ count: sql`count(*)` }).from(merchants).where(where)
     ]);
     return { items, total: totalResult[0]?.count || 0 };
   }),
@@ -30862,13 +30862,13 @@ var adminRouter = createRouter({
     })
   ).mutation(async ({ input }) => {
     const db = getDb();
-    await db.update(merchants2).set({ status: input.status, updatedAt: /* @__PURE__ */ new Date() }).where(eq(merchants2.id, input.id));
+    await db.update(merchants).set({ status: input.status, updatedAt: /* @__PURE__ */ new Date() }).where(eq(merchants.id, input.id));
     return { success: true };
   }),
   // Delete merchant
   deleteMerchant: adminQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
     const db = getDb();
-    await db.delete(merchants2).where(eq(merchants2.id, input.id));
+    await db.delete(merchants).where(eq(merchants.id, input.id));
     return { success: true };
   }),
   // List all jobs (admin view)
@@ -30961,7 +30961,7 @@ var adminRouter = createRouter({
   recentActivity: adminQuery.query(async () => {
     const db = getDb();
     const [recentMerchants, recentJobs, recentUsers, recentReviews] = await Promise.all([
-      db.select().from(merchants2).orderBy(desc(merchants2.createdAt)).limit(5),
+      db.select().from(merchants).orderBy(desc(merchants.createdAt)).limit(5),
       db.select().from(jobs).orderBy(desc(jobs.createdAt)).limit(5),
       db.select().from(users).orderBy(desc(users.createdAt)).limit(5),
       db.select().from(reviews).orderBy(desc(reviews.createdAt)).limit(5)
@@ -31017,7 +31017,7 @@ var adminRouter = createRouter({
   ).mutation(async ({ input }) => {
     const { id, ...data } = input;
     const db = getDb();
-    await db.update(merchants2).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where(eq(merchants2.id, id));
+    await db.update(merchants).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where(eq(merchants.id, id));
     return { success: true };
   }),
   // Get search analytics
@@ -32848,11 +32848,11 @@ var claimRouter = createRouter({
     }).where(eq(claims.id, input.id));
     const claim = await db.select().from(claims).where(eq(claims.id, input.id)).limit(1);
     if (claim[0]) {
-      await db.update(merchants2).set({
+      await db.update(merchants).set({
         status: "claimed",
         claimedBy: claim[0].userId,
         claimedAt: /* @__PURE__ */ new Date()
-      }).where(eq(merchants2.id, claim[0].merchantId));
+      }).where(eq(merchants.id, claim[0].merchantId));
     }
     return { success: true };
   }),
@@ -32945,7 +32945,7 @@ var merchantsData = [
 var seedRouter = createRouter({
   runSeed: publicQuery.mutation(async () => {
     const db = getDb();
-    const existingCount = await db.select({ count: sql`count(*)` }).from(merchants2);
+    const existingCount = await db.select({ count: sql`count(*)` }).from(merchants);
     const count2 = existingCount[0]?.count || 0;
     if (count2 >= 50) {
       return { success: true, message: "Already seeded!", count: count2, alreadySeeded: true };
@@ -32953,7 +32953,7 @@ var seedRouter = createRouter({
     let inserted = 0;
     for (const merchant of merchantsData) {
       try {
-        await db.insert(merchants2).values({
+        await db.insert(merchants).values({
           ...merchant,
           slug: merchant.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now() + "-" + Math.floor(Math.random() * 1e3),
           createdAt: /* @__PURE__ */ new Date(),
@@ -32968,7 +32968,7 @@ var seedRouter = createRouter({
   }),
   status: publicQuery.query(async () => {
     const db = getDb();
-    const result = await db.select({ count: sql`count(*)` }).from(merchants2);
+    const result = await db.select({ count: sql`count(*)` }).from(merchants);
     return { count: result[0]?.count || 0 };
   })
 });
@@ -33392,38 +33392,38 @@ var featuredRouter = createRouter({
   ).query(async ({ input }) => {
     const db = getDb();
     const term = `%${input.q}%`;
-    const featured = await db.select().from(merchants2).where(
+    const featured = await db.select().from(merchants).where(
       and(
-        eq(merchants2.isFeatured, true),
-        eq(merchants2.status, "active"),
+        eq(merchants.isFeatured, true),
+        eq(merchants.status, "active"),
         or(
-          like(merchants2.businessNameAr, term),
-          like(merchants2.businessName, term),
-          like(merchants2.category, term),
-          like(merchants2.city, term),
-          like(merchants2.country, term),
-          like(merchants2.tags, term),
-          like(merchants2.description, term),
-          like(merchants2.descriptionAr, term)
+          like(merchants.businessNameAr, term),
+          like(merchants.businessName, term),
+          like(merchants.category, term),
+          like(merchants.city, term),
+          like(merchants.country, term),
+          like(merchants.tags, term),
+          like(merchants.description, term),
+          like(merchants.descriptionAr, term)
         )
       )
-    ).orderBy(desc(merchants2.rating)).limit(input.limit);
-    const regular = await db.select().from(merchants2).where(
+    ).orderBy(desc(merchants.rating)).limit(input.limit);
+    const regular = await db.select().from(merchants).where(
       and(
-        eq(merchants2.isFeatured, false),
-        eq(merchants2.status, "active"),
+        eq(merchants.isFeatured, false),
+        eq(merchants.status, "active"),
         or(
-          like(merchants2.businessNameAr, term),
-          like(merchants2.businessName, term),
-          like(merchants2.category, term),
-          like(merchants2.city, term),
-          like(merchants2.country, term),
-          like(merchants2.tags, term),
-          like(merchants2.description, term),
-          like(merchants2.descriptionAr, term)
+          like(merchants.businessNameAr, term),
+          like(merchants.businessName, term),
+          like(merchants.category, term),
+          like(merchants.city, term),
+          like(merchants.country, term),
+          like(merchants.tags, term),
+          like(merchants.description, term),
+          like(merchants.descriptionAr, term)
         )
       )
-    ).orderBy(desc(merchants2.rating)).limit(input.limit);
+    ).orderBy(desc(merchants.rating)).limit(input.limit);
     try {
       await db.execute(
         sql`INSERT INTO search_analytics (query, city, category, result_count, created_at) 
@@ -33444,20 +33444,20 @@ var featuredRouter = createRouter({
    */
   byCity: publicQuery.input(external_exports.object({ city: external_exports.string(), limit: external_exports.number().default(10) })).query(async ({ input }) => {
     const db = getDb();
-    const featured = await db.select().from(merchants2).where(
+    const featured = await db.select().from(merchants).where(
       and(
-        eq(merchants2.city, input.city),
-        eq(merchants2.isFeatured, true),
-        eq(merchants2.status, "active")
+        eq(merchants.city, input.city),
+        eq(merchants.isFeatured, true),
+        eq(merchants.status, "active")
       )
-    ).orderBy(desc(merchants2.rating)).limit(input.limit);
-    const organic = await db.select().from(merchants2).where(
+    ).orderBy(desc(merchants.rating)).limit(input.limit);
+    const organic = await db.select().from(merchants).where(
       and(
-        eq(merchants2.city, input.city),
-        eq(merchants2.isFeatured, false),
-        eq(merchants2.status, "active")
+        eq(merchants.city, input.city),
+        eq(merchants.isFeatured, false),
+        eq(merchants.status, "active")
       )
-    ).orderBy(desc(merchants2.rating)).limit(input.limit);
+    ).orderBy(desc(merchants.rating)).limit(input.limit);
     return { featured, organic };
   }),
   /**
@@ -33465,7 +33465,7 @@ var featuredRouter = createRouter({
    */
   toggle: publicQuery.input(external_exports.object({ id: external_exports.number(), featured: external_exports.boolean() })).mutation(async ({ input }) => {
     const db = getDb();
-    await db.update(merchants2).set({ isFeatured: input.featured }).where(eq(merchants2.id, input.id));
+    await db.update(merchants).set({ isFeatured: input.featured }).where(eq(merchants.id, input.id));
     return { success: true };
   })
 });
@@ -33515,8 +33515,8 @@ var analyticsRouter = createRouter({
         db.execute(
           sql`SELECT COUNT(*) as count FROM search_analytics`
         ),
-        db.select({ count: sql`count(*)` }).from(merchants2),
-        db.select({ count: sql`count(*)` }).from(merchants2).where(eq(merchants2.isFeatured, true)),
+        db.select({ count: sql`count(*)` }).from(merchants),
+        db.select({ count: sql`count(*)` }).from(merchants).where(eq(merchants.isFeatured, true)),
         db.execute(
           sql`SELECT COUNT(DISTINCT city) as count FROM merchants WHERE status = 'active'`
         )
