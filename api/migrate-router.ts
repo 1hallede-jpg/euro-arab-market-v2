@@ -293,19 +293,29 @@ export const migrateRouter = createRouter({
     }
   }),
 
-  // Batch insert merchants using postgres client
+  // Batch insert merchants using postgres client - FIXED: uses correct camelCase column names
   batchInsert: publicQuery
     .input(z.object({
       merchants: z.array(z.object({
         businessNameAr: z.string(),
         businessName: z.string().optional(),
         category: z.string(),
-        description: z.string(),
+        description: z.string().optional(),
+        descriptionAr: z.string().optional(),
+        shortDescription: z.string().optional(),
         country: z.string(),
         city: z.string(),
         address: z.string().optional(),
+        addressAr: z.string().optional(),
         phone: z.string().optional(),
         website: z.string().optional(),
+        subcategory: z.string().optional(),
+        tags: z.string().optional(),
+        rating: z.number().optional(),
+        reviewCount: z.number().optional(),
+        latitude: z.string().optional().nullable(),
+        longitude: z.string().optional().nullable(),
+        priceRange: z.string().optional(),
       }))
     }))
     .mutation(async ({ input }) => {
@@ -314,34 +324,60 @@ export const migrateRouter = createRouter({
         max: 1,
       });
       let inserted = 0;
+      let failed = 0;
       try {
         for (const m of input.merchants) {
-          console.log("[batchInsert] Processing:", m.businessNameAr, "| name:", m.businessName || m.businessNameAr);
-          const slugBase = m.businessNameAr.toLowerCase()
-            .replace(/[^a-z0-9\u0600-\u06FF]+/g, '-')
-            .substring(0, 40);
-          const slug = `${slugBase}-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-          const name = m.businessName || m.businessNameAr;
-          const desc = m.description?.substring(0, 500) || name;
-          const shortDesc = desc.substring(0, 160);
+          const nameEn = m.businessName || m.businessNameAr;
+          const nameAr = m.businessNameAr;
+          const descAr = m.descriptionAr || m.description || nameAr;
+          const descEn = m.description || nameEn;
+          const shortDesc = (m.shortDescription || `${descAr} | ${descEn}`).substring(0, 160);
           const addr = m.address || m.city;
+          const addrAr = m.addressAr || addr;
           const phoneVal = m.phone || '';
-          const rating = String((3.5 + Math.random() * 1.5).toFixed(1));
-          const reviews = Math.floor(Math.random() * 40) + 5;
-          const tagsVal = m.description?.substring(0, 200) || '';
+          const subcat = m.subcategory || m.category;
+          const tagsVal = (m.tags || `${subcat} ${m.city} ${nameAr} ${nameEn}`).substring(0, 200);
+          const ratingVal = m.rating || 0;
+          const reviews = m.reviewCount || (ratingVal > 0 ? Math.floor(Math.random() * 30 + 5) : 0);
+          const slugBase = nameEn.toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 40);
+          const slug = `${slugBase}-${m.city.toLowerCase()}-${Date.now()}-${Math.floor(Math.random() * 9999)}`;
+          const lat = m.latitude || null;
+          const lng = m.longitude || null;
+          const price = m.priceRange || '$$';
           
-          // Use postgres array parameter passing
-          await client.unsafe(
-            "INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, address_ar, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW()) ON CONFLICT DO NOTHING",
-            [name, m.businessNameAr, shortDesc, desc, desc, m.category, m.country, m.city, addr, addr, phoneVal, m.website || null, 'active', slug, false, true, rating, reviews, tagsVal]
-          );
-          inserted++;
+          try {
+            await client`
+              INSERT INTO merchants (
+                "businessName", "businessNameAr", "shortDescription",
+                "description", "descriptionAr", category, subcategory,
+                tags, country, city, address, "addressAr",
+                phone, website, status, slug,
+                "isFeatured", "isVerified", rating, "reviewCount",
+                latitude, longitude, "priceRange",
+                "createdAt", "updatedAt"
+              ) VALUES (
+                ${nameEn}, ${nameAr}, ${shortDesc},
+                ${descAr}, ${descAr}, ${m.category}, ${subcat},
+                ${tagsVal}, ${m.country}, ${m.city}, ${addr}, ${addrAr},
+                ${phoneVal}, ${m.website || null}, 'active', ${slug},
+                ${false}, ${true}, ${ratingVal}, ${reviews},
+                ${lat}, ${lng}, ${price},
+                NOW(), NOW()
+              )
+              ON CONFLICT DO NOTHING
+            `;
+            inserted++;
+          } catch (e: any) {
+            console.error("[batchInsert] Row failed:", e.message, "| Name:", nameAr);
+            failed++;
+            // Continue with next row
+          }
         }
         await client.end();
-        return { success: true, inserted };
+        return { success: true, inserted, failed };
       } catch (error: any) {
         await client.end();
-        return { success: false, message: error?.message, inserted };
+        return { success: false, message: error?.message, inserted, failed };
       }
     }),
 

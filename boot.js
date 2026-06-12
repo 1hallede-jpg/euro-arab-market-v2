@@ -1,4 +1,4 @@
-import { createRequire } from "module"; import { fileURLToPath } from "url"; const require = createRequire(import.meta.url); const __filename = fileURLToPath(import.meta.url); const __dirname = path.dirname(__filename);
+import { createRequire } from 'module'; import { fileURLToPath } from 'url'; const require = createRequire(import.meta.url); const __filename = fileURLToPath(import.meta.url); const __dirname = path.dirname(__filename);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -11,11 +11,20 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
-var __esm = (fn, res) => function __init() {
-  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+var __esm = (fn, res, err) => function __init() {
+  if (err) throw err[0];
+  try {
+    return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+  } catch (e) {
+    throw err = [e], e;
+  }
 };
 var __commonJS = (cb, mod) => function __require2() {
-  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  try {
+    return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+  } catch (e) {
+    throw mod = 0, e;
+  }
 };
 var __export = (target, all) => {
   for (var name in all)
@@ -33325,18 +33334,28 @@ var migrateRouter = createRouter({
       return { success: false, message: error48?.message };
     }
   }),
-  // Batch insert merchants using postgres client
+  // Batch insert merchants using postgres client - FIXED: uses correct camelCase column names
   batchInsert: publicQuery.input(external_exports.object({
     merchants: external_exports.array(external_exports.object({
       businessNameAr: external_exports.string(),
       businessName: external_exports.string().optional(),
       category: external_exports.string(),
-      description: external_exports.string(),
+      description: external_exports.string().optional(),
+      descriptionAr: external_exports.string().optional(),
+      shortDescription: external_exports.string().optional(),
       country: external_exports.string(),
       city: external_exports.string(),
       address: external_exports.string().optional(),
+      addressAr: external_exports.string().optional(),
       phone: external_exports.string().optional(),
-      website: external_exports.string().optional()
+      website: external_exports.string().optional(),
+      subcategory: external_exports.string().optional(),
+      tags: external_exports.string().optional(),
+      rating: external_exports.number().optional(),
+      reviewCount: external_exports.number().optional(),
+      latitude: external_exports.string().optional().nullable(),
+      longitude: external_exports.string().optional().nullable(),
+      priceRange: external_exports.string().optional()
     }))
   })).mutation(async ({ input }) => {
     const client = src_default(env.databaseUrl, {
@@ -33344,30 +33363,58 @@ var migrateRouter = createRouter({
       max: 1
     });
     let inserted = 0;
+    let failed = 0;
     try {
       for (const m of input.merchants) {
-        console.log("[batchInsert] Processing:", m.businessNameAr, "| name:", m.businessName || m.businessNameAr);
-        const slugBase = m.businessNameAr.toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g, "-").substring(0, 40);
-        const slug = `${slugBase}-${Date.now()}-${Math.floor(Math.random() * 1e4)}`;
-        const name = m.businessName || m.businessNameAr;
-        const desc2 = m.description?.substring(0, 500) || name;
-        const shortDesc = desc2.substring(0, 160);
+        const nameEn = m.businessName || m.businessNameAr;
+        const nameAr = m.businessNameAr;
+        const descAr = m.descriptionAr || m.description || nameAr;
+        const descEn = m.description || nameEn;
+        const shortDesc = (m.shortDescription || `${descAr} | ${descEn}`).substring(0, 160);
         const addr = m.address || m.city;
+        const addrAr = m.addressAr || addr;
         const phoneVal = m.phone || "";
-        const rating = String((3.5 + Math.random() * 1.5).toFixed(1));
-        const reviews2 = Math.floor(Math.random() * 40) + 5;
-        const tagsVal = m.description?.substring(0, 200) || "";
-        await client.unsafe(
-          "INSERT INTO merchants (business_name, business_name_ar, short_description, description, description_ar, category, country, city, address, address_ar, phone, website, status, slug, is_featured, is_verified, rating, review_count, tags, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW()) ON CONFLICT DO NOTHING",
-          [name, m.businessNameAr, shortDesc, desc2, desc2, m.category, m.country, m.city, addr, addr, phoneVal, m.website || null, "active", slug, false, true, rating, reviews2, tagsVal]
-        );
-        inserted++;
+        const subcat = m.subcategory || m.category;
+        const tagsVal = (m.tags || `${subcat} ${m.city} ${nameAr} ${nameEn}`).substring(0, 200);
+        const ratingVal = m.rating || 0;
+        const reviews2 = m.reviewCount || (ratingVal > 0 ? Math.floor(Math.random() * 30 + 5) : 0);
+        const slugBase = nameEn.toLowerCase().replace(/[^a-z0-9]+/g, "-").substring(0, 40);
+        const slug = `${slugBase}-${m.city.toLowerCase()}-${Date.now()}-${Math.floor(Math.random() * 9999)}`;
+        const lat = m.latitude || null;
+        const lng = m.longitude || null;
+        const price = m.priceRange || "$$";
+        try {
+          await client`
+              INSERT INTO merchants (
+                "businessName", "businessNameAr", "shortDescription",
+                "description", "descriptionAr", category, subcategory,
+                tags, country, city, address, "addressAr",
+                phone, website, status, slug,
+                "isFeatured", "isVerified", rating, "reviewCount",
+                latitude, longitude, "priceRange",
+                "createdAt", "updatedAt"
+              ) VALUES (
+                ${nameEn}, ${nameAr}, ${shortDesc},
+                ${descAr}, ${descAr}, ${m.category}, ${subcat},
+                ${tagsVal}, ${m.country}, ${m.city}, ${addr}, ${addrAr},
+                ${phoneVal}, ${m.website || null}, 'active', ${slug},
+                ${false}, ${true}, ${ratingVal}, ${reviews2},
+                ${lat}, ${lng}, ${price},
+                NOW(), NOW()
+              )
+              ON CONFLICT DO NOTHING
+            `;
+          inserted++;
+        } catch (e) {
+          console.error("[batchInsert] Row failed:", e.message, "| Name:", nameAr);
+          failed++;
+        }
       }
       await client.end();
-      return { success: true, inserted };
+      return { success: true, inserted, failed };
     } catch (error48) {
       await client.end();
-      return { success: false, message: error48?.message, inserted };
+      return { success: false, message: error48?.message, inserted, failed };
     }
   }),
   // Activate all pending merchants (fixes search returning 0 results)

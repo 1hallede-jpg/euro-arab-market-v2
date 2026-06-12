@@ -235,29 +235,60 @@ export default function SearchPage() {
 
 function MerchantCard({ merchant: m }: { merchant: any }) {
   const detailUrl = `/stores/${m.id}`;
-  const displayName = getDisplayName(m);
+  const nameAr = m.businessNameAr || m.nameAr || "";
+  const nameEn = m.businessName || m.nameEn || "";
   const displayDesc = m.shortDescription || "";
-  const displayAddress = [m.city, m.country].filter(Boolean).join(", ");
-  const catName = categoryNamesAr[m.category] || m.category || "متجر";
+  const fullAddress = m.address || [m.city, m.country].filter(Boolean).join(", ");
+  const catName = categoryNamesAr[m.category] || m.subcategory || m.category || "متجر";
+  const ratingVal = parseFloat(m.rating) || 0;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 hover:border-amber-300 hover:shadow-md transition-all overflow-hidden">
       {m.isFeatured && <div className="bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-1.5 flex items-center gap-1"><Sparkles className="h-3 w-3 text-black" /><span className="text-black text-xs font-bold">إعلان مميز</span></div>}
       <div className="p-4 md:p-5">
-        <div className="flex items-start justify-between mb-2">
-          <h3 className="font-bold text-gray-900 text-base leading-snug flex-1">{displayName}</h3>
+        {/* Arabic Name + Category */}
+        <div className="flex items-start justify-between mb-1">
+          <h3 className="font-bold text-gray-900 text-base leading-snug flex-1">{nameAr || nameEn}</h3>
           <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-600 bg-amber-50/50 mr-2 shrink-0">{catName}</Badge>
         </div>
+        {/* English Name */}
+        {nameEn && nameAr && nameEn !== nameAr && (
+          <p className="text-xs text-gray-500 mb-2 font-medium" dir="ltr">{nameEn}</p>
+        )}
+        {/* Description */}
         {displayDesc && <p className="text-xs text-gray-500 mb-3 line-clamp-2">{displayDesc}</p>}
+        {/* Address + Rating */}
         <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
-          <div className="flex items-center gap-1"><MapPin className="h-3 w-3" />{displayAddress}</div>
-          {m.rating && <div className="flex items-center gap-1"><Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />{m.rating}</div>}
+          <div className="flex items-center gap-1 flex-1 min-w-0">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">{fullAddress}</span>
+          </div>
+          {ratingVal > 0 && (
+            <div className="flex items-center gap-1 shrink-0 mr-2">
+              <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
+              <span className="font-medium text-gray-600">{ratingVal.toFixed(1)}</span>
+            </div>
+          )}
         </div>
+        {/* Phone + Links */}
         <div className="flex flex-wrap items-center gap-2">
-          {m.phone && <a href={`tel:${m.phone}`} className="flex items-center gap-1.5 text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg transition border border-gray-100"><Phone className="h-4 w-4" /><span className="font-medium" dir="ltr">{m.phone}</span></a>}
-          {m.whatsapp && <a href={`https://wa.me/${m.whatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded-lg transition border border-green-100"><MessageCircle className="h-4 w-4" /> واتساب</a>}
-          {m.website && <a href={m.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg transition border border-blue-100"><Globe className="h-4 w-4" /> موقع</a>}
-          <Link to={detailUrl} className="flex items-center gap-1 text-sm text-amber-600 hover:text-amber-700 px-2 py-2 transition ml-auto font-medium">التفاصيل ←</Link>
+          {m.phone && (
+            <a href={`tel:${m.phone}`} className="flex items-center gap-1.5 text-sm bg-gray-50 hover:bg-gray-100 text-gray-700 px-3 py-2 rounded-lg transition border border-gray-100">
+              <Phone className="h-4 w-4" />
+              <span className="font-medium" dir="ltr">{m.phone}</span>
+            </a>
+          )}
+          {m.whatsapp && (
+            <a href={`https://wa.me/${m.whatsapp}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm bg-green-50 hover:bg-green-100 text-green-700 px-3 py-2 rounded-lg transition border border-green-100">
+              <MessageCircle className="h-4 w-4" /> واتساب
+            </a>
+          )}
+          {m.website && (
+            <a href={m.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-2 rounded-lg transition border border-blue-100">
+              <Globe className="h-4 w-4" /> موقع
+            </a>
+          )}
+          <Link to={detailUrl} className="flex items-center gap-1 text-sm text-amber-600 hover:text-amber-700 px-2 py-2 transition mr-auto font-medium">التفاصيل ←</Link>
         </div>
       </div>
     </div>
