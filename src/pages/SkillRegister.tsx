@@ -90,18 +90,64 @@ export default function SkillRegister() {
   if (submitted) {
     return (
       <div className="min-h-screen" style={{ background: "#0a1628" }} dir="rtl">
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center p-8 max-w-md">
+        <div className="flex items-center justify-center min-h-screen px-4">
+          <div className="text-center p-8 max-w-lg w-full">
             <CheckCircle className="h-20 w-20 text-emerald-400 mx-auto mb-6" />
             <h2 className="text-3xl font-bold text-white mb-4">تم إرسال طلبك بنجاح!</h2>
             <p className="text-gray-300 mb-2">Your skill registration has been submitted!</p>
-            <div className="bg-[#c9a227]/10 border border-[#c9a227]/30 rounded-xl p-4 mt-6 mb-6">
-              <h3 className="text-[#c9a227] font-bold mb-2">💳 الاشتراك</h3>
-              <p className="text-white/70 text-sm">
-                رسوم الاشتراك <strong className="text-[#c9a227]">5 يورو/شهر</strong><br/>
-                سيتم إرسال رابط الدفع بعد مراجعة طلبك
+
+            {/* Payment Section */}
+            <div className="bg-gradient-to-br from-[#c9a227]/20 to-[#c9a227]/5 border border-[#c9a227]/40 rounded-2xl p-6 mt-6 mb-6 text-right">
+              <div className="text-center mb-4">
+                <h3 className="text-[#c9a227] font-bold text-lg mb-1">✨ اشترك الآن وظهر للجميع</h3>
+                <p className="text-white/60 text-sm">اشتراك شهري بـ <strong className="text-[#c9a227]">5 يورو فقط</strong></p>
+              </div>
+
+              {/* Benefits */}
+              <div className="bg-[#0a1628]/50 rounded-xl p-4 mb-4 text-right">
+                <h4 className="text-white font-bold text-sm mb-3">📋 مميزات الاشتراك:</h4>
+                <ul className="space-y-2 text-white/70 text-xs">
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#c9a227] shrink-0">⭐</span>
+                    <span>ضمان ظهورك في <strong className="text-white">بداية نتائج البحث</strong> عند البحث عن خدمتك في مدينتك</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#c9a227] shrink-0">🔗</span>
+                    <span>حصل على <strong className="text-white">رابط خاص بخدمتك</strong> يمكنك مشاركته والترويج له في كل مكان</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#c9a227] shrink-0">📞</span>
+                    <span>عرض <strong className="text-white">رقم هاتفك والبريد الإلكتروني</strong> بشكل واضح للعملاء</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#c9a227] shrink-0">🏆</span>
+                    <span>شارة <strong className="text-white">"موثق"</strong> على إعلانك تزيد من ثقة العملاء بك</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#c9a227] shrink-0">🌐</span>
+                    <span>الظهور في <strong className="text-white">نتائج البحث على Google</strong> — يصل إليك الملايين من الباحثين عن خدماتك</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#c9a227] shrink-0">📊</span>
+                    <span>إحصائيات <strong className="text-white">المشاهدات والاتصالات</strong> — تعرف كم عدد الأشخاص الذين شاهدوا إعلانك</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Stripe Payment Button */}
+              <a
+                href="https://buy.stripe.com/aFa14n4hw9DbboY1pW6EU01"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full py-4 rounded-xl bg-gradient-to-r from-[#c9a227] to-[#e8b923] text-[#0a1628] font-bold text-lg hover:shadow-lg hover:shadow-[#c9a227]/30 transition text-center mb-3"
+              >
+                💳 ادفع الاشتراك الآن — 5€/شهر
+              </a>
+              <p className="text-white/40 text-xs text-center">
+                يتم تجديد الاشتراك تلقائياً شهرياً • يمكنك الإلغاء في أي وقت
               </p>
             </div>
+
             <p className="text-gray-400 text-sm mb-8 max-w-md mx-auto">
               سيتم مراجعة طلبك من قبل فريق الإدارة خلال 24-48 ساعة. ستتلقى إشعاراً بالبريد الإلكتروني بمجرد الموافقة.
             </p>
