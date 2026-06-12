@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router";
-import { Search, MapPin, Star, Phone, Store, Navigation, ChevronDown, Globe, LogIn } from "lucide-react";
+import { Search, MapPin, Star, Phone, Store, Navigation, ChevronDown, Globe, LogIn, Landmark } from "lucide-react";
 import Logo from "@/components/Logo";
 import PrayerTimes from "@/components/PrayerTimes";
+import EmergencyBanner from "@/components/EmergencyBanner";
 
 const API_URL = "/api/trpc";
 
@@ -53,11 +54,13 @@ export default function SearchPage() {
 
   const [query, setQuery] = useState(initialQuery);
   const [merchants, setMerchants] = useState<any[]>([]);
+  const [embassies, setEmbassies] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedCity, setSelectedCity] = useState(initialCity);
   const [activeCatTab, setActiveCatTab] = useState("");
   const [showCityPrompt, setShowCityPrompt] = useState(!initialCity);
   const [totalCount, setTotalCount] = useState(0);
+  const [showEmbassies, setShowEmbassies] = useState(false);
 
   // Detect if query is a country name
   const getCitiesForQuery = (q: string): string[] | null => {
@@ -84,7 +87,7 @@ export default function SearchPage() {
     setLoading(true);
 
     try {
-      // If searching for a country, get all cities in that country
+      // Fetch merchants
       let targetCities = [selectedCity];
       const countryCitiesList = getCitiesForQuery(query);
       if (countryCitiesList && !citiesEn.includes(selectedCity)) {
@@ -95,7 +98,7 @@ export default function SearchPage() {
       for (const city of targetCities) {
         const mParams: any = { json: { status: "active", limit: 100, city } };
         if (query && !getCitiesForQuery(query)) mParams.json.search = query;
-        if (activeCatTab) mParams.json.category = activeCatTab;
+        if (activeCatTab && activeCatTab !== "embassy") mParams.json.category = activeCatTab;
 
         const mInput = encodeURIComponent(JSON.stringify(mParams));
         const mRes = await fetch(`${API_URL}/merchant.list?input=${mInput}`);
@@ -104,7 +107,6 @@ export default function SearchPage() {
           const items = data?.result?.data?.json?.items || [];
           const pagination = data?.result?.data?.json?.pagination || {};
           setTotalCount(pagination.total || items.length);
-          // Filter out embassies (double check)
           const clean = items.filter((m: any) => {
             const nameAr = (m.businessNameAr || m.nameAr || "").toLowerCase();
             const nameEn = (m.businessName || m.nameEn || "").toLowerCase();
@@ -116,15 +118,23 @@ export default function SearchPage() {
         }
       }
 
-      // Remove duplicates by ID
       const unique = allResults.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-      // Sort: food first
       unique.sort((a, b) => {
         const aFood = foodCategories.includes(a.category) ? 1 : 0;
         const bFood = foodCategories.includes(b.category) ? 1 : 0;
         return bFood - aFood;
       });
       setMerchants(unique);
+
+      // Fetch embassies for this city
+      const eParams = { json: { type: "embassy", city: selectedCity, limit: 50 } };
+      const eInput = encodeURIComponent(JSON.stringify(eParams));
+      const eRes = await fetch(`${API_URL}/emergency.list?input=${eInput}`);
+      if (eRes.ok) {
+        const eData = await eRes.json();
+        const eItems = eData?.result?.data?.json?.items || [];
+        setEmbassies(eItems);
+      }
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -224,37 +234,82 @@ export default function SearchPage() {
               </button>
             </div>
 
-            {/* Category Tabs — ONLY show categories with ACTUAL data */}
-            {nonEmptyCats.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-4 mb-4" dir="rtl">
-                <button onClick={() => setActiveCatTab("")}
+            {/* Emergency Banner — City specific */}
+            <EmergencyBanner city={selectedCity} />
+
+            {/* Category Tabs — ONLY show categories with ACTUAL data + Embassies */}
+            <div className="flex gap-2 overflow-x-auto pb-4 mb-4" dir="rtl">
+              <button onClick={() => { setActiveCatTab(""); setShowEmbassies(false); }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition flex items-center gap-1.5 ${
+                  !activeCatTab && !showEmbassies ? "bg-[#c9a227] text-[#0a1628]" : "bg-white/5 text-white/50 border border-white/10 hover:bg-white/10"
+                }`}>
+                الكل <span className="opacity-60 text-xs">({merchants.length + embassies.length})</span>
+              </button>
+              {nonEmptyCats.map(([cat, count]) => (
+                <button key={cat} onClick={() => { setActiveCatTab(activeCatTab === cat ? "" : cat); setShowEmbassies(false); }}
                   className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition flex items-center gap-1.5 ${
-                    !activeCatTab ? "bg-[#c9a227] text-[#0a1628]" : "bg-white/5 text-white/50 border border-white/10 hover:bg-white/10"
+                    activeCatTab === cat ? "bg-[#c9a227] text-[#0a1628]" : "bg-white/5 text-white/50 border border-white/10 hover:bg-white/10"
                   }`}>
-                  الكل <span className="opacity-60 text-xs">({merchants.length})</span>
+                  <span>{categoryNamesAr[cat] || cat}</span>
+                  <span className="opacity-50 text-xs">{count}</span>
                 </button>
-                {nonEmptyCats.map(([cat, count]) => (
-                  <button key={cat} onClick={() => setActiveCatTab(activeCatTab === cat ? "" : cat)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition flex items-center gap-1.5 ${
-                      activeCatTab === cat ? "bg-[#c9a227] text-[#0a1628]" : "bg-white/5 text-white/50 border border-white/10 hover:bg-white/10"
-                    }`}>
-                    <span>{categoryNamesAr[cat] || cat}</span>
-                    <span className="opacity-50 text-xs">{count}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+              ))}
+              {/* Embassies tab */}
+              {embassies.length > 0 && (
+                <button onClick={() => { setShowEmbassies(!showEmbassies); setActiveCatTab(""); }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition flex items-center gap-1.5 ${
+                    showEmbassies ? "bg-[#c9a227] text-[#0a1628]" : "bg-white/5 text-white/50 border border-white/10 hover:bg-white/10"
+                  }`}>
+                  <span>🏛️ سفارات</span>
+                  <span className="opacity-50 text-xs">{embassies.length}</span>
+                </button>
+              )}
+            </div>
 
             {/* Prayer Times for Mosques */}
             {activeCatTab === "mosque" && <PrayerTimes city={selectedCity} />}
 
-            {/* Results */}
+            {/* Embassies Results */}
+            {showEmbassies && embassies.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <Landmark className="h-5 w-5 text-[#c9a227]" />
+                  <h2 className="text-lg font-bold text-white">
+                    🏛️ السفارات في {cityDisplayNames[selectedCity]}
+                    <span className="text-white/30 text-sm mr-2">({embassies.length})</span>
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {embassies.map(e => (
+                    <div key={e.id} className="bg-white/5 border border-white/10 rounded-xl hover:border-[#c9a227]/30 transition-all p-5">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-white text-base">{e.nameAr || e.name || "—"}</h3>
+                          <p className="text-white/30 text-xs mt-1 flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {e.address || `${cityDisplayNames[e.city] || e.city}، ${e.country}`}
+                          </p>
+                        </div>
+                        {e.phone && (
+                          <a href={`tel:${e.phone}`} className="flex items-center gap-1.5 text-xs bg-[#c9a227]/10 hover:bg-[#c9a227]/20 text-[#c9a227] px-3 py-2 rounded-lg transition border border-[#c9a227]/15 mr-2 shrink-0">
+                            <Phone className="h-3.5 w-3.5" />
+                            <span dir="ltr">{e.phone}</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Merchant Results */}
             {loading ? (
               <div className="text-center py-20">
                 <div className="animate-spin h-8 w-8 border-2 border-[#c9a227] border-t-transparent rounded-full mx-auto" />
                 <p className="text-white/30 text-sm mt-4">جاري البحث...</p>
               </div>
-            ) : filteredMerchants.length > 0 ? (
+            ) : !showEmbassies && filteredMerchants.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {filteredMerchants.map(m => (
                   <div key={m.id} className="bg-white/5 border border-white/10 rounded-xl hover:border-[#c9a227]/30 transition-all p-5">
@@ -305,6 +360,11 @@ export default function SearchPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            ) : showEmbassies ? (
+              <div className="text-center py-20">
+                <Landmark className="h-16 w-16 text-white/10 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-white mb-2">لا توجد سفارات مسجلة في {cityDisplayNames[selectedCity]}</h3>
               </div>
             ) : (
               <div className="text-center py-20">
