@@ -1,7 +1,5 @@
 import { Link } from "react-router";
 import {
-  Store,
-  Briefcase,
   Sparkles,
   Home,
   MapPin,
@@ -11,9 +9,8 @@ import {
 } from "lucide-react";
 
 const quickLinks = [
-  { href: "/", label: "الرئيسية", icon: Home },
-  { href: "/stores", label: "المتاجر العربية", icon: Store },
-  { href: "/sindbad", label: "سندباد - المساعد الذكي", icon: Sparkles },
+  { href: "/", label: "سندباد", icon: Sparkles },
+  { href: "/search", label: "اسأل سندباد", icon: Home },
 ];
 
 const categories = [

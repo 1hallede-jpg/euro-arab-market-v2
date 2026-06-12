@@ -1,7 +1,6 @@
 import { Routes, Route } from 'react-router'
 import Home from './pages/Home'
-import Stores from './pages/Stores'
-import StoreDetail from './pages/StoreDetail'
+// Removed: Stores and StoreDetail pages
 import Search from './pages/Search'
 import Sindbad from './pages/Sindbad'
 import Login from './pages/Login'
@@ -22,8 +21,7 @@ export default function App() {
     <>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/stores" element={<Stores />} />
-        <Route path="/stores/:id" element={<StoreDetail />} />
+
         <Route path="/search" element={<Search />} />
         <Route path="/sindbad" element={<Sindbad />} />
         <Route path="/login" element={<Login />} />

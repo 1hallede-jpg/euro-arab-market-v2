@@ -61,7 +61,7 @@ export default function StoreDetail() {
           <Store className="h-20 w-20 text-gray-200 mx-auto mb-6" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">المتجر غير موجود</h1>
           <p className="text-gray-400 mb-6">قد يكون الرابط غير صحيح أو تم حذف المتجر</p>
-          <Link to="/stores">
+          <Link to="/search">
             <Button className="bg-gradient-to-r from-amber-400 to-amber-600 text-black rounded-full px-8">العودة للمتاجر</Button>
           </Link>
         </div>
@@ -108,7 +108,7 @@ export default function StoreDetail() {
         {/* Header Cover */}
         <div className="relative bg-gradient-to-br from-[#1a1a2e] to-[#16213e] py-8 md:py-12">
           <div className="max-w-4xl mx-auto px-4">
-            <Link to="/stores" className="text-amber-400 text-sm flex items-center gap-1 mb-4 hover:text-amber-300">
+            <Link to="/search" className="text-amber-400 text-sm flex items-center gap-1 mb-4 hover:text-amber-300">
               <ArrowLeft className="h-4 w-4" /> العودة للبحث
             </Link>
 

@@ -210,7 +210,7 @@ export default function CityPage() {
               {Object.entries(categoryCounts).map(([cat, count]) => (
                 <Link
                   key={cat}
-                  to={`/stores?category=${cat}&city=${cityAr}`}
+                  to={`/search?category=${cat}&city=${cityAr}`}
                   className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2 hover:border-emerald-300 hover:bg-emerald-50 transition-colors"
                 >
                   {categoryIcons[cat] || <Store className="h-4 w-4" />}
@@ -243,7 +243,7 @@ export default function CityPage() {
             {merchantsData.items.map((merchant) => (
               <Link
                 key={merchant.id}
-                to={`/stores/${merchant.slug}`}
+                to={`/search?store=${merchant.slug}`}
                 className="group"
               >
                 <Card className="h-full overflow-hidden hover:shadow-lg transition-shadow border-gray-200">
@@ -316,7 +316,7 @@ export default function CityPage() {
             <p className="text-gray-500 mb-6">
               سيتم إضافة متاجر عربية في {cityAr} قريباً
             </p>
-            <Link to="/stores">
+            <Link to="/search">
               <Button className="bg-emerald-500 hover:bg-emerald-600">
                 استكشف جميع المتاجر
               </Button>

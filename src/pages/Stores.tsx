@@ -219,7 +219,7 @@ export default function Stores() {
           {merchants.map((merchant: any) => (
             <Link
               key={merchant.id}
-              to={`/stores/${merchant.slug}`}
+              to={`/search?store=${merchant.slug}`}
               className="group"
             >
               <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 border-0 shadow-sm h-full">
