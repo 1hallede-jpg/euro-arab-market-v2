@@ -8,12 +8,12 @@ import {
   Send,
   User,
   Loader2,
-  Globe,
-  PlusCircle,
+  LogIn,
+  UserPlus,
   Wrench,
+  Store,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import sindbadImg from "@/assets/sindbad.png";
 
 /* ─── particles ─── */
@@ -139,7 +139,6 @@ function SindbadChat({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="w-full max-w-lg h-[72vh] bg-[#0f0f1a] rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-amber-500/20">
-        {/* header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-amber-500/15 bg-[#16162a]">
           <div className="flex items-center gap-3">
             <img src={sindbadImg} className="w-9 h-9" alt="" />
@@ -158,7 +157,6 @@ function SindbadChat({
           </button>
         </div>
 
-        {/* messages */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {msgs.map((m, i) => (
             <div
@@ -202,7 +200,6 @@ function SindbadChat({
           <div ref={endRef} />
         </div>
 
-        {/* input */}
         <form
           onSubmit={onSend}
           className="p-4 border-t border-amber-500/15 bg-[#16162a]"
@@ -224,6 +221,114 @@ function SindbadChat({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Prayer Times ─── */
+function PrayerTimes() {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Makkah prayer times (approximate)
+  const prayers = [
+    { nameAr: "الفجر", name: "Fajr", time: "04:15", timeEnd: "05:45" },
+    { nameAr: "الشروق", name: "Sunrise", time: "05:45", timeEnd: "12:30" },
+    { nameAr: "الظهر", name: "Dhuhr", time: "12:30", timeEnd: "15:45" },
+    { nameAr: "العصر", name: "Asr", time: "15:45", timeEnd: "18:50" },
+    { nameAr: "المغرب", name: "Maghrib", time: "18:50", timeEnd: "20:20" },
+    { nameAr: "العشاء", name: "Isha", time: "20:20", timeEnd: "04:15" },
+  ];
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  // Find current and next prayer
+  let currentPrayer = prayers[0];
+  let nextPrayer = prayers[0];
+  let minDiff = Infinity;
+
+  for (let i = 0; i < prayers.length; i++) {
+    const [h, m] = prayers[i].time.split(":").map(Number);
+    const prayerMinutes = h * 60 + m;
+    const diff = prayerMinutes - currentMinutes;
+
+    if (diff <= 0 && diff > -900) {
+      currentPrayer = prayers[i];
+    }
+    if (diff > 0 && diff < minDiff) {
+      minDiff = diff;
+      nextPrayer = prayers[i];
+    }
+  }
+
+  // If no next prayer today, next is Fajr tomorrow
+  if (minDiff === Infinity) {
+    nextPrayer = prayers[0];
+    const [h, m] = prayers[0].time.split(":").map(Number);
+    minDiff = (h + 24) * 60 + m - currentMinutes;
+  }
+
+  const hoursLeft = Math.floor(minDiff / 60);
+  const minsLeft = minDiff % 60;
+
+  return (
+    <div className="w-full max-w-xl mx-auto mt-4">
+      <div className="bg-gradient-to-r from-[#1a5f4a]/20 to-[#c9a227]/10 border border-[#c9a227]/20 rounded-xl p-3 backdrop-blur-sm">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-[#c9a227]/20 flex items-center justify-center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9a227" strokeWidth="2">
+                <path d="M12 3v1m0 16v1m-9-9h1m16 0h1M5.6 5.6l.7.7m12.1 12.1l.7.7M3 12a9 9 0 1018 0 9 9 0 00-18 0z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-[#c9a227] text-xs font-bold">مواقيت الصلاة — مكة المكرمة</h4>
+              <p className="text-white/40 text-[10px]">
+                باقي {hoursLeft > 0 ? `${hoursLeft} ساعة و ` : ""}{minsLeft} دقيقة على {nextPrayer.nameAr}
+              </p>
+            </div>
+          </div>
+          <span className="text-[#c9a227]/60 text-[10px] bg-[#c9a227]/10 px-2 py-0.5 rounded-full">
+            {now.toLocaleDateString("ar-SA")}
+          </span>
+        </div>
+
+        {/* Prayer times row */}
+        <div className="flex items-center justify-between gap-1">
+          {prayers.filter(p => p.name !== "Sunrise").map((p) => {
+            const isNext = p.name === nextPrayer.name;
+            const isCurrent = p.name === currentPrayer.name;
+            return (
+              <div
+                key={p.name}
+                className={`flex-1 text-center rounded-lg py-1.5 px-1 transition ${
+                  isNext
+                    ? "bg-[#c9a227]/20 border border-[#c9a227]/40"
+                    : isCurrent
+                    ? "bg-[#1a5f4a]/20 border border-[#1a5f4a]/30"
+                    : "bg-white/5 border border-white/5"
+                }`}
+              >
+                <p className={`text-[10px] font-medium ${isNext ? "text-[#c9a227]" : "text-white/50"}`}>
+                  {p.nameAr}
+                </p>
+                <p className={`text-xs font-bold ${isNext ? "text-white" : "text-white/30"}`}>
+                  {p.time}
+                </p>
+                {isNext && (
+                  <div className="w-full h-0.5 bg-[#c9a227] rounded-full mt-1 animate-pulse" />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -257,7 +362,7 @@ export default function Home() {
 
       {/* ─── Navbar ─── */}
       <nav
-        className="relative flex items-center justify-between px-8 py-5"
+        className="relative flex items-center justify-between px-6 py-4"
         style={{ zIndex: 10 }}
       >
         <Link to="/" className="flex items-center gap-2.5 group">
@@ -270,20 +375,21 @@ export default function Home() {
             سندباد
           </span>
         </Link>
-        <div className="flex items-center gap-6 text-sm">
-          <button
-            onClick={() => setShowBot(true)}
-            className="text-amber-600 font-semibold hover:text-amber-700 transition-colors flex items-center gap-1"
+        <div className="flex items-center gap-3 text-sm">
+          <Link
+            to="/login"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-amber-300/60 text-amber-600 font-medium hover:bg-amber-50 hover:border-amber-400 transition-all text-xs"
           >
-            <Sparkles className="h-3.5 w-3.5" />
-            سندباد
-          </button>
-          <a
-            href="mailto:info@euroarabmarket.com"
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            <LogIn className="h-3.5 w-3.5" />
+            تسجيل الدخول
+          </Link>
+          <Link
+            to="/login"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 text-black font-bold hover:from-amber-500 hover:to-amber-700 transition-all text-xs shadow-md shadow-amber-500/20"
           >
-            تواصل
-          </a>
+            <UserPlus className="h-3.5 w-3.5" />
+            تسجيل حساب
+          </Link>
         </div>
       </nav>
 
@@ -309,12 +415,15 @@ export default function Home() {
         <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-1 tracking-tight text-center">
           سندباد
         </h1>
-        <p className="text-gray-400 text-base md:text-lg mb-8 text-center">
+        <p className="text-gray-400 text-base md:text-lg mb-6 text-center">
           دليلك العربي في أوروبا
         </p>
 
-        {/* Search Bar — integrated with lamp */}
-        <form onSubmit={onSearch} className="w-full max-w-xl mb-4">
+        {/* Prayer Times */}
+        <PrayerTimes />
+
+        {/* Search Bar */}
+        <form onSubmit={onSearch} className="w-full max-w-xl mt-5 mb-3">
           <div
             className={`relative flex items-center bg-white rounded-2xl shadow-lg transition-all duration-300 border-2 ${
               foc
@@ -332,44 +441,56 @@ export default function Home() {
               className="border-0 bg-transparent focus-visible:ring-0 text-right text-base py-7"
               dir="rtl"
             />
-            <button
-              type="button"
-              onClick={() => setShowBot(true)}
-              className="ml-2 p-3 rounded-xl hover:bg-amber-50 text-amber-500 transition-colors shrink-0"
-              title="اسأل سندباد"
-            >
-              <Sparkles className="h-5 w-5" />
-            </button>
           </div>
 
-          {/* Buttons */}
-          <div className="flex items-center justify-center gap-3 mt-4">
-            <Button
+          {/* ONE Brown Search Button */}
+          <div className="flex items-center justify-center mt-4">
+            <button
               type="submit"
-              className="bg-gradient-to-r from-amber-400 to-amber-600 hover:from-amber-500 hover:to-amber-700 text-black font-bold rounded-full px-10 shadow-lg shadow-amber-500/25"
+              className="bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-800 hover:to-amber-700 text-white font-bold text-sm rounded-full px-10 py-3 shadow-lg shadow-amber-900/20 flex items-center gap-2 transition-all"
             >
-              بحث
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowBot(true)}
-              className="rounded-full px-8 border-gray-300 text-gray-600 hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50/50"
-            >
-              <Sparkles className="h-4 w-4 ml-2" />
-              اسأل سندباد
-            </Button>
+              <Search className="h-4 w-4" />
+              اسأل سندباد — يبحث في الموقع
+            </button>
           </div>
         </form>
 
+        {/* Add Store + Add Skill Buttons */}
+        <div className="flex items-center justify-center gap-4 mt-3 mb-4">
+          <Link
+            to="/skill/register"
+            className="group flex items-center gap-2 px-5 py-2.5 rounded-xl border border-dashed border-amber-300/60 bg-amber-50/40 hover:bg-amber-50 hover:border-amber-400 transition-all"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <div className="text-right">
+              <p className="text-amber-700 text-sm font-bold leading-tight">أضف مهارتك</p>
+              <p className="text-amber-400/60 text-[10px] leading-tight">سجّل خدمتك واكسب</p>
+            </div>
+          </Link>
+          <Link
+            to="/merchant/register"
+            className="group flex items-center gap-2 px-5 py-2.5 rounded-xl border border-dashed border-amber-300/60 bg-amber-50/40 hover:bg-amber-50 hover:border-amber-400 transition-all"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Store className="h-4 w-4 text-white" />
+            </div>
+            <div className="text-right">
+              <p className="text-amber-700 text-sm font-bold leading-tight">أضف متجرك</p>
+              <p className="text-amber-400/60 text-[10px] leading-tight">سجّل متجرك الأوروبي</p>
+            </div>
+          </Link>
+        </div>
+
         {/* Hint */}
-        <p className="text-gray-300 text-xs mt-4 mb-6">
+        <p className="text-gray-300 text-xs mb-6">
           جرب: مطعم حلال في باريس — جزار في برلين — سوبرماركت في لندن
         </p>
 
         {/* ─── AD SPOT: Place Your Ad Here ─── */}
         <Link
-          to="/add-store"
+          to="/merchant/register"
           className="group w-full max-w-xl"
         >
           <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-2xl p-5 text-center hover:border-amber-300 hover:from-amber-50/30 hover:to-amber-50/50 transition-all duration-300 group-hover:shadow-md">
@@ -388,7 +509,7 @@ export default function Home() {
       <footer className="relative py-5 text-center" style={{ zIndex: 10 }}>
         <div className="flex items-center justify-center gap-4 text-xs text-gray-300 flex-wrap">
           <Link to="/merchant/register" className="hover:text-amber-500 transition flex items-center gap-1">
-            <PlusCircle className="h-3 w-3" /> أضف متجرك
+            <Store className="h-3 w-3" /> أضف متجرك
           </Link>
           <span className="text-gray-200">|</span>
           <Link to="/skill/register" className="hover:text-amber-500 transition flex items-center gap-1">
