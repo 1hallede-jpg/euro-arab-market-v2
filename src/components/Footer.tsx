@@ -42,7 +42,7 @@ export default function Footer() {
               </div>
             </Link>
             <p className="text-sm text-slate-400 leading-relaxed">
-              محرك البحث الذكي للمحلات والخدمات العربية في أوروبا. نوصلك بكل ما
+              دليلك العربي في أوروبا — نوصلك بكل ما
               تحتاجه من مطاعم ومتاجر ومهن عربية.
             </p>
           </div>

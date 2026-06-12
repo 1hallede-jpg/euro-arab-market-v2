@@ -83,7 +83,7 @@ function SindbadChat({
   >([
     {
       role: "bot",
-      text: "أنا سندباد 🪔\nدليلك الذكي للعالم العربي في أوروبا.\n\nاسألني عن أي متجر أو خدمة عربية...",
+      text: "أنا سندباد 🪔\nدليلك العربي في أوروبا.\n\nاسألني عن أي متجر أو خدمة عربية...",
     },
   ]);
   const [inp, setInp] = useState("");
@@ -144,7 +144,7 @@ function SindbadChat({
             <div>
               <h3 className="font-bold text-amber-400">سندباد</h3>
               <p className="text-[10px] text-amber-400/40">
-                دليلك الذكي للعالم العربي
+                دليلك العربي في أوروبا
               </p>
             </div>
           </div>
@@ -308,7 +308,7 @@ export default function Home() {
           سندباد
         </h1>
         <p className="text-gray-400 text-base md:text-lg mb-8 text-center">
-          محرك البحث للعالم العربي في أوروبا
+          دليلك العربي في أوروبا
         </p>
 
         {/* Search Bar — integrated with lamp */}

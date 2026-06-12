@@ -211,7 +211,7 @@ export default function SindbadHome() {
           <p className="text-lg" style={{ color: "#c9a227", opacity: 0.8 }}>دليل سندباد أوروبا</p>
           <p className="text-sm mt-1" style={{ color: "#b0b8c4" }}>Sindbad Europe Guide</p>
           <p className="text-sm mt-2" style={{ color: "#b0b8c4", opacity: 0.7 }}>
-            محرك البحث للزائر العربي في أوروبا
+            دليلك العربي في أوروبا
           </p>
         </div>
 
