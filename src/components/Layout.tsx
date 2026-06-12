@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import Navbar from "./Navbar";
-import Footer from "./Footer";
 
 interface LayoutProps {
   children: ReactNode;
@@ -8,10 +7,14 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col" style={{ background: "#0a1628" }}>
       <Navbar />
       <main className="flex-1">{children}</main>
-      <Footer />
+      <footer className="border-t border-white/10 bg-[#0a1628] py-6">
+        <div className="mx-auto max-w-6xl px-4 text-center">
+          <p className="text-white/20 text-xs">© 2025 يورو عرب ماركت — Euro Arab Market</p>
+        </div>
+      </footer>
     </div>
   );
 }
