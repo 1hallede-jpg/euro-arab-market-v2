@@ -67,7 +67,7 @@ export default function AddStore() {
           <Link to="/" className="flex items-center gap-2 text-gray-600 hover:text-emerald-600">
             <ArrowLeft className="h-4 w-4" />
             <Globe className="h-5 w-5 text-emerald-500" />
-            <span className="font-bold">يورو عرب ماركت</span>
+            <span className="font-bold">سندباد</span>
           </Link>
         </nav>
 
@@ -99,7 +99,7 @@ export default function AddStore() {
         <Link to="/" className="flex items-center gap-2 text-gray-600 hover:text-emerald-600">
           <ArrowLeft className="h-4 w-4" />
           <Globe className="h-5 w-5 text-emerald-500" />
-          <span className="font-bold">يورو عرب ماركت</span>
+          <span className="font-bold">سندباد</span>
         </Link>
       </nav>
 

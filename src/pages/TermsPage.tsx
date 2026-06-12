@@ -8,7 +8,7 @@ export default function TermsPage() {
       <nav className="flex items-center px-6 py-4 border-b">
         <Link to="/" className="flex items-center gap-2 text-gray-600 hover:text-emerald-600">
           <Globe className="h-5 w-5 text-emerald-500" />
-          <span className="font-bold">يورو عرب ماركت</span>
+          <span className="font-bold">سندباد</span>
         </Link>
       </nav>
 
@@ -91,7 +91,7 @@ export default function TermsPage() {
           </h2>
           <div className="text-gray-600 text-sm leading-relaxed space-y-3">
             <p>
-              يورو عرب ماركت هو دليل بحثي يربط المستخدمين بالمتاجر العربية في
+              سندباد هو دليل بحثي يربط المستخدمين بالمتاجر العربية في
               أوروبا. نحن لسنا مسؤولين عن جودة الخدمات المقدمة من التجار
               المدرجين.
             </p>
@@ -128,7 +128,7 @@ export default function TermsPage() {
           <p className="text-sm text-gray-500">
             آخر تحديث: يونيو 2026
             <br />
-            يورو عرب ماركت — جميع الحقوق محفوظة
+            سندباد — جميع الحقوق محفوظة
           </p>
         </div>
       </div>

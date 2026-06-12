@@ -107,7 +107,7 @@ export default function SecretAdmin() {
           </div>
 
           <p className="text-center text-gray-600 text-xs mt-6">
-            يورو عرب ماركت — نظام آمن
+            سندباد — نظام آمن
           </p>
         </div>
       </div>

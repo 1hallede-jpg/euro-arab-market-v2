@@ -45,11 +45,11 @@ export default function Logo({ className = "", size = "md" }: LogoProps) {
 
       {/* Text */}
       <div className="flex flex-col leading-tight">
-        <span className={`font-bold ${s.text}`} style={{ color: "#1a5f4a", fontFamily: "'Noto Naskh Arabic', serif" }}>
-          يورو عرب ماركت
+        <span className={`font-bold ${s.text}`} style={{ color: "#c9a227", fontFamily: "'Noto Naskh Arabic', serif" }}>
+          سندباد
         </span>
-        <span className={`${s.sub} font-medium tracking-wide`} style={{ color: "#c9a227" }}>
-          Euro Arab Market
+        <span className={`${s.sub} font-medium tracking-wide`} style={{ color: "#b0b8c4" }}>
+          Sindbad
         </span>
       </div>
     </Link>

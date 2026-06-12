@@ -12,7 +12,7 @@ export default function Layout({ children }: LayoutProps) {
       <main className="flex-1">{children}</main>
       <footer className="border-t border-white/10 bg-[#0a1628] py-6">
         <div className="mx-auto max-w-6xl px-4 text-center">
-          <p className="text-white/20 text-xs">© 2025 يورو عرب ماركت — Euro Arab Market</p>
+          <p className="text-white/20 text-xs">© 2025 سندباد | Sindbad Europe Guide</p>
         </div>
       </footer>
     </div>

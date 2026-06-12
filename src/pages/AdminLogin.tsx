@@ -43,7 +43,7 @@ export default function AdminLogin() {
             لوحة التحكم
           </CardTitle>
           <p className="text-slate-400 text-sm mt-1">
-            يورو عرب ماركت - تسجيل دخول المدير
+            سندباد - تسجيل دخول المدير
           </p>
         </CardHeader>
         <CardContent>

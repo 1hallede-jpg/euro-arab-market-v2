@@ -214,10 +214,9 @@ export default function SearchPage() {
               <div>
                 <h1 className="text-lg font-bold text-white flex items-center gap-2">
                   <span className="text-xl">{cityFlags[selectedCity]}</span>
-                  <span>{cityDisplayNames[selectedCity]}</span>
-                  <span className="text-white/20 text-sm">({filteredMerchants.length})</span>
+                  <span>دليل سندباد أوروبا — {cityDisplayNames[selectedCity]}</span>
                 </h1>
-                <p className="text-white/20 text-xs">{cityCountries[selectedCity]}</p>
+                <p className="text-white/20 text-xs">Sindbad Europe Guide | {cityCountries[selectedCity]}</p>
               </div>
               <button onClick={() => { setSelectedCity(""); setActiveCatTab(""); setShowCityPrompt(true); }}
                 className="text-xs text-[#c9a227] hover:text-[#ffd700] transition border border-[#c9a227]/30 px-3 py-1.5 rounded-full">
@@ -310,9 +309,11 @@ export default function SearchPage() {
             ) : (
               <div className="text-center py-20">
                 <Store className="h-16 w-16 text-white/10 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-white mb-2">لا توجد نتائج</h3>
+                <h3 className="text-lg font-bold text-white mb-2">
+                  {activeCatTab ? `لا توجد نتائج الآن في "${categoryNamesAr[activeCatTab]}"` : "لا توجد نتائج الآن"}
+                </h3>
                 <p className="text-white/30 text-sm mb-4">
-                  {activeCatTab ? `لا توجد نتائج في تصنيف "${categoryNamesAr[activeCatTab]}"` : "جرب كلمة بحث أخرى"}
+                  {activeCatTab ? "هذا التصنيف فارغ حالياً" : "جرب كلمة بحث أخرى أو تصنيف مختلف"}
                 </p>
                 {activeCatTab && (
                   <button onClick={() => setActiveCatTab("")} className="text-[#c9a227] text-sm hover:underline">

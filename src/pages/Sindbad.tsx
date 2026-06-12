@@ -208,7 +208,11 @@ export default function SindbadHome() {
             textShadow: "none", filter: "drop-shadow(0 0 20px rgba(201,162,39,0.4))",
             fontFamily: "'Noto Naskh Arabic', 'Scheherazade', serif",
           }}>سندباد</h1>
-          <p className="text-lg" style={{ color: "#c9a227", opacity: 0.7 }}>Sindbad</p>
+          <p className="text-lg" style={{ color: "#c9a227", opacity: 0.8 }}>دليل سندباد أوروبا</p>
+          <p className="text-sm mt-1" style={{ color: "#b0b8c4" }}>Sindbad Europe Guide</p>
+          <p className="text-sm mt-2" style={{ color: "#b0b8c4", opacity: 0.7 }}>
+            محرك البحث للزائر العربي في أوروبا
+          </p>
         </div>
 
         {/* Magic Lamp */}
@@ -234,7 +238,7 @@ export default function SindbadHome() {
             </button>
             <input type="text" value={query} onChange={e => setQuery(e.target.value)}
               onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)} onKeyDown={handleKeyDown}
-              placeholder="اسأل سندباد... مطعم، مسجد، سفارة، خدمة..."
+              placeholder="🔍 اكتب ما تبحث عنه... مطعم، مسجد، سفارة، خدمة..."
               className="flex-1 bg-transparent text-white text-lg px-4 py-2.5 outline-none placeholder:text-white/25 text-right"
               dir="rtl" style={{ fontFamily: "'Noto Naskh Arabic', sans-serif" }} />
           </div>
@@ -285,7 +289,7 @@ export default function SindbadHome() {
         {/* Register Store Link */}
         <a href="/merchant/register"
           className="mt-8 px-6 py-3 rounded-full border border-[#c9a227]/30 text-[#c9a227] text-sm hover:bg-[#c9a227]/10 transition flex items-center gap-2">
-          ➕ سجل متجرك في يورو عرب ماركت
+          ➕ سجل متجرك في سندباد
         </a>
       </div>
 

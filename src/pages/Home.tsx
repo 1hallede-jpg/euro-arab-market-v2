@@ -265,7 +265,7 @@ export default function Home() {
             alt=""
           />
           <span className="font-bold text-gray-700 text-sm tracking-wide">
-            يورو عرب ماركت
+            سندباد
           </span>
         </Link>
         <div className="flex items-center gap-6 text-sm">
@@ -305,7 +305,7 @@ export default function Home() {
 
         {/* Title */}
         <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-1 tracking-tight text-center">
-          يورو عرب ماركت
+          سندباد
         </h1>
         <p className="text-gray-400 text-base md:text-lg mb-8 text-center">
           محرك البحث للعالم العربي في أوروبا
@@ -397,7 +397,7 @@ export default function Home() {
             إعلانات
           </a>
           <span className="text-gray-200">|</span>
-          <span>يورو عرب ماركت © 2026</span>
+          <span>سندباد © 2026</span>
         </div>
       </footer>
 

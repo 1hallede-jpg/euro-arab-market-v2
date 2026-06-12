@@ -449,7 +449,7 @@ export default function OwnerDashboard() {
                   <CardContent className="space-y-3">
                     {[
                       { source: "بحث Google", percent: 45, color: "bg-blue-500" },
-                      { source: "موقع يورو عرب ماركت", percent: 30, color: "bg-emerald-500" },
+                      { source: "موقع سندباد", percent: 30, color: "bg-emerald-500" },
                       { source: "فيسبوك", percent: 15, color: "bg-blue-700" },
                       { source: "إنستغرام", percent: 10, color: "bg-pink-500" },
                     ].map((item, i) => (

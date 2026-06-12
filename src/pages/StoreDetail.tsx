@@ -180,7 +180,7 @@ export default function StoreDetail() {
                       </a>
                     )}
                     {merchant.whatsapp && (
-                      <a href={`https://wa.me/${merchant.whatsapp}?text=مرحباً، تواصلت معك من يورو عرب ماركت`}
+                      <a href={`https://wa.me/${merchant.whatsapp}?text=مرحباً، تواصلت معك من سندباد`}
                         target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-green-50 transition group">
                         <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200">
@@ -258,7 +258,7 @@ export default function StoreDetail() {
                   <h3 className="font-bold text-gray-900 mb-4">إجراءات سريعة</h3>
                   <div className="space-y-3">
                     {merchant.whatsapp && (
-                      <a href={`https://wa.me/${merchant.whatsapp}?text=مرحباً، تواصلت معك من يورو عرب ماركت`}
+                      <a href={`https://wa.me/${merchant.whatsapp}?text=مرحباً، تواصلت معك من سندباد`}
                         target="_blank" rel="noopener noreferrer"
                         className="flex items-center justify-center gap-2 w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-medium transition">
                         <MessageCircle className="h-5 w-5" /> تواصل عبر واتساب

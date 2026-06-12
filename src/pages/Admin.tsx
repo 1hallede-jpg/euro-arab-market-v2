@@ -134,7 +134,7 @@ export default function Admin() {
                 لوحة التحكم
               </h1>
               <p className="text-slate-400 text-sm">
-                إدارة يورو عرب ماركت
+                إدارة سندباد
               </p>
             </div>
           </div>

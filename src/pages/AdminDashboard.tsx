@@ -119,7 +119,7 @@ export default function AdminDashboard() {
         <div className="p-4 flex items-center justify-between border-b border-slate-700">
           {sidebarOpen && (
             <div>
-              <h1 className="font-bold text-lg text-emerald-400">يورو عرب ماركت</h1>
+              <h1 className="font-bold text-lg text-emerald-400">سندباد</h1>
               <p className="text-xs text-slate-400">لوحة التحكم</p>
             </div>
           )}

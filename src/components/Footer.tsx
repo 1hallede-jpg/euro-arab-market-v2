@@ -34,7 +34,7 @@ export default function Footer() {
               </div>
               <div className="flex flex-col leading-none">
                 <span className="font-bold text-white text-base">
-                  يورو عرب ماركت
+                  سندباد
                 </span>
                 <span className="text-xs text-slate-400">
                   Euro Arab Market
@@ -141,7 +141,7 @@ export default function Footer() {
         {/* Bottom Bar */}
         <div className="mt-10 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-slate-500">
-            يورو عرب ماركت &copy; {new Date().getFullYear()} - جميع الحقوق محفوظة
+            سندباد | Sindbad &copy; {new Date().getFullYear()}
           </p>
           <p className="flex items-center gap-1 text-sm text-slate-500">
             صنع بـ <Heart className="h-3.5 w-3.5 text-red-500 fill-red-500" /> لخدمة العرب في أوروبا

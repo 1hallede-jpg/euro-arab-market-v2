@@ -155,24 +155,6 @@ export const merchantRouter = createRouter({
       }
     }),
 
-  // Get merchant by ID
-  getById: publicQuery
-    .input(z.object({ id: z.number() }))
-    .query(async ({ input }) => {
-      try {
-        const db = getDb();
-        const result = await db
-          .select()
-          .from(merchants)
-          .where(eq(merchants.id, input.id))
-          .limit(1);
-        return result[0] || null;
-      } catch (error: any) {
-        console.error("[getById] Error:", error?.message);
-        return null;
-      }
-    }),
-
   // Create merchant
   create: publicQuery
     .input(

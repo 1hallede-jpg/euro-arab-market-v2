@@ -30248,17 +30248,6 @@ var merchantRouter = createRouter({
       return null;
     }
   }),
-  // Get merchant by ID
-  getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
-    try {
-      const db = getDb();
-      const result = await db.select().from(merchants).where(eq(merchants.id, input.id)).limit(1);
-      return result[0] || null;
-    } catch (error48) {
-      console.error("[getById] Error:", error48?.message);
-      return null;
-    }
-  }),
   // Create merchant
   create: publicQuery.input(
     external_exports.object({
