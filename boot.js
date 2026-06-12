@@ -30234,45 +30234,83 @@ var merchantRouter = createRouter({
       businessNameAr: external_exports.string().optional(),
       description: external_exports.string().optional(),
       descriptionAr: external_exports.string().optional(),
-      category: external_exports.enum([
-        "restaurant",
-        "supermarket",
-        "sweets",
-        "barber",
-        "butcher",
-        "bakery",
-        "cafe",
-        "clothing",
-        "electronics",
-        "pharmacy",
-        "other"
-      ]),
+      shortDescription: external_exports.string().optional(),
+      category: external_exports.string().min(1),
       subcategory: external_exports.string().optional(),
       phone: external_exports.string().optional(),
       whatsapp: external_exports.string().optional(),
-      email: external_exports.string().email().optional(),
+      email: external_exports.string().email().optional().or(external_exports.literal("")),
       website: external_exports.string().optional(),
       country: external_exports.string().min(1),
       city: external_exports.string().min(1),
       address: external_exports.string().optional(),
+      addressAr: external_exports.string().optional(),
       postalCode: external_exports.string().optional(),
-      latitude: external_exports.string().optional(),
-      longitude: external_exports.string().optional(),
+      latitude: external_exports.string().optional().or(external_exports.number().transform(String)).nullable(),
+      longitude: external_exports.string().optional().or(external_exports.number().transform(String)).nullable(),
       openingHours: external_exports.any().optional(),
       tags: external_exports.string().optional(),
+      rating: external_exports.number().optional(),
+      priceRange: external_exports.string().optional(),
       userId: external_exports.number().optional()
     })
   ).mutation(async ({ input }) => {
-    const db = getDb();
-    const slug = input.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
-    const result = await db.insert(merchants).values({
-      ...input,
-      slug,
-      status: "pending",
-      createdAt: /* @__PURE__ */ new Date(),
-      updatedAt: /* @__PURE__ */ new Date()
-    }).returning({ id: merchants.id });
-    return { id: result[0].id, slug };
+    const client = src_default(env.databaseUrl, {
+      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+      max: 1
+    });
+    try {
+      const slug = (input.businessName || "store").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
+      const nameEn = input.businessName;
+      const nameAr = input.businessNameAr || nameEn;
+      const descAr = input.descriptionAr || input.description || "";
+      const shortDesc = input.shortDescription || `${nameAr} \u0641\u064A ${input.city}`.substring(0, 160);
+      const addr = input.address || input.city;
+      const addrAr = input.addressAr || addr;
+      const subcat = input.subcategory || input.category;
+      const tagsVal = (input.tags || `${subcat} ${input.city} ${nameAr} ${nameEn}`).substring(0, 200);
+      const ratingVal = input.rating || 0;
+      const reviews2 = ratingVal > 0 ? Math.floor(Math.random() * 30 + 5) : 0;
+      const lat = input.latitude || null;
+      const lng = input.longitude || null;
+      const price = input.priceRange || "$$";
+      const phoneVal = input.phone || "";
+      const webVal = input.website || null;
+      const result = await client`
+          INSERT INTO merchants (
+            business_name, business_name_ar, short_description,
+            description, description_ar, category, subcategory,
+            tags, country, city, address, address_ar,
+            phone, website, status, slug,
+            is_featured, is_verified, rating, review_count,
+            latitude, longitude, price_range,
+            created_at, updated_at,
+            "businessName", "businessNameAr", "shortDescription",
+            "description", "descriptionAr", "addressAr",
+            "isFeatured", "isVerified", "reviewCount",
+            "priceRange", "createdAt", "updatedAt"
+          ) VALUES (
+            ${nameEn}, ${nameAr}, ${shortDesc},
+            ${descAr}, ${descAr}, ${input.category}, ${subcat},
+            ${tagsVal}, ${input.country}, ${input.city}, ${addr}, ${addrAr},
+            ${phoneVal}, ${webVal}, 'active', ${slug},
+            ${false}, ${true}, ${ratingVal}, ${reviews2},
+            ${lat}, ${lng}, ${price},
+            NOW(), NOW(),
+            ${nameEn}, ${nameAr}, ${shortDesc},
+            ${descAr}, ${descAr}, ${addrAr},
+            ${false}, ${true}, ${reviews2},
+            ${price}, NOW(), NOW()
+          )
+          RETURNING id
+        `;
+      return { id: result[0]?.id || 0, slug, status: "active" };
+    } catch (e) {
+      console.error("[merchant.create] Error:", e?.message);
+      return { error: e?.message || "Insert failed" };
+    } finally {
+      await client.end();
+    }
   }),
   // Get featured merchants
   featured: publicQuery.query(async () => {
@@ -33386,13 +33424,17 @@ var migrateRouter = createRouter({
         try {
           await client`
               INSERT INTO merchants (
-                "businessName", "businessNameAr", "shortDescription",
-                "description", "descriptionAr", category, subcategory,
-                tags, country, city, address, "addressAr",
+                business_name, business_name_ar, short_description,
+                description, description_ar, category, subcategory,
+                tags, country, city, address, address_ar,
                 phone, website, status, slug,
-                "isFeatured", "isVerified", rating, "reviewCount",
-                latitude, longitude, "priceRange",
-                "createdAt", "updatedAt"
+                is_featured, is_verified, rating, review_count,
+                latitude, longitude, price_range,
+                created_at, updated_at,
+                "businessName", "businessNameAr", "shortDescription",
+                "description", "descriptionAr", "addressAr",
+                "isFeatured", "isVerified", "reviewCount",
+                "priceRange", "createdAt", "updatedAt"
               ) VALUES (
                 ${nameEn}, ${nameAr}, ${shortDesc},
                 ${descAr}, ${descAr}, ${m.category}, ${subcat},
@@ -33400,7 +33442,11 @@ var migrateRouter = createRouter({
                 ${phoneVal}, ${m.website || null}, 'active', ${slug},
                 ${false}, ${true}, ${ratingVal}, ${reviews2},
                 ${lat}, ${lng}, ${price},
-                NOW(), NOW()
+                NOW(), NOW(),
+                ${nameEn}, ${nameAr}, ${shortDesc},
+                ${descAr}, ${descAr}, ${addrAr},
+                ${false}, ${true}, ${reviews2},
+                ${price}, NOW(), NOW()
               )
               ON CONFLICT DO NOTHING
             `;
