@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 const API_URL = "/api/trpc";
-const ADMIN_PASS = "admin123";
+const ADMIN_PASS = "Sindbad2024!Admin";
 
 const statusColors: Record<string, { bg: string; text: string; label: string }> =
   {

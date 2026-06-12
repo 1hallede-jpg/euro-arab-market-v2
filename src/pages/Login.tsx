@@ -10,7 +10,7 @@ export default function Login() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === "admin@euroarabmarket.com" && password === "admin123") {
+    if (email === "admin@euroarabmarket.com" && password === "Sindbad2024!Admin") {
       window.location.href = "/admin/merchants";
     } else {
       setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");

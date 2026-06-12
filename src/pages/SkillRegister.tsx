@@ -57,6 +57,7 @@ export default function SkillRegister() {
     portfolio: [] as File[],
     profilePhoto: null as File | null,
   });
+  const [filePreview, setFilePreview] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
   const submitMutation = trpc.skills.submit.useMutation({
@@ -67,24 +68,40 @@ export default function SkillRegister() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleFileChange = (field: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  // Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileChange = async (field: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+    if (!file) return;
     setFiles((prev) => ({ ...prev, [field]: file }));
+    // Convert to base64 preview
+    try {
+      const base64 = await fileToBase64(file);
+      setFilePreview((prev) => ({ ...prev, [field]: base64 }));
+      // Also store in form for submission
+      const formField = field === "businessReg" ? "businessRegistrationPhoto" : "experienceCertificate";
+      setForm((prev) => ({ ...prev, [formField]: base64 }));
+    } catch {
+      // ignore
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.fullName || !form.serviceType || !form.phone || !form.email) return;
 
-    // Convert files to base64 for sending
-    const submitData = {
+    submitMutation.mutate({
       ...form,
       country: countries[form.city] || "",
-      businessRegistrationPhoto: files.businessReg ? `[FILE: ${files.businessReg.name}]` : undefined,
-      experienceCertificate: files.experienceCert ? `[FILE: ${files.experienceCert.name}]` : undefined,
-    };
-
-    submitMutation.mutate(submitData);
+    });
   };
 
   if (submitted) {
@@ -375,57 +392,66 @@ export default function SkillRegister() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Business Registration */}
-              <label className="border border-dashed border-white/20 rounded-lg p-4 text-center hover:border-[#c9a227]/50 transition cursor-pointer block">
-                <input type="file" accept="image/*,.pdf" className="hidden"
+              <label className="relative border border-dashed border-white/20 rounded-lg p-4 text-center hover:border-[#c9a227]/50 transition cursor-pointer block overflow-hidden">
+                <input type="file" accept="image/*,.pdf" className="sr-only"
                   onChange={(e) => handleFileChange("businessReg", e)} />
-                {files.businessReg ? (
-                  <>
-                    <CheckCircle className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
-                    <p className="text-emerald-400 text-xs">{files.businessReg.name}</p>
-                  </>
+                {filePreview.businessReg ? (
+                  <div className="relative">
+                    <img src={filePreview.businessReg} alt="Business Reg" className="w-full h-24 object-contain rounded" />
+                    <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center rounded">
+                      <CheckCircle className="h-8 w-8 text-emerald-400" />
+                    </div>
+                    <p className="text-emerald-400 text-xs mt-1">{files.businessReg?.name}</p>
+                  </div>
                 ) : (
-                  <>
-                    <Camera className="h-6 w-6 text-white/40 mx-auto mb-2" />
-                    <p className="text-white text-xs">صورة السجل التجاري</p>
+                  <div className="flex flex-col items-center">
+                    <Camera className="h-6 w-6 text-white/40 mb-2" />
+                    <p className="text-white text-xs font-medium">صورة السجل التجاري</p>
                     <p className="text-white/40 text-[10px]">Business Registration Photo</p>
-                  </>
+                    <span className="mt-2 text-[#c9a227] text-[10px] border border-[#c9a227]/30 rounded-full px-3 py-0.5">اضغط لاختيار الملف</span>
+                  </div>
                 )}
               </label>
               {/* Experience Certificate */}
-              <label className="border border-dashed border-white/20 rounded-lg p-4 text-center hover:border-[#c9a227]/50 transition cursor-pointer block">
-                <input type="file" accept="image/*,.pdf" className="hidden"
+              <label className="relative border border-dashed border-white/20 rounded-lg p-4 text-center hover:border-[#c9a227]/50 transition cursor-pointer block overflow-hidden">
+                <input type="file" accept="image/*,.pdf" className="sr-only"
                   onChange={(e) => handleFileChange("experienceCert", e)} />
-                {files.experienceCert ? (
-                  <>
-                    <CheckCircle className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
-                    <p className="text-emerald-400 text-xs">{files.experienceCert.name}</p>
-                  </>
+                {filePreview.experienceCert ? (
+                  <div className="relative">
+                    <img src={filePreview.experienceCert} alt="Experience" className="w-full h-24 object-contain rounded" />
+                    <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center rounded">
+                      <CheckCircle className="h-8 w-8 text-emerald-400" />
+                    </div>
+                    <p className="text-emerald-400 text-xs mt-1">{files.experienceCert?.name}</p>
+                  </div>
                 ) : (
-                  <>
-                    <Award className="h-6 w-6 text-white/40 mx-auto mb-2" />
-                    <p className="text-white text-xs">شهادة ممارسة الخبرة</p>
+                  <div className="flex flex-col items-center">
+                    <Award className="h-6 w-6 text-white/40 mb-2" />
+                    <p className="text-white text-xs font-medium">شهادة ممارسة الخبرة</p>
                     <p className="text-white/40 text-[10px]">Experience Certificate</p>
-                  </>
+                    <span className="mt-2 text-[#c9a227] text-[10px] border border-[#c9a227]/30 rounded-full px-3 py-0.5">اضغط لاختيار الملف</span>
+                  </div>
                 )}
               </label>
               {/* Portfolio Photos */}
-              <label className="border border-dashed border-white/20 rounded-lg p-4 text-center hover:border-[#c9a227]/50 transition cursor-pointer block md:col-span-2">
-                <input type="file" accept="image/*" multiple className="hidden"
+              <label className="relative border border-dashed border-white/20 rounded-lg p-4 text-center hover:border-[#c9a227]/50 transition cursor-pointer block md:col-span-2 overflow-hidden">
+                <input type="file" accept="image/*" multiple className="sr-only"
                   onChange={(e) => {
                     const newFiles = Array.from(e.target.files || []);
                     setFiles((prev) => ({ ...prev, portfolio: [...prev.portfolio, ...newFiles] }));
                   }} />
                 {files.portfolio.length > 0 ? (
-                  <>
-                    <CheckCircle className="h-6 w-6 text-emerald-400 mx-auto mb-2" />
-                    <p className="text-emerald-400 text-xs">{files.portfolio.length} صورة محفظة</p>
-                  </>
+                  <div className="flex flex-col items-center">
+                    <CheckCircle className="h-6 w-6 text-emerald-400 mb-2" />
+                    <p className="text-emerald-400 text-xs">{files.portfolio.length} صورة محفوظة</p>
+                  </div>
                 ) : (
-                  <>
-                    <Camera className="h-6 w-6 text-white/40 mx-auto mb-2" />
-                    <p className="text-white text-xs">صور من أعمالك (اختياري)</p>
+                  <div className="flex flex-col items-center">
+                    <Camera className="h-6 w-6 text-white/40 mb-2" />
+                    <p className="text-white text-xs font-medium">صور من أعمالك (اختياري)</p>
                     <p className="text-white/40 text-[10px]">Portfolio Photos</p>
-                  </>
+                    <span className="mt-2 text-[#c9a227] text-[10px] border border-[#c9a227]/30 rounded-full px-3 py-0.5">اضغط لاختيار الملف</span>
+                  </div>
                 )}
               </label>
             </div>
