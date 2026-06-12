@@ -9,6 +9,8 @@ import {
   User,
   Loader2,
   Globe,
+  PlusCircle,
+  Wrench,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -384,9 +386,13 @@ export default function Home() {
 
       {/* ─── Footer ─── */}
       <footer className="relative py-5 text-center" style={{ zIndex: 10 }}>
-        <div className="flex items-center justify-center gap-6 text-xs text-gray-300">
-          <Link to="/add-store" className="hover:text-amber-500 transition">
-            أضف متجرك
+        <div className="flex items-center justify-center gap-4 text-xs text-gray-300 flex-wrap">
+          <Link to="/merchant/register" className="hover:text-amber-500 transition flex items-center gap-1">
+            <PlusCircle className="h-3 w-3" /> أضف متجرك
+          </Link>
+          <span className="text-gray-200">|</span>
+          <Link to="/skill/register" className="hover:text-amber-500 transition flex items-center gap-1">
+            <Wrench className="h-3 w-3" /> أضف مهارتك
           </Link>
           <span className="text-gray-200">|</span>
           <Link to="/terms" className="hover:text-amber-500 transition">

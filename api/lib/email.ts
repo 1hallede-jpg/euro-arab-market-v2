@@ -212,6 +212,178 @@ body{font-family:Arial,sans-serif;background:#f5f5f5;padding:20px;}
   return { success: true, message: "Email logged (SMTP not configured). To enable real email, set SMTP_HOST, SMTP_USER, SMTP_PASS env vars." };
 }
 
+// ==================== SKILL REGISTRATION EMAIL ====================
+interface SkillEmailData {
+  id: number;
+  fullName: string;
+  fullNameAr?: string | null;
+  serviceType: string;
+  serviceTypeAr?: string | null;
+  category: string;
+  city: string;
+  country: string;
+  phone?: string | null;
+  email?: string | null;
+  yearsOfExperience?: number | null;
+  description?: string | null;
+  descriptionAr?: string | null;
+  businessRegistrationPhoto?: string | null;
+  experienceCertificate?: string | null;
+}
+
+export async function sendSkillRegistrationEmail(skill: SkillEmailData): Promise<{ success: boolean; message: string }> {
+  const subject = `🛠️ طلب تسجيل مهارة جديدة — ${skill.fullNameAr || skill.fullName}`;
+  const reviewLink = `https://euroarabmarket.com/admin/skills?id=${skill.id}`;
+  const fallbackLink = `https://euro-arab-market.onrender.com/admin/skills?id=${skill.id}`;
+
+  const arabicBody = `
+مرحباً فريق سندباد،
+
+تم استلام طلب تسجيل مهارة جديدة:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 معلومات مقدم الخدمة:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• الاسم: ${skill.fullNameAr || skill.fullName}
+• نوع الخدمة: ${skill.serviceTypeAr || skill.serviceType}
+• التصنيف: ${skill.category}
+• المدينة: ${skill.city}
+• الهاتف: ${skill.phone || "غير محدد"}
+• البريد الإلكتروني: ${skill.email || "غير محدد"}
+• سنوات الخبرة: ${skill.yearsOfExperience || "غير محدد"}
+
+📝 الوصف:
+${skill.descriptionAr || skill.description || "لا يوجد وصف"}
+
+📎 المرفقات:
+• السجل التجاري: ${skill.businessRegistrationPhoto || "غير مرفق"}
+• شهادة الخبرة: ${skill.experienceCertificate || "غير مرفق"}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔗 رابط مراجعة الطلب:
+${reviewLink}
+(أو: ${fallbackLink})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+
+  const englishBody = `
+Hello Sindbad Team,
+
+A new skill/freelancer registration has been received:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Service Provider Information:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Name: ${skill.fullNameAr || skill.fullName}
+• Service Type: ${skill.serviceTypeAr || skill.serviceType}
+• Category: ${skill.category}
+• City: ${skill.city}, ${skill.country}
+• Phone: ${skill.phone || "Not provided"}
+• Email: ${skill.email || "Not provided"}
+• Years of Experience: ${skill.yearsOfExperience || "Not provided"}
+
+Description:
+${skill.description || skill.descriptionAr || "No description"}
+
+Attachments:
+• Business Registration: ${skill.businessRegistrationPhoto || "Not attached"}
+• Experience Certificate: ${skill.experienceCertificate || "Not attached"}
+
+Review Link: ${reviewLink}
+(Fallback: ${fallbackLink})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+
+  const htmlBody = `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head><meta charset="UTF-8"><style>
+body{font-family:Arial,sans-serif;background:#f5f5f5;padding:20px;}
+.container{max-width:600px;margin:0 auto;background:#fff;border-radius:10px;overflow:hidden;}
+.header{background:linear-gradient(135deg,#0a1628,#1a2744);color:#c9a227;padding:20px;text-align:center;}
+.header h1{margin:0;font-size:24px;}
+.content{padding:20px;}
+.section{margin-bottom:20px;border-right:3px solid #c9a227;padding-right:15px;}
+.section h3{color:#1a5f4a;margin-bottom:10px;}
+.field{margin-bottom:8px;}
+.field-label{font-weight:bold;color:#555;}
+.field-value{color:#333;}
+.doc-link{display:inline-block;background:#c9a227;color:#0a1628;padding:8px 15px;border-radius:5px;text-decoration:none;margin:5px;font-size:12px;}
+.no-doc{color:#999;font-style:italic;}
+.review-link{display:block;background:#1a5f4a;color:#fff;text-align:center;padding:15px;border-radius:5px;text-decoration:none;margin:20px 0;font-weight:bold;}
+.footer{text-align:center;padding:15px;background:#f9f9f9;color:#999;font-size:12px;}
+</style></head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🛠️ طلب تسجيل مهارة جديدة</h1>
+    <p style="color:#fff;margin:5px 0;">سندباد — دليلك العربي في أوروبا</p>
+  </div>
+  <div class="content">
+    <div class="section">
+      <h3>📋 معلومات مقدم الخدمة</h3>
+      <div class="field"><span class="field-label">الاسم:</span> <span class="field-value">${skill.fullNameAr || skill.fullName}</span></div>
+      <div class="field"><span class="field-label">نوع الخدمة:</span> <span class="field-value">${skill.serviceTypeAr || skill.serviceType}</span></div>
+      <div class="field"><span class="field-label">التصنيف:</span> <span class="field-value">${skill.category}</span></div>
+      <div class="field"><span class="field-label">المدينة:</span> <span class="field-value">${skill.city}, ${skill.country}</span></div>
+      <div class="field"><span class="field-label">الهاتف:</span> <span class="field-value">${skill.phone || "غير محدد"}</span></div>
+      <div class="field"><span class="field-label">البريد:</span> <span class="field-value">${skill.email || "غير محدد"}</span></div>
+      <div class="field"><span class="field-label">سنوات الخبرة:</span> <span class="field-value">${skill.yearsOfExperience || "غير محدد"}</span></div>
+    </div>
+    <div class="section">
+      <h3>📝 الوصف</h3>
+      <p>${skill.descriptionAr || skill.description || "لا يوجد وصف"}</p>
+    </div>
+    <div class="section">
+      <h3>📎 المرفقات</h3>
+      ${skill.businessRegistrationPhoto ? `<a class="doc-link" href="${skill.businessRegistrationPhoto}">📄 السجل التجاري</a>` : "<span class='no-doc'>📄 السجل التجاري: غير مرفق</span>"}<br/>
+      ${skill.experienceCertificate ? `<a class="doc-link" href="${skill.experienceCertificate}">🏆 شهادة الخبرة</a>` : "<span class='no-doc'>🏆 شهادة الخبرة: غير مرفق</span>"}
+    </div>
+    <a class="review-link" href="${reviewLink}">🔗 مراجعة الطلب في لوحة الإدارة</a>
+    <p style="text-align:center;color:#999;font-size:11px;">أو افتح: ${fallbackLink}</p>
+  </div>
+  <div class="footer">
+    سندباد | دليلك العربي في أوروبا | ${new Date().toLocaleDateString("ar-SA")}
+  </div>
+</div>
+</body></html>`;
+
+  const emailData = {
+    id: skill.id,
+    to: ADMIN_EMAIL,
+    from: FROM_EMAIL,
+    subject,
+    arabicBody,
+    englishBody,
+    htmlBody,
+    sentAt: new Date().toISOString(),
+    skillId: skill.id,
+  };
+
+  emailLogs.push(emailData);
+  console.log(`[EMAIL] Skill registration notification logged for ID ${skill.id}: ${skill.fullNameAr || skill.fullName}`);
+
+  const transporter = getTransporter();
+  if (transporter) {
+    try {
+      await transporter.sendMail({
+        from: `"سندباد" <${FROM_EMAIL}>`,
+        to: ADMIN_EMAIL,
+        subject,
+        text: arabicBody + "\n\n" + englishBody,
+        html: htmlBody,
+      });
+      console.log(`[EMAIL] Sent successfully to ${ADMIN_EMAIL}`);
+      return { success: true, message: "Email sent successfully" };
+    } catch (e: any) {
+      console.error(`[EMAIL] SMTP error: ${e.message}`);
+      return { success: false, message: `SMTP failed: ${e.message}` };
+    }
+  }
+
+  return { success: true, message: "Email logged (SMTP not configured)" };
+}
+
 // Get recent email logs
 export function getEmailLogs(limit: number = 50): any[] {
   return emailLogs.slice(-limit).reverse();

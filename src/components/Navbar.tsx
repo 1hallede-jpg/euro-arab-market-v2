@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router";
 import Logo from "./Logo";
 import {
-  Sparkles, PlusCircle, Menu, X, LogIn,
+  Sparkles, PlusCircle, Wrench, Menu, X, LogIn,
 } from "lucide-react";
 
 const navLinks = [
   { href: "/", label: "سندباد", icon: Sparkles },
   { href: "/search", label: "اسأل سندباد", icon: Sparkles },
   { href: "/merchant/register", label: "سجل متجرك", icon: PlusCircle },
+  { href: "/skill/register", label: "أضف مهارتك", icon: Wrench },
 ];
 
 export default function Navbar() {

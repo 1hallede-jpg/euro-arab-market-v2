@@ -13,6 +13,7 @@ import { reviewsRouter } from "./reviews-router";
 import { featuredRouter, analyticsRouter } from "./featured-router";
 import { emergencyRouter } from "./emergency-router";
 import { pendingMerchantRouter } from "./pending-merchant-router";
+import { skillsRouter } from "./skills-router";
 import { createRouter, publicQuery } from "./middleware";
 
 export const appRouter = createRouter({
@@ -33,6 +34,7 @@ export const appRouter = createRouter({
   analytics: analyticsRouter,
   emergency: emergencyRouter,
   pendingMerchant: pendingMerchantRouter,
+  skills: skillsRouter,
 });
 
 export type AppRouter = typeof appRouter;

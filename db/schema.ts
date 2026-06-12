@@ -342,6 +342,60 @@ export const pendingMerchants = pgTable("pending_merchants", {
 export type PendingMerchant = typeof pendingMerchants.$inferSelect;
 export type InsertPendingMerchant = typeof pendingMerchants.$inferInsert;
 
+// ==================== SKILLS / FREELANCERS ====================
+export const skillStatusEnum = pgEnum("skill_status", [
+  "pending", "active", "suspended", "rejected",
+]);
+
+export const skills = pgTable("skills", {
+  id: serial("id").primaryKey(),
+  // Personal Info
+  fullName: varchar("fullName", { length: 255 }).notNull(),
+  fullNameAr: varchar("fullNameAr", { length: 255 }),
+  // Service Info
+  serviceType: varchar("serviceType", { length: 255 }).notNull(),
+  serviceTypeAr: varchar("serviceTypeAr", { length: 255 }),
+  category: varchar("category", { length: 100 }).notNull(),
+  subcategory: varchar("subcategory", { length: 100 }),
+  description: text("description"),
+  descriptionAr: text("descriptionAr"),
+  // Experience
+  yearsOfExperience: integer("yearsOfExperience").default(0),
+  // Contact
+  phone: varchar("phone", { length: 50 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  whatsapp: varchar("whatsapp", { length: 50 }),
+  // Address
+  country: varchar("country", { length: 100 }).notNull(),
+  city: varchar("city", { length: 100 }).notNull(),
+  address: text("address"),
+  // Documents (URLs to uploaded files)
+  businessRegistrationPhoto: text("businessRegistrationPhoto"),
+  experienceCertificate: text("experienceCertificate"),
+  portfolioPhotos: jsonb("portfolioPhotos").default("[]"),
+  profilePhoto: text("profilePhoto"),
+  // Pricing
+  hourlyRate: decimal("hourlyRate", { precision: 10, scale: 2 }),
+  fixedPrice: decimal("fixedPrice", { precision: 10, scale: 2 }),
+  currency: varchar("currency", { length: 3 }).default("EUR"),
+  // Subscription
+  subscriptionStatus: subscriptionStatusEnum("subscriptionStatus").default("trial"),
+  subscriptionPlan: subscriptionPlanEnum("subscriptionPlan").default("basic"),
+  subscriptionPrice: decimal("subscriptionPrice", { precision: 10, scale: 2 }).default("5.00"),
+  // Status
+  status: skillStatusEnum("status").default("pending").notNull(),
+  isFeatured: boolean("isFeatured").default(false),
+  // Admin
+  adminNotes: text("adminNotes"),
+  rejectionReason: text("rejectionReason"),
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
+export type Skill = typeof skills.$inferSelect;
+export type InsertSkill = typeof skills.$inferInsert;
+
 // ==================== FAVORITES ====================
 export const favorites = pgTable("favorites", {
   id: serial("id").primaryKey(),
