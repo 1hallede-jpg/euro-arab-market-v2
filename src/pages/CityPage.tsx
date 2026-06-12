@@ -11,7 +11,78 @@ import {
   TrendingUp,
   Users,
   Star,
+  BadgeCheck,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+
+// ─── Prayer times by city (approximate) ───
+const cityPrayerOffsets: Record<string, Record<string, string>> = {
+  paris: { fajr: "04:30", dhuhr: "13:45", asr: "17:45", maghrib: "21:45", isha: "23:30" },
+  london: { fajr: "04:00", dhuhr: "13:15", asr: "17:15", maghrib: "21:15", isha: "22:45" },
+  berlin: { fajr: "04:15", dhuhr: "13:30", asr: "17:30", maghrib: "21:30", isha: "23:00" },
+  madrid: { fajr: "05:00", dhuhr: "14:00", asr: "18:00", maghrib: "22:00", isha: "23:45" },
+  rome: { fajr: "04:45", dhuhr: "13:45", asr: "17:45", maghrib: "21:45", isha: "23:30" },
+  amsterdam: { fajr: "04:30", dhuhr: "13:45", asr: "17:45", maghrib: "21:45", isha: "23:30" },
+  brussels: { fajr: "04:30", dhuhr: "13:45", asr: "17:45", maghrib: "21:45", isha: "23:30" },
+  vienna: { fajr: "04:15", dhuhr: "13:15", asr: "17:15", maghrib: "21:15", isha: "22:45" },
+  stockholm: { fajr: "03:30", dhuhr: "12:45", asr: "16:45", maghrib: "21:30", isha: "23:00" },
+  oslo: { fajr: "03:15", dhuhr: "12:30", asr: "16:30", maghrib: "21:30", isha: "22:45" },
+  copenhagen: { fajr: "03:45", dhuhr: "13:00", asr: "17:00", maghrib: "21:45", isha: "23:15" },
+  athens: { fajr: "05:00", dhuhr: "13:45", asr: "17:45", maghrib: "21:15", isha: "22:45" },
+  barcelona: { fajr: "05:15", dhuhr: "14:00", asr: "18:00", maghrib: "22:15", isha: "23:45" },
+  milan: { fajr: "04:45", dhuhr: "13:30", asr: "17:30", maghrib: "21:45", isha: "23:15" },
+  default: { fajr: "04:30", dhuhr: "13:30", asr: "17:30", maghrib: "21:30", isha: "23:00" },
+};
+
+const prayerNamesAr: Record<string, string> = {
+  fajr: "الفجر", dhuhr: "الظهر", asr: "العصر", maghrib: "المغرب", isha: "العشاء",
+};
+
+function CityPrayerTimes({ citySlug }: { citySlug: string }) {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  const times = cityPrayerOffsets[citySlug] || cityPrayerOffsets.default;
+  const prayers = Object.entries(times).map(([key, time]) => {
+    const [h, m] = time.split(":").map(Number);
+    return { name: key, nameAr: prayerNamesAr[key], minutes: h * 60 + m };
+  });
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  let nextPrayer = prayers[0];
+  let minDiff = Infinity;
+  for (const p of prayers) {
+    let diff = p.minutes - currentMinutes;
+    if (diff < 0) diff += 24 * 60;
+    if (diff < minDiff) {
+      minDiff = diff;
+      nextPrayer = p;
+    }
+  }
+
+  const hoursLeft = Math.floor(minDiff / 60);
+  const minsLeft = minDiff % 60;
+
+  return (
+    <div className="mt-3 inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" opacity="0.8">
+        <path d="M12 3v1m0 16v1m-9-9h1m16 0h1M5.6 5.6l.7.7m12.1 12.1l.7.7M3 12a9 9 0 1018 0 9 9 0 00-18 0z"/>
+        <circle cx="12" cy="12" r="3"/>
+      </svg>
+      <span className="text-white/90 text-sm">
+        باقي على <span className="font-bold text-[#c9a227]">{nextPrayer.nameAr}</span>
+        {" "}
+        {hoursLeft > 0 ? `${hoursLeft} ساعة و ` : ""}
+        {minsLeft} دقيقة
+      </span>
+    </div>
+  );
+}
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -173,6 +244,9 @@ export default function CityPage() {
             اكتشف أفضل المطاعم الحلال، السوبرماركت العربية، صالونات الحلاقة،
             والمزيد في {cityAr}
           </p>
+
+          {/* Prayer Times - Next prayer only */}
+          <CityPrayerTimes citySlug={cityEn} />
 
           {/* Stats */}
           {!isLoading && merchantsData && (

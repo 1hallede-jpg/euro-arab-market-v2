@@ -419,9 +419,6 @@ export default function Home() {
           دليلك العربي في أوروبا
         </p>
 
-        {/* Prayer Times */}
-        <PrayerTimes />
-
         {/* Search Bar */}
         <form onSubmit={onSearch} className="w-full max-w-xl mt-5 mb-3">
           <div
@@ -447,10 +444,10 @@ export default function Home() {
           <div className="flex items-center justify-center mt-4">
             <button
               type="submit"
-              className="bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-800 hover:to-amber-700 text-white font-bold text-sm rounded-full px-10 py-3 shadow-lg shadow-amber-900/20 flex items-center gap-2 transition-all"
+              className="bg-gradient-to-r from-amber-800 to-amber-700 hover:from-amber-900 hover:to-amber-800 text-white font-bold text-base rounded-full px-12 py-3.5 shadow-lg shadow-amber-900/30 flex items-center gap-2 transition-all"
             >
-              <Search className="h-4 w-4" />
-              اسأل سندباد — يبحث في الموقع
+              <Search className="h-5 w-5" />
+              اسأل سندباد
             </button>
           </div>
         </form>
@@ -488,21 +485,44 @@ export default function Home() {
           جرب: مطعم حلال في باريس — جزار في برلين — سوبرماركت في لندن
         </p>
 
-        {/* ─── AD SPOT: Place Your Ad Here ─── */}
-        <Link
-          to="/merchant/register"
+        {/* ─── CHARITY AD: Direct Aid (مثال للإعلان) ─── */}
+        <a
+          href="https://direct-aid.org/donate/ar/zakat-calculator-ar.html?utm_source=WebBanner&utm_campaign=WebBanner&utm_medium=Zakatcalbanner&utm_content=zakattopArabic"
+          target="_blank"
+          rel="noopener noreferrer"
           className="group w-full max-w-xl"
         >
-          <div className="bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-2xl p-5 text-center hover:border-amber-300 hover:from-amber-50/30 hover:to-amber-50/50 transition-all duration-300 group-hover:shadow-md">
-            <p className="text-gray-400 text-sm font-medium group-hover:text-amber-600 transition-colors">
-              <span className="inline-block mr-2">📢</span>
-              ضع إعلانك هنا — اسم علامتك التجارية
-            </p>
-            <p className="text-gray-300 text-xs mt-1 group-hover:text-amber-400 transition-colors">
-              احجز مكانك لمدة أسبوع | تواصل معنا للتفاصيل
-            </p>
+          <div className="relative overflow-hidden rounded-2xl border border-[#1a5f4a]/30 hover:border-[#c9a227]/50 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-amber-500/10">
+            {/* Green gradient background */}
+            <div className="bg-gradient-to-r from-[#1a5f4a] to-[#0d4a34] p-5">
+              <div className="flex items-center gap-4">
+                {/* Lamp icon */}
+                <div className="w-14 h-14 rounded-full bg-[#c9a227]/20 flex items-center justify-center shrink-0 border-2 border-[#c9a227]/40">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#c9a227" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 18h6M10 22h4M8 15l1-5.5a4 4 0 016 0L16 15H8z"/>
+                    <circle cx="12" cy="5" r="2"/>
+                  </svg>
+                </div>
+                <div className="flex-1 text-right">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-[#c9a227] text-[#0a1628] text-[10px] font-bold px-2 py-0.5 rounded-full">إعلان خيري</span>
+                    <span className="bg-white/10 text-white/70 text-[10px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c9a227" strokeWidth="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      مثال: هكذا يظهر إعلانك المميز
+                    </span>
+                  </div>
+                  <h3 className="text-white font-bold text-sm mb-0.5 group-hover:text-[#c9a227] transition-colors">حاسبة الزكاة — المنظمة الخيرية المباشرة</h3>
+                  <p className="text-white/50 text-xs">احسب زكاتك بسهولة | Direct Aid Organization — Zakat Calculator</p>
+                </div>
+                <div className="text-[#c9a227] text-xs font-bold shrink-0 group-hover:translate-x-1 transition-transform">
+                  تبرع الآن ←
+                </div>
+              </div>
+            </div>
+            {/* Gold shimmer bottom */}
+            <div className="h-0.5 bg-gradient-to-r from-transparent via-[#c9a227]/50 to-transparent" />
           </div>
-        </Link>
+        </a>
       </main>
 
       {/* ─── Footer ─── */}
