@@ -14,12 +14,35 @@ import path from "path";
 const app = new Hono<{ Bindings: HttpBindings }>();
 
 app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
+
+// CORS for both Render and custom domain
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://euro-arab-market.onrender.com",
+  "https://www.euroarabmarket.com",
+  "https://euroarabmarket.com",
+];
+
 app.use("/api/trpc/*", cors({
-  origin: "*",
+  origin: (origin) => {
+    if (!origin || allowedOrigins.includes(origin)) return origin;
+    return null;
+  },
   allowMethods: ["GET", "POST", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
   credentials: false,
 }));
+
+// Security headers for all responses
+app.use("*", async (c, next) => {
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("X-Frame-Options", "DENY");
+  c.header("X-XSS-Protection", "1; mode=block");
+  c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+  c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");
+  await next();
+});
 app.get(Paths.oauthCallback, createOAuthCallbackHandler());
 app.use("/api/trpc/*", async (c) => {
   return fetchRequestHandler({
