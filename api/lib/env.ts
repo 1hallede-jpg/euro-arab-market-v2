@@ -20,4 +20,11 @@ export const env = {
   kimiAuthUrl: getEnv("KIMI_AUTH_URL", "https://kimi.moonshot.cn"),
   kimiOpenUrl: getEnv("KIMI_OPEN_URL", "https://kimi.moonshot.cn"),
   ownerUnionId: getEnv("OWNER_UNION_ID", ""),
+  // SMTP Configuration
+  smtpHost: getEnv("SMTP_HOST", ""),
+  smtpPort: parseInt(getEnv("SMTP_PORT", "587")),
+  smtpUser: getEnv("SMTP_USER", ""),
+  smtpPass: getEnv("SMTP_PASS", ""),
+  fromEmail: getEnv("FROM_EMAIL", "info@euroarabmarket.com"),
+  adminEmail: getEnv("ADMIN_EMAIL", "info@euroarabmarket.com"),
 };

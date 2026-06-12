@@ -1,12 +1,13 @@
 import nodemailer from "nodemailer";
+import { env } from "./env";
 
-// Email configuration - can be set via env vars or uses mock for testing
-const SMTP_HOST = process.env.SMTP_HOST || "";
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587");
-const SMTP_USER = process.env.SMTP_USER || "";
-const SMTP_PASS = process.env.SMTP_PASS || "";
-const FROM_EMAIL = process.env.FROM_EMAIL || "info@euroarabmarket.com";
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "info@euroarabmarket.com";
+// Email configuration - uses env.ts (reads from .env file)
+const SMTP_HOST = env.smtpHost;
+const SMTP_PORT = env.smtpPort;
+const SMTP_USER = env.smtpUser;
+const SMTP_PASS = env.smtpPass;
+const FROM_EMAIL = env.fromEmail;
+const ADMIN_EMAIL = env.adminEmail;
 
 // In-memory email log (for testing when SMTP is not configured)
 export const emailLogs: any[] = [];

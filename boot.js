@@ -41374,7 +41374,14 @@ var env = {
   databaseUrl: getEnv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/euroarabmarket"),
   kimiAuthUrl: getEnv("KIMI_AUTH_URL", "https://kimi.moonshot.cn"),
   kimiOpenUrl: getEnv("KIMI_OPEN_URL", "https://kimi.moonshot.cn"),
-  ownerUnionId: getEnv("OWNER_UNION_ID", "")
+  ownerUnionId: getEnv("OWNER_UNION_ID", ""),
+  // SMTP Configuration
+  smtpHost: getEnv("SMTP_HOST", ""),
+  smtpPort: parseInt(getEnv("SMTP_PORT", "587")),
+  smtpUser: getEnv("SMTP_USER", ""),
+  smtpPass: getEnv("SMTP_PASS", ""),
+  fromEmail: getEnv("FROM_EMAIL", "info@euroarabmarket.com"),
+  adminEmail: getEnv("ADMIN_EMAIL", "info@euroarabmarket.com")
 };
 
 // db/schema.ts
@@ -45867,12 +45874,12 @@ var emergencyRouter = createRouter({
 
 // api/lib/email.ts
 var import_nodemailer = __toESM(require_nodemailer(), 1);
-var SMTP_HOST = process.env.SMTP_HOST || "";
-var SMTP_PORT = parseInt(process.env.SMTP_PORT || "587");
-var SMTP_USER = process.env.SMTP_USER || "";
-var SMTP_PASS = process.env.SMTP_PASS || "";
-var FROM_EMAIL = process.env.FROM_EMAIL || "info@euroarabmarket.com";
-var ADMIN_EMAIL = process.env.ADMIN_EMAIL || "info@euroarabmarket.com";
+var SMTP_HOST = env.smtpHost;
+var SMTP_PORT = env.smtpPort;
+var SMTP_USER = env.smtpUser;
+var SMTP_PASS = env.smtpPass;
+var FROM_EMAIL = env.fromEmail;
+var ADMIN_EMAIL = env.adminEmail;
 var emailLogs = [];
 function getTransporter() {
   if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
