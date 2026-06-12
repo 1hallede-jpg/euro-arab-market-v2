@@ -301,6 +301,47 @@ export const emergencyContacts = pgTable("emergency_contacts", {
 export type EmergencyContact = typeof emergencyContacts.$inferSelect;
 export type InsertEmergencyContact = typeof emergencyContacts.$inferInsert;
 
+// ==================== PENDING MERCHANTS (Registration) ====================
+export const pendingMerchants = pgTable("pending_merchants", {
+  id: serial("id").primaryKey(),
+  
+  // Business Info
+  businessName: varchar("businessName", { length: 255 }).notNull(),
+  businessNameAr: varchar("businessNameAr", { length: 255 }).notNull(),
+  category: merchantCategoryEnum("category").notNull(),
+  subcategory: varchar("subcategory", { length: 100 }),
+  description: text("description"),
+  descriptionAr: text("descriptionAr"),
+  
+  // Contact
+  phone: varchar("phone", { length: 50 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  website: varchar("website", { length: 255 }),
+  
+  // Address
+  country: varchar("country", { length: 100 }).notNull(),
+  city: varchar("city", { length: 100 }).notNull(),
+  address: text("address"),
+  
+  // Documents (URLs to uploaded files)
+  businessRegistrationPhoto: text("businessRegistrationPhoto"),
+  ownerIdPhoto: text("ownerIdPhoto"),
+  halalCertificate: text("halalCertificate"),
+  logo: text("logo"),
+  
+  // Status
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, approved, rejected, more_info
+  adminNotes: text("adminNotes"),
+  rejectionReason: text("rejectionReason"),
+  
+  // Timestamps
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
+export type PendingMerchant = typeof pendingMerchants.$inferSelect;
+export type InsertPendingMerchant = typeof pendingMerchants.$inferInsert;
+
 // ==================== FAVORITES ====================
 export const favorites = pgTable("favorites", {
   id: serial("id").primaryKey(),

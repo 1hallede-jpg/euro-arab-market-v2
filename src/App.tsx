@@ -11,6 +11,8 @@ import SecretAdmin from './pages/SecretAdmin'
 import CityPage from './pages/CityPage'
 import AddStore from './pages/AddStore'
 import TermsPage from './pages/TermsPage'
+import MerchantRegister from './pages/MerchantRegister'
+import AdminMerchants from './pages/AdminMerchants'
 import NotFound from './pages/NotFound'
 import CookieConsent from './components/CookieConsent'
 
@@ -30,6 +32,8 @@ export default function App() {
         <Route path="/city/:citySlug" element={<CityPage />} />
         <Route path="/add-store" element={<AddStore />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/merchant/register" element={<MerchantRegister />} />
+        <Route path="/admin/merchants" element={<AdminMerchants />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <CookieConsent />

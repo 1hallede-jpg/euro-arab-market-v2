@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
+import Logo from "./Logo";
 import {
   Search,
   Store,
@@ -12,6 +13,7 @@ import {
   X,
   User,
   LogOut,
+  PlusCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +29,7 @@ const navLinks = [
   { href: "/stores", label: "المتاجر", icon: Store },
   { href: "/search", label: "البحث", icon: Search },
   { href: "/sindbad", label: "سندباد", icon: Sparkles },
+  { href: "/merchant/register", label: "سجل متجرك", icon: PlusCircle },
 ];
 
 export default function Navbar() {
@@ -44,19 +47,7 @@ export default function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-white">
-              <span className="font-bold text-sm">ي</span>
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="font-bold text-emerald-800 text-sm tracking-tight">
-                يورو عرب ماركت
-              </span>
-              <span className="text-[10px] text-emerald-600 font-medium">
-                Euro Arab Market
-              </span>
-            </div>
-          </Link>
+          <Logo size="sm" />
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">

@@ -29751,6 +29751,7 @@ __export(schema_exports, {
   favorites: () => favorites,
   jobs: () => jobs,
   merchants: () => merchants,
+  pendingMerchants: () => pendingMerchants,
   reviews: () => reviews,
   searchLogs: () => searchLogs,
   subscriptions: () => subscriptions,
@@ -30040,6 +30041,37 @@ var emergencyContacts = pgTable("emergency_contacts", {
   description: text("description"),
   descriptionAr: text("descriptionAr"),
   isActive: boolean4("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => /* @__PURE__ */ new Date())
+});
+var pendingMerchants = pgTable("pending_merchants", {
+  id: serial("id").primaryKey(),
+  // Business Info
+  businessName: varchar("businessName", { length: 255 }).notNull(),
+  businessNameAr: varchar("businessNameAr", { length: 255 }).notNull(),
+  category: merchantCategoryEnum("category").notNull(),
+  subcategory: varchar("subcategory", { length: 100 }),
+  description: text("description"),
+  descriptionAr: text("descriptionAr"),
+  // Contact
+  phone: varchar("phone", { length: 50 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  website: varchar("website", { length: 255 }),
+  // Address
+  country: varchar("country", { length: 100 }).notNull(),
+  city: varchar("city", { length: 100 }).notNull(),
+  address: text("address"),
+  // Documents (URLs to uploaded files)
+  businessRegistrationPhoto: text("businessRegistrationPhoto"),
+  ownerIdPhoto: text("ownerIdPhoto"),
+  halalCertificate: text("halalCertificate"),
+  logo: text("logo"),
+  // Status
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  // pending, approved, rejected, more_info
+  adminNotes: text("adminNotes"),
+  rejectionReason: text("rejectionReason"),
+  // Timestamps
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => /* @__PURE__ */ new Date())
 });
@@ -30930,7 +30962,7 @@ var adminRouter = createRouter({
       merchantsCount,
       jobsCount,
       reviewsCount,
-      pendingMerchants,
+      pendingMerchants2,
       openJobs,
       todaySearches
     ] = await Promise.all([
@@ -30947,7 +30979,7 @@ var adminRouter = createRouter({
       merchants: merchantsCount[0]?.count || 0,
       jobs: jobsCount[0]?.count || 0,
       reviews: reviewsCount[0]?.count || 0,
-      pendingMerchants: pendingMerchants[0]?.count || 0,
+      pendingMerchants: pendingMerchants2[0]?.count || 0,
       openJobs: openJobs[0]?.count || 0,
       todaySearches: todaySearches[0]?.count || 0
     };
@@ -34208,6 +34240,76 @@ var emergencyRouter = createRouter({
   })
 });
 
+// api/pending-merchant-router.ts
+var pendingMerchantRouter = createRouter({
+  // Submit new merchant registration
+  submit: publicQuery.input(
+    external_exports.object({
+      businessName: external_exports.string().min(1),
+      businessNameAr: external_exports.string().min(1),
+      category: external_exports.string().min(1),
+      subcategory: external_exports.string().optional(),
+      description: external_exports.string().optional(),
+      descriptionAr: external_exports.string().optional(),
+      phone: external_exports.string().min(1),
+      email: external_exports.string().email(),
+      website: external_exports.string().optional(),
+      country: external_exports.string().min(1),
+      city: external_exports.string().min(1),
+      address: external_exports.string().optional(),
+      businessRegistrationPhoto: external_exports.string().optional(),
+      ownerIdPhoto: external_exports.string().optional(),
+      halalCertificate: external_exports.string().optional(),
+      logo: external_exports.string().optional()
+    })
+  ).mutation(async ({ input }) => {
+    const db = getDb();
+    const result = await db.insert(pendingMerchants).values({
+      ...input,
+      status: "pending"
+    }).returning({ id: pendingMerchants.id });
+    return { success: true, id: result[0].id };
+  }),
+  // List all pending merchants (for admin)
+  list: publicQuery.input(
+    external_exports.object({
+      status: external_exports.string().optional(),
+      limit: external_exports.number().min(1).max(100).default(50)
+    }).optional()
+  ).query(async ({ input }) => {
+    const db = getDb();
+    let query = db.select().from(pendingMerchants).orderBy(desc(pendingMerchants.createdAt));
+    const conditions = [];
+    if (input?.status) {
+      return db.select().from(pendingMerchants).where(eq(pendingMerchants.status, input.status)).orderBy(desc(pendingMerchants.createdAt)).limit(input.limit);
+    }
+    return db.select().from(pendingMerchants).orderBy(desc(pendingMerchants.createdAt)).limit(input?.limit || 50);
+  }),
+  // Get single pending merchant
+  getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
+    const db = getDb();
+    const result = await db.select().from(pendingMerchants).where(eq(pendingMerchants.id, input.id)).limit(1);
+    return result[0] || null;
+  }),
+  // Update status (approve/reject)
+  updateStatus: publicQuery.input(
+    external_exports.object({
+      id: external_exports.number(),
+      status: external_exports.enum(["pending", "approved", "rejected", "more_info"]),
+      adminNotes: external_exports.string().optional(),
+      rejectionReason: external_exports.string().optional()
+    })
+  ).mutation(async ({ input }) => {
+    const db = getDb();
+    await db.update(pendingMerchants).set({
+      status: input.status,
+      adminNotes: input.adminNotes,
+      rejectionReason: input.rejectionReason
+    }).where(eq(pendingMerchants.id, input.id));
+    return { success: true };
+  })
+});
+
 // api/router.ts
 var appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -34225,7 +34327,8 @@ var appRouter = createRouter({
   reviews: reviewsRouter,
   featured: featuredRouter,
   analytics: analyticsRouter,
-  emergency: emergencyRouter
+  emergency: emergencyRouter,
+  pendingMerchant: pendingMerchantRouter
 });
 
 // node_modules/hono/dist/utils/cookie.js
