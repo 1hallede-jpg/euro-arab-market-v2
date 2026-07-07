@@ -15,6 +15,7 @@ import { emergencyRouter } from "./emergency-router";
 import { pendingMerchantRouter } from "./pending-merchant-router";
 import { skillsRouter } from "./skills-router";
 import { emailLogRouter } from "./email-log-router";
+import { googleAuthRouter } from "./google-auth";
 import { createRouter, publicQuery } from "./middleware";
 
 export const appRouter = createRouter({
@@ -38,6 +39,7 @@ export const appRouter = createRouter({
   pendingMerchant: pendingMerchantRouter,
   skills: skillsRouter,
   emailLog: emailLogRouter,
+  googleAuth: googleAuthRouter,
 });
 
 export type AppRouter = typeof appRouter;

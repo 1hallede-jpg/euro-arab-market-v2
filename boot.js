@@ -7066,7 +7066,7 @@ var require_dkim = __commonJS({
     "use strict";
     var MessageParser = require_message_parser();
     var RelaxedBody = require_relaxed_body();
-    var sign2 = require_sign();
+    var sign3 = require_sign();
     var { PassThrough } = __require("stream");
     var fs2 = __require("fs");
     var path2 = __require("path");
@@ -7142,7 +7142,7 @@ var require_dkim = __commonJS({
             return setImmediate(() => this.sendNextChunk());
           }
           const key = this.keys[keyPos++];
-          const dkimField = sign2(this.headers, this.hashAlgo, this.bodyHash, {
+          const dkimField = sign3(this.headers, this.hashAlgo, this.bodyHash, {
             domainName: key.domainName,
             keySelector: key.keySelector,
             privateKey: key.privateKey,
@@ -27688,7 +27688,11 @@ var env = {
   smtpUser: getEnv("SMTP_USER", ""),
   smtpPass: getEnv("SMTP_PASS", ""),
   fromEmail: getEnv("FROM_EMAIL", "info@euroarabmarket.com"),
-  adminEmail: getEnv("ADMIN_EMAIL", "info@euroarabmarket.com")
+  adminEmail: getEnv("ADMIN_EMAIL", "info@euroarabmarket.com"),
+  // Google OAuth
+  googleClientId: getEnv("GOOGLE_CLIENT_ID", ""),
+  googleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
+  sessionSecret: getEnv("SESSION_SECRET", "sindbad-secret-key-2024")
 };
 
 // db/schema.ts
@@ -33042,6 +33046,125 @@ var emailLogRouter = createRouter({
   })
 });
 
+// api/google-auth.ts
+import { eq as eq13 } from "drizzle-orm";
+import { sign as sign2 } from "jsonwebtoken";
+var GOOGLE_CLIENT_ID = env.googleClientId || "";
+var GOOGLE_CLIENT_SECRET = env.googleClientSecret || "";
+var REDIRECT_URI = "https://www.euroarabmarket.com/api/auth/google/callback";
+var googleAuthRouter = createRouter({
+  // Get Google auth URL for frontend
+  getAuthUrl: publicQuery.query(() => {
+    if (!GOOGLE_CLIENT_ID) {
+      return {
+        url: null,
+        error: "Google OAuth not configured. Please set GOOGLE_CLIENT_ID in environment variables."
+      };
+    }
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: "code",
+      scope: "openid email profile",
+      access_type: "offline",
+      prompt: "consent"
+    });
+    return {
+      url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
+    };
+  }),
+  // Handle Google OAuth callback
+  callback: publicQuery.input(
+    external_exports.object({
+      code: external_exports.string()
+    })
+  ).mutation(async ({ input }) => {
+    try {
+      const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code: input.code,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          redirect_uri: REDIRECT_URI,
+          grant_type: "authorization_code"
+        })
+      });
+      const tokens = await tokenResponse.json();
+      if (!tokenResponse.ok) {
+        console.error("[Google Auth] Token error:", tokens);
+        return { success: false, error: "Failed to exchange code" };
+      }
+      const userResponse = await fetch(
+        `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`
+      );
+      const googleUser = await userResponse.json();
+      if (!googleUser.email) {
+        return { success: false, error: "No email from Google" };
+      }
+      const db = getDb();
+      const existingUsers = await db.select().from(users).where(eq13(users.email, googleUser.email)).limit(1);
+      let userId;
+      if (existingUsers.length > 0) {
+        await db.update(users).set({
+          name: googleUser.name || googleUser.email.split("@")[0],
+          avatar: googleUser.picture || null,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq13(users.id, existingUsers[0].id));
+        userId = existingUsers[0].id;
+      } else {
+        const result = await db.insert(users).values({
+          unionId: `google_${googleUser.id}`,
+          email: googleUser.email,
+          name: googleUser.name || googleUser.email.split("@")[0],
+          avatar: googleUser.picture || null,
+          role: "user",
+          createdAt: /* @__PURE__ */ new Date(),
+          updatedAt: /* @__PURE__ */ new Date()
+        }).returning();
+        userId = result[0].id;
+      }
+      const token = sign2(
+        {
+          userId,
+          email: googleUser.email,
+          name: googleUser.name
+        },
+        env.sessionSecret || "sindbad-secret-key",
+        { expiresIn: "7d" }
+      );
+      return {
+        success: true,
+        token,
+        user: {
+          id: userId,
+          name: googleUser.name,
+          email: googleUser.email,
+          avatar: googleUser.picture
+        }
+      };
+    } catch (e) {
+      console.error("[Google Auth] Error:", e.message);
+      return { success: false, error: e.message };
+    }
+  }),
+  // Get current user from token
+  me: publicQuery.input(external_exports.object({ token: external_exports.string() }).optional()).query(async ({ input }) => {
+    if (!input?.token) return null;
+    try {
+      const jwt2 = __require("jsonwebtoken");
+      const decoded = jwt2.verify(
+        input.token,
+        env.sessionSecret || "sindbad-secret-key"
+      );
+      return decoded;
+    } catch {
+      return null;
+    }
+  })
+});
+
 // api/router.ts
 var appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now(), v: "admin-fix-2026-July08" })),
@@ -33063,7 +33186,8 @@ var appRouter = createRouter({
   emergency: emergencyRouter,
   pendingMerchant: pendingMerchantRouter,
   skills: skillsRouter,
-  emailLog: emailLogRouter
+  emailLog: emailLogRouter,
+  googleAuth: googleAuthRouter
 });
 
 // api/kimi/auth.ts
@@ -33134,9 +33258,9 @@ var users2 = {
 };
 
 // api/queries/users.ts
-import { eq as eq13 } from "drizzle-orm";
+import { eq as eq14 } from "drizzle-orm";
 async function findUserByUnionId(unionId) {
-  const rows = await getDb().select().from(users).where(eq13(users.unionId, unionId)).limit(1);
+  const rows = await getDb().select().from(users).where(eq14(users.unionId, unionId)).limit(1);
   return rows.at(0);
 }
 async function upsertUser(data) {

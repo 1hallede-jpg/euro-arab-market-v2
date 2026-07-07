@@ -27,4 +27,8 @@ export const env = {
   smtpPass: getEnv("SMTP_PASS", ""),
   fromEmail: getEnv("FROM_EMAIL", "info@euroarabmarket.com"),
   adminEmail: getEnv("ADMIN_EMAIL", "info@euroarabmarket.com"),
+  // Google OAuth
+  googleClientId: getEnv("GOOGLE_CLIENT_ID", ""),
+  googleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
+  sessionSecret: getEnv("SESSION_SECRET", "sindbad-secret-key-2024"),
 };
