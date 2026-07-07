@@ -37082,8 +37082,7 @@ var googleAuthRouter = createRouter({
   me: publicQuery.input(external_exports.object({ token: external_exports.string() }).optional()).query(async ({ input }) => {
     if (!input?.token) return null;
     try {
-      const jwt2 = require_jsonwebtoken();
-      const decoded = jwt2.verify(
+      const decoded = (0, import_jsonwebtoken.verify)(
         input.token,
         env.sessionSecret || "sindbad-secret-key"
       );

@@ -4,7 +4,7 @@ import { getDb } from "./queries/connection";
 import { eq } from "drizzle-orm";
 import { users } from "../db/schema";
 import { env } from "./lib/env";
-import { sign } from "jsonwebtoken";
+import { sign, verify as verifyJwt } from "jsonwebtoken";
 
 // Google OAuth Configuration
 // User needs to set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Render env vars
@@ -145,8 +145,7 @@ export const googleAuthRouter = createRouter({
     .query(async ({ input }) => {
       if (!input?.token) return null;
       try {
-        const jwt = require("jsonwebtoken");
-        const decoded = jwt.verify(
+        const decoded = verifyJwt(
           input.token,
           env.sessionSecret || "sindbad-secret-key"
         );
