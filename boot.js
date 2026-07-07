@@ -28320,7 +28320,7 @@ var merchantRouter = createRouter({
         city: input.city,
         address: addr,
         phone: input.phone || "",
-        email: input.email || "",
+        email: input.email || null,
         website: input.website || null,
         status: "active",
         slug,
@@ -28329,8 +28329,8 @@ var merchantRouter = createRouter({
         rating: String(ratingVal),
         reviewCount: reviews2,
         priceRange: price,
-        latitude: input.latitude,
-        longitude: input.longitude,
+        latitude: input.latitude ? String(input.latitude) : null,
+        longitude: input.longitude ? String(input.longitude) : null,
         createdAt: /* @__PURE__ */ new Date(),
         updatedAt: /* @__PURE__ */ new Date()
       }).returning();
