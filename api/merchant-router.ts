@@ -168,7 +168,7 @@ export const merchantRouter = createRouter({
         subcategory: z.string().optional(),
         phone: z.string().optional(),
         whatsapp: z.string().optional(),
-        email: z.string().email().optional().or(z.literal("")),
+        email: z.string().optional().or(z.literal("")),
         website: z.string().optional(),
         country: z.string().min(1),
         city: z.string().min(1),

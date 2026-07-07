@@ -28279,7 +28279,7 @@ var merchantRouter = createRouter({
       subcategory: external_exports.string().optional(),
       phone: external_exports.string().optional(),
       whatsapp: external_exports.string().optional(),
-      email: external_exports.string().email().optional().or(external_exports.literal("")),
+      email: external_exports.string().optional().or(external_exports.literal("")),
       website: external_exports.string().optional(),
       country: external_exports.string().min(1),
       city: external_exports.string().min(1),
