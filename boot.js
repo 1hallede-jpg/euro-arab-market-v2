@@ -33010,7 +33010,7 @@ var emailLogRouter = createRouter({
 
 // api/router.ts
 var appRouter = createRouter({
-  ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
+  ping: publicQuery.query(() => ({ ok: true, ts: Date.now(), v: "admin-fix-2026" })),
   auth: authRouter,
   merchant: merchantRouter,
   job: jobRouter,
