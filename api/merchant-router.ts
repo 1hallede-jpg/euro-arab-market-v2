@@ -4,7 +4,6 @@ import { getDb } from "./queries/connection";
 import { env } from "./lib/env";
 import { merchants, reviews } from "../db/schema";
 import { eq, and, like, or, desc, sql } from "drizzle-orm";
-import postgres from "postgres";
 
 export const merchantRouter = createRouter({
   // Get all merchants with optional filters
@@ -186,56 +185,51 @@ export const merchantRouter = createRouter({
     )
     .mutation(async ({ input }) => {
       const db = getDb();
-
       try {
         const slug = (input.businessName || "store")
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, "") + "-" + Date.now();
+          .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
 
         const nameAr = input.businessNameAr || input.businessName;
         const desc = input.description || "";
-        const descAr = input.descriptionAr || desc;
         const shortDesc = input.shortDescription || `${nameAr} في ${input.city}`.substring(0, 160);
-        const addr = input.address || input.city;
         const subcat = input.subcategory || input.category;
         const tagsVal = (input.tags || `${subcat} ${input.city} ${nameAr} ${input.businessName}`).substring(0, 200);
         const ratingVal = input.rating || 0;
         const reviews = ratingVal > 0 ? Math.floor(Math.random() * 30 + 5) : 0;
         const price = input.priceRange || "$$";
 
-        // Use raw SQL with only snake_case columns that exist in DB
-        const client = postgres(env.databaseUrl, {
-          ssl: env.isProduction ? { rejectUnauthorized: false } : false,
-          max: 1,
-        });
+        // Use Drizzle ORM (same as seed router) - handles column mapping automatically
+        const result = await db.insert(merchants).values({
+          businessName: input.businessName,
+          businessNameAr: nameAr,
+          shortDescription: shortDesc,
+          description: desc,
+          category: input.category as any,
+          subcategory: subcat,
+          tags: tagsVal,
+          country: input.country,
+          city: input.city,
+          address: input.address || input.city,
+          phone: input.phone || "",
+          email: input.email || null,
+          website: input.website || null,
+          status: "active",
+          slug,
+          isFeatured: false,
+          isVerified: true,
+          rating: String(ratingVal) as any,
+          reviewCount: reviews,
+          priceRange: price,
+          latitude: input.latitude as any,
+          longitude: input.longitude as any,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as any).returning();
 
-        const result = await client`
-          INSERT INTO merchants (
-            business_name, business_name_ar, short_description,
-            description, category, subcategory,
-            tags, country, city, address,
-            phone, email, website, status, slug,
-            is_featured, is_verified, rating, review_count,
-            price_range, created_at, updated_at
-          ) VALUES (
-            ${input.businessName}, ${nameAr}, ${shortDesc},
-            ${desc}, ${input.category}, ${subcat},
-            ${tagsVal}, ${input.country}, ${input.city}, ${addr},
-            ${input.phone || ""}, ${input.email || null}, ${input.website || null},
-            'active', ${slug},
-            ${false}, ${true}, ${String(ratingVal)}, ${reviews},
-            ${price}, NOW(), NOW()
-          )
-          RETURNING id
-        `;
-
-        await client.end();
-
-        return { id: result[0]?.id || 0, slug, status: "active", version: "v3-fixed" };
+        return { id: result[0]?.id || 0, slug, status: "active" };
       } catch (e: any) {
         console.error("[merchant.create] Error:", e?.message);
-        return { error: e?.message || "Insert failed", version: "v3-fixed" };
+        return { error: e?.message || "Insert failed" };
       }
     }),
 

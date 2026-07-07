@@ -28176,7 +28176,6 @@ function getDb() {
 
 // api/merchant-router.ts
 import { eq, and, desc, sql } from "drizzle-orm";
-import postgres2 from "postgres";
 var merchantRouter = createRouter({
   // Get all merchants with optional filters
   list: publicQuery.input(
@@ -28300,42 +28299,42 @@ var merchantRouter = createRouter({
       const slug = (input.businessName || "store").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
       const nameAr = input.businessNameAr || input.businessName;
       const desc11 = input.description || "";
-      const descAr = input.descriptionAr || desc11;
       const shortDesc = input.shortDescription || `${nameAr} \u0641\u064A ${input.city}`.substring(0, 160);
-      const addr = input.address || input.city;
       const subcat = input.subcategory || input.category;
       const tagsVal = (input.tags || `${subcat} ${input.city} ${nameAr} ${input.businessName}`).substring(0, 200);
       const ratingVal = input.rating || 0;
       const reviews2 = ratingVal > 0 ? Math.floor(Math.random() * 30 + 5) : 0;
       const price = input.priceRange || "$$";
-      const client = postgres2(env.databaseUrl, {
-        ssl: env.isProduction ? { rejectUnauthorized: false } : false,
-        max: 1
-      });
-      const result = await client`
-          INSERT INTO merchants (
-            business_name, business_name_ar, short_description,
-            description, category, subcategory,
-            tags, country, city, address,
-            phone, email, website, status, slug,
-            is_featured, is_verified, rating, review_count,
-            price_range, created_at, updated_at
-          ) VALUES (
-            ${input.businessName}, ${nameAr}, ${shortDesc},
-            ${desc11}, ${input.category}, ${subcat},
-            ${tagsVal}, ${input.country}, ${input.city}, ${addr},
-            ${input.phone || ""}, ${input.email || null}, ${input.website || null},
-            'active', ${slug},
-            ${false}, ${true}, ${String(ratingVal)}, ${reviews2},
-            ${price}, NOW(), NOW()
-          )
-          RETURNING id
-        `;
-      await client.end();
-      return { id: result[0]?.id || 0, slug, status: "active", version: "v3-fixed" };
+      const result = await db.insert(merchants).values({
+        businessName: input.businessName,
+        businessNameAr: nameAr,
+        shortDescription: shortDesc,
+        description: desc11,
+        category: input.category,
+        subcategory: subcat,
+        tags: tagsVal,
+        country: input.country,
+        city: input.city,
+        address: input.address || input.city,
+        phone: input.phone || "",
+        email: input.email || null,
+        website: input.website || null,
+        status: "active",
+        slug,
+        isFeatured: false,
+        isVerified: true,
+        rating: String(ratingVal),
+        reviewCount: reviews2,
+        priceRange: price,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        createdAt: /* @__PURE__ */ new Date(),
+        updatedAt: /* @__PURE__ */ new Date()
+      }).returning();
+      return { id: result[0]?.id || 0, slug, status: "active" };
     } catch (e) {
       console.error("[merchant.create] Error:", e?.message);
-      return { error: e?.message || "Insert failed", version: "v3-fixed" };
+      return { error: e?.message || "Insert failed" };
     }
   }),
   // Get featured merchants
@@ -31250,11 +31249,11 @@ var seedRouter = createRouter({
 });
 
 // api/migrate-router.ts
-import postgres3 from "postgres";
+import postgres2 from "postgres";
 var migrateRouter = createRouter({
   // Show table columns
   schema: publicQuery.query(async () => {
-    const client = postgres3(env.databaseUrl, {
+    const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31274,7 +31273,7 @@ var migrateRouter = createRouter({
   }),
   // Fix all missing columns
   fixAll: publicQuery.mutation(async () => {
-    const client = postgres3(env.databaseUrl, {
+    const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31347,7 +31346,7 @@ var migrateRouter = createRouter({
   }),
   // Get table columns
   getColumns: publicQuery.query(async () => {
-    const client = postgres3(env.databaseUrl, {
+    const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31362,7 +31361,7 @@ var migrateRouter = createRouter({
   }),
   // Create emergency_contacts table
   createEmergencyTable: publicQuery.mutation(async () => {
-    const client = postgres3(env.databaseUrl, {
+    const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31397,7 +31396,7 @@ var migrateRouter = createRouter({
   }),
   // Fix missing business names - generate proper names and slugs
   fixNames: publicQuery.mutation(async () => {
-    const client = postgres3(env.databaseUrl, {
+    const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31492,7 +31491,7 @@ var migrateRouter = createRouter({
   }),
   // Create search_analytics table
   createAnalytics: publicQuery.mutation(async () => {
-    const client = postgres3(env.databaseUrl, {
+    const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31544,7 +31543,7 @@ var migrateRouter = createRouter({
       priceRange: external_exports.string().optional()
     }))
   })).mutation(async ({ input }) => {
-    const client = postgres3(env.databaseUrl, {
+    const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31573,28 +31572,20 @@ var migrateRouter = createRouter({
           await client`
               INSERT INTO merchants (
                 business_name, business_name_ar, short_description,
-                description, description_ar, category, subcategory,
-                tags, country, city, address, address_ar,
+                description, category, subcategory,
+                tags, country, city, address,
                 phone, website, status, slug,
                 is_featured, is_verified, rating, review_count,
                 latitude, longitude, price_range,
-                created_at, updated_at,
-                "businessName", "businessNameAr", "shortDescription",
-                "description", "descriptionAr", "addressAr",
-                "isFeatured", "isVerified", "reviewCount",
-                "priceRange", "createdAt", "updatedAt"
+                created_at, updated_at
               ) VALUES (
                 ${nameEn}, ${nameAr}, ${shortDesc},
-                ${descAr}, ${descAr}, ${m.category}, ${subcat},
-                ${tagsVal}, ${m.country}, ${m.city}, ${addr}, ${addrAr},
+                ${descAr}, ${m.category}, ${subcat},
+                ${tagsVal}, ${m.country}, ${m.city}, ${addr},
                 ${phoneVal}, ${m.website || null}, 'active', ${slug},
                 ${false}, ${true}, ${ratingVal}, ${reviews2},
                 ${lat}, ${lng}, ${price},
-                NOW(), NOW(),
-                ${nameEn}, ${nameAr}, ${shortDesc},
-                ${descAr}, ${descAr}, ${addrAr},
-                ${false}, ${true}, ${reviews2},
-                ${price}, NOW(), NOW()
+                NOW(), NOW()
               )
               ON CONFLICT DO NOTHING
             `;
@@ -31613,7 +31604,7 @@ var migrateRouter = createRouter({
   }),
   // Activate all pending merchants (fixes search returning 0 results)
   activateAll: publicQuery.mutation(async () => {
-    const client = postgres3(env.databaseUrl, {
+    const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31650,7 +31641,7 @@ var migrateRouter = createRouter({
   }),
   // Activate all merchants regardless of current status
   forceActivateAll: publicQuery.mutation(async () => {
-    const client = postgres3(env.databaseUrl, {
+    const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31674,7 +31665,7 @@ var migrateRouter = createRouter({
   }),
   // Original fixUserId
   fixUserId: publicQuery.mutation(async () => {
-    const client = postgres3(env.databaseUrl, {
+    const client = postgres2(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31924,7 +31915,7 @@ var analyticsRouter = createRouter({
 
 // api/emergency-router.ts
 import { eq as eq10, and as and9, sql as sql9 } from "drizzle-orm";
-import postgres4 from "postgres";
+import postgres3 from "postgres";
 var emergencyRouter = createRouter({
   // List all emergency contacts with filters
   list: publicQuery.input(
@@ -32312,7 +32303,7 @@ var emergencyRouter = createRouter({
       // ═══════════════════════════════════════════
       { name: "Embassy of Egypt (Non-resident)", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 (\u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629)", type: "embassy", phone: "+354 510 7500", country: "Iceland", city: "Reykjavik", address: " represented by Oslo", description: "Non-resident embassy - contact Oslo", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629 - \u0627\u062A\u0635\u0644 \u0628\u0623\u0648\u0633\u0644\u0648" }
     ];
-    const pgClient = postgres4(env.databaseUrl, {
+    const pgClient = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -32688,7 +32679,6 @@ function getEmailLogs(limit = 50) {
 }
 
 // api/pending-merchant-router.ts
-import postgres5 from "postgres";
 var pendingMerchantRouter = createRouter({
   // Submit new merchant registration
   submit: publicQuery.input(
@@ -32782,10 +32772,6 @@ var pendingMerchantRouter = createRouter({
   // Approve: copy pending merchant → merchants table (so it appears on site)
   approve: publicQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
     const db = getDb();
-    const client = postgres5(env.databaseUrl, {
-      ssl: env.isProduction ? { rejectUnauthorized: false } : false,
-      max: 1
-    });
     try {
       const pending = await db.select().from(pendingMerchants).where(eq11(pendingMerchants.id, input.id)).limit(1);
       if (!pending[0]) {
@@ -32793,49 +32779,37 @@ var pendingMerchantRouter = createRouter({
       }
       const pm = pending[0];
       const slug = (pm.businessName || pm.businessNameAr || "store").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
-      const result = await client`
-          INSERT INTO merchants (
-            business_name, business_name_ar, short_description,
-            description, description_ar, category, subcategory,
-            tags, country, city, address,
-            phone, email, website, status, slug,
-            logo, cover_image,
-            is_featured, is_verified, rating, review_count,
-            price_range,
-            created_at, updated_at,
-            "businessName", "businessNameAr", "shortDescription",
-            "description", "descriptionAr",
-            "isFeatured", "isVerified", "reviewCount",
-            "priceRange", "createdAt", "updatedAt"
-          ) VALUES (
-            ${pm.businessName}, ${pm.businessNameAr},
-            ${(pm.descriptionAr || pm.description || `${pm.businessNameAr} \u0641\u064A ${pm.city}`).slice(0, 160)},
-            ${pm.description || ""}, ${pm.descriptionAr || ""},
-            ${pm.category}, ${pm.subcategory || pm.category},
-            ${`${pm.category} ${pm.city} ${pm.businessNameAr} ${pm.businessName}`.slice(0, 200)},
-            ${pm.country}, ${pm.city}, ${pm.address || pm.city},
-            ${pm.phone}, ${pm.email}, ${pm.website || null},
-            'active', ${slug},
-            ${pm.logo || null}, ${pm.businessRegistrationPhoto || null},
-            ${false}, ${true}, ${0}, ${0},
-            ${"$$"},
-            NOW(), NOW(),
-            ${pm.businessName}, ${pm.businessNameAr},
-            ${(pm.descriptionAr || pm.description || `${pm.businessNameAr} \u0641\u064A ${pm.city}`).slice(0, 160)},
-            ${pm.description || ""}, ${pm.descriptionAr || ""},
-            ${false}, ${true}, ${0},
-            ${"$$"}, NOW(), NOW()
-          )
-          RETURNING id
-        `;
-      const merchantId = result[0]?.id;
+      const result = await db.insert(merchants).values({
+        businessName: pm.businessName,
+        businessNameAr: pm.businessNameAr || pm.businessName,
+        shortDescription: (pm.descriptionAr || pm.description || `${pm.businessNameAr} \u0641\u064A ${pm.city}`).slice(0, 160),
+        description: pm.description || "",
+        category: pm.category,
+        subcategory: pm.subcategory || pm.category,
+        tags: `${pm.category} ${pm.city} ${pm.businessNameAr} ${pm.businessName}`.slice(0, 200),
+        country: pm.country,
+        city: pm.city,
+        address: pm.address || pm.city,
+        phone: pm.phone || "",
+        email: pm.email || null,
+        website: pm.website || null,
+        status: "active",
+        slug,
+        logo: pm.logo || null,
+        coverImage: pm.businessRegistrationPhoto || null,
+        isFeatured: false,
+        isVerified: true,
+        rating: "0",
+        reviewCount: 0,
+        priceRange: "$$",
+        createdAt: /* @__PURE__ */ new Date(),
+        updatedAt: /* @__PURE__ */ new Date()
+      }).returning();
       await db.update(pendingMerchants).set({ status: "approved" }).where(eq11(pendingMerchants.id, input.id));
-      return { success: true, merchantId, slug };
+      return { success: true, merchantId: result[0]?.id, slug };
     } catch (e) {
       console.error("[approve] Error:", e?.message);
       return { success: false, error: e?.message };
-    } finally {
-      await client.end();
     }
   }),
   // Get email logs (for admin to review sent emails)

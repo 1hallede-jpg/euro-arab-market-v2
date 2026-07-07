@@ -349,28 +349,20 @@ export const migrateRouter = createRouter({
             await client`
               INSERT INTO merchants (
                 business_name, business_name_ar, short_description,
-                description, description_ar, category, subcategory,
-                tags, country, city, address, address_ar,
+                description, category, subcategory,
+                tags, country, city, address,
                 phone, website, status, slug,
                 is_featured, is_verified, rating, review_count,
                 latitude, longitude, price_range,
-                created_at, updated_at,
-                "businessName", "businessNameAr", "shortDescription",
-                "description", "descriptionAr", "addressAr",
-                "isFeatured", "isVerified", "reviewCount",
-                "priceRange", "createdAt", "updatedAt"
+                created_at, updated_at
               ) VALUES (
                 ${nameEn}, ${nameAr}, ${shortDesc},
-                ${descAr}, ${descAr}, ${m.category}, ${subcat},
-                ${tagsVal}, ${m.country}, ${m.city}, ${addr}, ${addrAr},
+                ${descAr}, ${m.category}, ${subcat},
+                ${tagsVal}, ${m.country}, ${m.city}, ${addr},
                 ${phoneVal}, ${m.website || null}, 'active', ${slug},
                 ${false}, ${true}, ${ratingVal}, ${reviews},
                 ${lat}, ${lng}, ${price},
-                NOW(), NOW(),
-                ${nameEn}, ${nameAr}, ${shortDesc},
-                ${descAr}, ${descAr}, ${addrAr},
-                ${false}, ${true}, ${reviews},
-                ${price}, NOW(), NOW()
+                NOW(), NOW()
               )
               ON CONFLICT DO NOTHING
             `;
