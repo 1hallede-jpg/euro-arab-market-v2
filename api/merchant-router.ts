@@ -185,10 +185,7 @@ export const merchantRouter = createRouter({
       })
     )
     .mutation(async ({ input }) => {
-      const client = postgres(env.databaseUrl, {
-        ssl: env.isProduction ? { rejectUnauthorized: false } : false,
-        max: 1,
-      });
+      const db = getDb();
 
       try {
         const slug = (input.businessName || "store")
@@ -196,58 +193,49 @@ export const merchantRouter = createRouter({
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/(^-|-$)/g, "") + "-" + Date.now();
 
-        const nameEn = input.businessName;
-        const nameAr = input.businessNameAr || nameEn;
-        const descAr = input.descriptionAr || input.description || "";
+        const nameAr = input.businessNameAr || input.businessName;
+        const desc = input.description || "";
+        const descAr = input.descriptionAr || desc;
         const shortDesc = input.shortDescription || `${nameAr} في ${input.city}`.substring(0, 160);
         const addr = input.address || input.city;
-        const addrAr = input.addressAr || addr;
         const subcat = input.subcategory || input.category;
-        const tagsVal = (input.tags || `${subcat} ${input.city} ${nameAr} ${nameEn}`).substring(0, 200);
+        const tagsVal = (input.tags || `${subcat} ${input.city} ${nameAr} ${input.businessName}`).substring(0, 200);
         const ratingVal = input.rating || 0;
         const reviews = ratingVal > 0 ? Math.floor(Math.random() * 30 + 5) : 0;
-        const lat = input.latitude || null;
-        const lng = input.longitude || null;
         const price = input.priceRange || "$$";
-        const phoneVal = input.phone || "";
-        const webVal = input.website || null;
 
-        // Insert into BOTH snake_case and camelCase columns
-        const result = await client`
-          INSERT INTO merchants (
-            business_name, business_name_ar, short_description,
-            description, description_ar, category, subcategory,
-            tags, country, city, address, address_ar,
-            phone, website, status, slug,
-            is_featured, is_verified, rating, review_count,
-            latitude, longitude, price_range,
-            created_at, updated_at,
-            "businessName", "businessNameAr", "shortDescription",
-            "description", "descriptionAr", "addressAr",
-            "isFeatured", "isVerified", "reviewCount",
-            "priceRange", "createdAt", "updatedAt"
-          ) VALUES (
-            ${nameEn}, ${nameAr}, ${shortDesc},
-            ${descAr}, ${descAr}, ${input.category}, ${subcat},
-            ${tagsVal}, ${input.country}, ${input.city}, ${addr}, ${addrAr},
-            ${phoneVal}, ${webVal}, 'active', ${slug},
-            ${false}, ${true}, ${ratingVal}, ${reviews},
-            ${lat}, ${lng}, ${price},
-            NOW(), NOW(),
-            ${nameEn}, ${nameAr}, ${shortDesc},
-            ${descAr}, ${descAr}, ${addrAr},
-            ${false}, ${true}, ${reviews},
-            ${price}, NOW(), NOW()
-          )
-          RETURNING id
-        `;
+        const result = await db.insert(merchants).values({
+          businessName: input.businessName,
+          businessNameAr: nameAr,
+          shortDescription: shortDesc,
+          description: desc,
+          descriptionAr: descAr,
+          category: input.category as any,
+          subcategory: subcat,
+          tags: tagsVal,
+          country: input.country,
+          city: input.city,
+          address: addr,
+          phone: input.phone || "",
+          email: input.email || "",
+          website: input.website || null,
+          status: "active" as any,
+          slug,
+          isFeatured: false,
+          isVerified: true,
+          rating: String(ratingVal) as any,
+          reviewCount: reviews,
+          priceRange: price,
+          latitude: input.latitude as any,
+          longitude: input.longitude as any,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as any).returning();
 
         return { id: result[0]?.id || 0, slug, status: "active" };
       } catch (e: any) {
         console.error("[merchant.create] Error:", e?.message);
         return { error: e?.message || "Insert failed" };
-      } finally {
-        await client.end();
       }
     }),
 
