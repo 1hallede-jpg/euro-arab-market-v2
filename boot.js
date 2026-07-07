@@ -28176,6 +28176,7 @@ function getDb() {
 
 // api/merchant-router.ts
 import { eq, and, desc, sql } from "drizzle-orm";
+import postgres2 from "postgres";
 var merchantRouter = createRouter({
   // Get all merchants with optional filters
   list: publicQuery.input(
@@ -28307,33 +28308,30 @@ var merchantRouter = createRouter({
       const ratingVal = input.rating || 0;
       const reviews2 = ratingVal > 0 ? Math.floor(Math.random() * 30 + 5) : 0;
       const price = input.priceRange || "$$";
-      const result = await db.insert(merchants).values({
-        businessName: input.businessName,
-        businessNameAr: nameAr,
-        shortDescription: shortDesc,
-        description: desc11,
-        descriptionAr: descAr,
-        category: input.category,
-        subcategory: subcat,
-        tags: tagsVal,
-        country: input.country,
-        city: input.city,
-        address: addr,
-        phone: input.phone || "",
-        email: input.email || null,
-        website: input.website || null,
-        status: "active",
-        slug,
-        isFeatured: false,
-        isVerified: true,
-        rating: String(ratingVal),
-        reviewCount: reviews2,
-        priceRange: price,
-        latitude: input.latitude ? String(input.latitude) : null,
-        longitude: input.longitude ? String(input.longitude) : null,
-        createdAt: /* @__PURE__ */ new Date(),
-        updatedAt: /* @__PURE__ */ new Date()
-      }).returning();
+      const client = postgres2(env.databaseUrl, {
+        ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+        max: 1
+      });
+      const result = await client`
+          INSERT INTO merchants (
+            business_name, business_name_ar, short_description,
+            description, category, subcategory,
+            tags, country, city, address,
+            phone, email, website, status, slug,
+            is_featured, is_verified, rating, review_count,
+            price_range, created_at, updated_at
+          ) VALUES (
+            ${input.businessName}, ${nameAr}, ${shortDesc},
+            ${desc11}, ${input.category}, ${subcat},
+            ${tagsVal}, ${input.country}, ${input.city}, ${addr},
+            ${input.phone || ""}, ${input.email || null}, ${input.website || null},
+            'active', ${slug},
+            ${false}, ${true}, ${String(ratingVal)}, ${reviews2},
+            ${price}, NOW(), NOW()
+          )
+          RETURNING id
+        `;
+      await client.end();
       return { id: result[0]?.id || 0, slug, status: "active" };
     } catch (e) {
       console.error("[merchant.create] Error:", e?.message);
@@ -31252,11 +31250,11 @@ var seedRouter = createRouter({
 });
 
 // api/migrate-router.ts
-import postgres2 from "postgres";
+import postgres3 from "postgres";
 var migrateRouter = createRouter({
   // Show table columns
   schema: publicQuery.query(async () => {
-    const client = postgres2(env.databaseUrl, {
+    const client = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31276,7 +31274,7 @@ var migrateRouter = createRouter({
   }),
   // Fix all missing columns
   fixAll: publicQuery.mutation(async () => {
-    const client = postgres2(env.databaseUrl, {
+    const client = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31349,7 +31347,7 @@ var migrateRouter = createRouter({
   }),
   // Get table columns
   getColumns: publicQuery.query(async () => {
-    const client = postgres2(env.databaseUrl, {
+    const client = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31364,7 +31362,7 @@ var migrateRouter = createRouter({
   }),
   // Create emergency_contacts table
   createEmergencyTable: publicQuery.mutation(async () => {
-    const client = postgres2(env.databaseUrl, {
+    const client = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31399,7 +31397,7 @@ var migrateRouter = createRouter({
   }),
   // Fix missing business names - generate proper names and slugs
   fixNames: publicQuery.mutation(async () => {
-    const client = postgres2(env.databaseUrl, {
+    const client = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31494,7 +31492,7 @@ var migrateRouter = createRouter({
   }),
   // Create search_analytics table
   createAnalytics: publicQuery.mutation(async () => {
-    const client = postgres2(env.databaseUrl, {
+    const client = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31546,7 +31544,7 @@ var migrateRouter = createRouter({
       priceRange: external_exports.string().optional()
     }))
   })).mutation(async ({ input }) => {
-    const client = postgres2(env.databaseUrl, {
+    const client = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31615,7 +31613,7 @@ var migrateRouter = createRouter({
   }),
   // Activate all pending merchants (fixes search returning 0 results)
   activateAll: publicQuery.mutation(async () => {
-    const client = postgres2(env.databaseUrl, {
+    const client = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31652,7 +31650,7 @@ var migrateRouter = createRouter({
   }),
   // Activate all merchants regardless of current status
   forceActivateAll: publicQuery.mutation(async () => {
-    const client = postgres2(env.databaseUrl, {
+    const client = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31676,7 +31674,7 @@ var migrateRouter = createRouter({
   }),
   // Original fixUserId
   fixUserId: publicQuery.mutation(async () => {
-    const client = postgres2(env.databaseUrl, {
+    const client = postgres3(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -31926,7 +31924,7 @@ var analyticsRouter = createRouter({
 
 // api/emergency-router.ts
 import { eq as eq10, and as and9, sql as sql9 } from "drizzle-orm";
-import postgres3 from "postgres";
+import postgres4 from "postgres";
 var emergencyRouter = createRouter({
   // List all emergency contacts with filters
   list: publicQuery.input(
@@ -32314,7 +32312,7 @@ var emergencyRouter = createRouter({
       // ═══════════════════════════════════════════
       { name: "Embassy of Egypt (Non-resident)", nameAr: "\u0633\u0641\u0627\u0631\u0629 \u0645\u0635\u0631 (\u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629)", type: "embassy", phone: "+354 510 7500", country: "Iceland", city: "Reykjavik", address: " represented by Oslo", description: "Non-resident embassy - contact Oslo", descriptionAr: "\u0633\u0641\u0627\u0631\u0629 \u063A\u064A\u0631 \u0645\u0642\u064A\u0645\u0629 - \u0627\u062A\u0635\u0644 \u0628\u0623\u0648\u0633\u0644\u0648" }
     ];
-    const pgClient = postgres3(env.databaseUrl, {
+    const pgClient = postgres4(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });
@@ -32690,7 +32688,7 @@ function getEmailLogs(limit = 50) {
 }
 
 // api/pending-merchant-router.ts
-import postgres4 from "postgres";
+import postgres5 from "postgres";
 var pendingMerchantRouter = createRouter({
   // Submit new merchant registration
   submit: publicQuery.input(
@@ -32784,7 +32782,7 @@ var pendingMerchantRouter = createRouter({
   // Approve: copy pending merchant → merchants table (so it appears on site)
   approve: publicQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
     const db = getDb();
-    const client = postgres4(env.databaseUrl, {
+    const client = postgres5(env.databaseUrl, {
       ssl: env.isProduction ? { rejectUnauthorized: false } : false,
       max: 1
     });

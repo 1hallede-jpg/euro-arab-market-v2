@@ -204,33 +204,33 @@ export const merchantRouter = createRouter({
         const reviews = ratingVal > 0 ? Math.floor(Math.random() * 30 + 5) : 0;
         const price = input.priceRange || "$$";
 
-        const result = await db.insert(merchants).values({
-          businessName: input.businessName,
-          businessNameAr: nameAr,
-          shortDescription: shortDesc,
-          description: desc,
-          descriptionAr: descAr,
-          category: input.category,
-          subcategory: subcat,
-          tags: tagsVal,
-          country: input.country,
-          city: input.city,
-          address: addr,
-          phone: input.phone || "",
-          email: input.email || null,
-          website: input.website || null,
-          status: "active",
-          slug,
-          isFeatured: false,
-          isVerified: true,
-          rating: String(ratingVal),
-          reviewCount: reviews,
-          priceRange: price,
-          latitude: input.latitude ? String(input.latitude) : null,
-          longitude: input.longitude ? String(input.longitude) : null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }).returning();
+        // Use raw SQL with only snake_case columns that exist in DB
+        const client = postgres(env.databaseUrl, {
+          ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+          max: 1,
+        });
+
+        const result = await client`
+          INSERT INTO merchants (
+            business_name, business_name_ar, short_description,
+            description, category, subcategory,
+            tags, country, city, address,
+            phone, email, website, status, slug,
+            is_featured, is_verified, rating, review_count,
+            price_range, created_at, updated_at
+          ) VALUES (
+            ${input.businessName}, ${nameAr}, ${shortDesc},
+            ${desc}, ${input.category}, ${subcat},
+            ${tagsVal}, ${input.country}, ${input.city}, ${addr},
+            ${input.phone || ""}, ${input.email || null}, ${input.website || null},
+            'active', ${slug},
+            ${false}, ${true}, ${String(ratingVal)}, ${reviews},
+            ${price}, NOW(), NOW()
+          )
+          RETURNING id
+        `;
+
+        await client.end();
 
         return { id: result[0]?.id || 0, slug, status: "active" };
       } catch (e: any) {
