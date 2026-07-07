@@ -1,3 +1,4 @@
+// BUILD_VERSION: 2026-07-08-002 (raw-sql-fix)
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
