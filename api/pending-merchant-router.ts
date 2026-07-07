@@ -1,9 +1,11 @@
 import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
-import { pendingMerchants } from "../db/schema";
+import { pendingMerchants, merchants } from "../db/schema";
 import { eq, desc } from "drizzle-orm";
 import { sendMerchantRegistrationEmail, getEmailLogs } from "./lib/email";
+import postgres from "postgres";
+import { env } from "./lib/env";
 
 export const pendingMerchantRouter = createRouter({
   // Submit new merchant registration
@@ -122,6 +124,87 @@ export const pendingMerchantRouter = createRouter({
         })
         .where(eq(pendingMerchants.id, input.id));
       return { success: true };
+    }),
+
+  // Approve: copy pending merchant → merchants table (so it appears on site)
+  approve: publicQuery
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const client = postgres(env.databaseUrl, {
+        ssl: env.isProduction ? { rejectUnauthorized: false } : false,
+        max: 1,
+      });
+
+      try {
+        // 1. Get the pending merchant
+        const pending = await db.select().from(pendingMerchants)
+          .where(eq(pendingMerchants.id, input.id))
+          .limit(1);
+
+        if (!pending[0]) {
+          return { success: false, error: "Pending merchant not found" };
+        }
+
+        const pm = pending[0];
+
+        // 2. Generate slug
+        const slug = (pm.businessName || pm.businessNameAr || "store")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "") + "-" + Date.now();
+
+        // 3. Insert into merchants table using raw SQL (handles both snake_case & camelCase columns)
+        const result = await client`
+          INSERT INTO merchants (
+            business_name, business_name_ar, short_description,
+            description, description_ar, category, subcategory,
+            tags, country, city, address,
+            phone, email, website, status, slug,
+            logo, cover_image,
+            is_featured, is_verified, rating, review_count,
+            price_range,
+            created_at, updated_at,
+            "businessName", "businessNameAr", "shortDescription",
+            "description", "descriptionAr",
+            "isFeatured", "isVerified", "reviewCount",
+            "priceRange", "createdAt", "updatedAt"
+          ) VALUES (
+            ${pm.businessName}, ${pm.businessNameAr},
+            ${(pm.descriptionAr || pm.description || `${pm.businessNameAr} في ${pm.city}`).slice(0, 160)},
+            ${pm.description || ""}, ${pm.descriptionAr || ""},
+            ${pm.category}, ${pm.subcategory || pm.category},
+            ${`${pm.category} ${pm.city} ${pm.businessNameAr} ${pm.businessName}`.slice(0, 200)},
+            ${pm.country}, ${pm.city}, ${pm.address || pm.city},
+            ${pm.phone}, ${pm.email}, ${pm.website || null},
+            'active', ${slug},
+            ${pm.logo || null}, ${pm.businessRegistrationPhoto || null},
+            ${false}, ${true}, ${0}, ${0},
+            ${"$$"},
+            NOW(), NOW(),
+            ${pm.businessName}, ${pm.businessNameAr},
+            ${(pm.descriptionAr || pm.description || `${pm.businessNameAr} في ${pm.city}`).slice(0, 160)},
+            ${pm.description || ""}, ${pm.descriptionAr || ""},
+            ${false}, ${true}, ${0},
+            ${"$$"}, NOW(), NOW()
+          )
+          RETURNING id
+        `;
+
+        const merchantId = result[0]?.id;
+
+        // 4. Update pending_merchants status to approved
+        await db.update(pendingMerchants)
+          .set({ status: "approved" })
+          .where(eq(pendingMerchants.id, input.id));
+
+        return { success: true, merchantId, slug };
+      } catch (e: any) {
+        console.error("[approve] Error:", e?.message);
+        return { success: false, error: e?.message };
+      } finally {
+        await client.end();
+      }
     }),
 
   // Get email logs (for admin to review sent emails)

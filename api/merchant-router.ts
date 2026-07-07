@@ -364,4 +364,145 @@ export const merchantRouter = createRouter({
 
       return { success: true, message: "تم استلام الطلب وسيتم المراجعة" };
     }),
+
+  // ─── ADMIN ENDPOINTS ───
+
+  // Admin: list all merchants (active + pending + all)
+  adminList: publicQuery
+    .input(
+      z.object({
+        status: z.string().optional(),
+        city: z.string().optional(),
+        category: z.string().optional(),
+        search: z.string().optional(),
+        limit: z.number().min(1).max(200).default(50),
+        offset: z.number().min(0).default(0),
+      }).optional()
+    )
+    .query(async ({ input }) => {
+      try {
+        const db = getDb();
+        let query = db.select().from(merchants);
+        const conditions: any[] = [];
+
+        if (input?.status) {
+          conditions.push(sql`${merchants.status} = ${input.status}`);
+        }
+        if (input?.city) {
+          conditions.push(sql`${merchants.city} = ${input.city}`);
+        }
+        if (input?.category) {
+          conditions.push(sql`${merchants.category} = ${input.category}`);
+        }
+        if (input?.search) {
+          const term = `%${input.search}%`;
+          conditions.push(sql`(
+            ${merchants.businessName} ILIKE ${term} OR
+            ${merchants.businessNameAr} ILIKE ${term} OR
+            ${merchants.phone} ILIKE ${term} OR
+            ${merchants.city} ILIKE ${term}
+          )`);
+        }
+
+        const where = conditions.length > 1
+          ? and(...conditions)
+          : conditions[0] || undefined;
+
+        const items = where
+          ? await query.where(where).orderBy(desc(merchants.id)).limit(input?.limit || 50).offset(input?.offset || 0)
+          : await query.orderBy(desc(merchants.id)).limit(input?.limit || 50).offset(input?.offset || 0);
+
+        const countResult = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(merchants)
+          .where(where || sql`1=1`);
+
+        return { items, total: countResult[0]?.count || 0 };
+      } catch (e: any) {
+        console.error("[adminList] Error:", e?.message);
+        return { items: [], total: 0 };
+      }
+    }),
+
+  // Admin: update merchant
+  adminUpdate: publicQuery
+    .input(
+      z.object({
+        id: z.number(),
+        businessName: z.string().optional(),
+        businessNameAr: z.string().optional(),
+        description: z.string().optional(),
+        descriptionAr: z.string().optional(),
+        category: z.string().optional(),
+        city: z.string().optional(),
+        country: z.string().optional(),
+        address: z.string().optional(),
+        phone: z.string().optional(),
+        email: z.string().optional(),
+        website: z.string().optional(),
+        status: z.string().optional(),
+        isFeatured: z.boolean().optional(),
+        isVerified: z.boolean().optional(),
+        rating: z.number().optional(),
+        logo: z.string().optional(),
+        coverImage: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input;
+      const db = getDb();
+
+      // Build update object dynamically
+      const updateData: any = {};
+      if (data.businessName !== undefined) updateData.businessName = data.businessName;
+      if (data.businessNameAr !== undefined) updateData.businessNameAr = data.businessNameAr;
+      if (data.description !== undefined) updateData.description = data.description;
+      if (data.descriptionAr !== undefined) updateData.descriptionAr = data.descriptionAr;
+      if (data.category !== undefined) updateData.category = data.category;
+      if (data.city !== undefined) updateData.city = data.city;
+      if (data.country !== undefined) updateData.country = data.country;
+      if (data.address !== undefined) updateData.address = data.address;
+      if (data.phone !== undefined) updateData.phone = data.phone;
+      if (data.email !== undefined) updateData.email = data.email;
+      if (data.website !== undefined) updateData.website = data.website;
+      if (data.status !== undefined) updateData.status = data.status;
+      if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
+      if (data.isVerified !== undefined) updateData.isVerified = data.isVerified;
+      if (data.rating !== undefined) updateData.rating = data.rating;
+      if (data.logo !== undefined) updateData.logo = data.logo;
+      if (data.coverImage !== undefined) updateData.coverImage = data.coverImage;
+
+      await db.update(merchants).set(updateData).where(eq(merchants.id, id));
+      return { success: true };
+    }),
+
+  // Admin: delete merchant
+  adminDelete: publicQuery
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      await db.delete(merchants).where(eq(merchants.id, input.id));
+      return { success: true };
+    }),
+
+  // Admin: stats
+  adminStats: publicQuery.query(async () => {
+    try {
+      const db = getDb();
+      const total = await db.select({ count: sql<number>`count(*)` }).from(merchants);
+      const active = await db.select({ count: sql<number>`count(*)` }).from(merchants).where(sql`${merchants.status} = 'active'`);
+      const pending = await db.select({ count: sql<number>`count(*)` }).from(merchants).where(sql`${merchants.status} = 'pending'`);
+      const featured = await db.select({ count: sql<number>`count(*)` }).from(merchants).where(sql`${merchants.isFeatured} = true`);
+
+      return {
+        total: total[0]?.count || 0,
+        active: active[0]?.count || 0,
+        pending: pending[0]?.count || 0,
+        featured: featured[0]?.count || 0,
+      };
+    } catch (e: any) {
+      console.error("[adminStats] Error:", e?.message);
+      return { total: 0, active: 0, pending: 0, featured: 0 };
+    }
+  }),
 });
