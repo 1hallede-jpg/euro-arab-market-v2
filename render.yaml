@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install && npm run build && rm -rf public && cp -r dist public && cp dist/search-static.html public/search.html
-    startCommand: node boot.js
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
