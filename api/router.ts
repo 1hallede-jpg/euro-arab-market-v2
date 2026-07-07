@@ -18,7 +18,8 @@ import { emailLogRouter } from "./email-log-router";
 import { createRouter, publicQuery } from "./middleware";
 
 export const appRouter = createRouter({
-  ping: publicQuery.query(() => ({ ok: true, ts: Date.now(), v: "admin-fix-2026" })),
+  ping: publicQuery.query(() => ({ ok: true, ts: Date.now(), v: "admin-fix-2026-July08" })),
+  test: publicQuery.query(() => ({ version: "2026-07-08-001", status: "new-deploy" })),
   auth: authRouter,
   merchant: merchantRouter,
   job: jobRouter,
