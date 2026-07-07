@@ -1,1022 +1,698 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
-import { trpc } from "@/providers/trpc";
+import { Link } from "react-router";
 import {
-  LayoutDashboard, Store, Briefcase, Users, LogOut, Plus, Search,
-  Edit, Trash2, Save, X, Star, MapPin, Phone, Globe,
-  CheckCircle, Menu, CreditCard, Image, Facebook, Instagram,
-  BadgeCheck, XCircle, Hand, Settings, ChevronDown, ChevronUp,
-  Clock, TrendingUp, Eye, Filter,
+  Building2, Wrench, CheckCircle, XCircle, Star, Trash2, Edit3,
+  Search, Plus, TrendingUp, Store, Clock, LogOut, Bell, X, Save,
+  AlertTriangle, Eye, MapPin, Phone, Mail, Globe, Shield,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Logo from "@/components/Logo";
 
-// ==================== CATEGORY LABELS ====================
-const categoryNamesAr: Record<string, string> = {
-  restaurant: "مطاعم عربية", supermarket: "سوبرماركت حلال",
-  sweets: "حلويات شرقية", barber: "صالونات حلاقة",
-  butcher: "جزار حلال", bakery: "مخابز",
-  cafe: "مقاهي", clothing: "ملابس",
-  electronics: "إلكترونيات", pharmacy: "صيدليات",
-  halal_grocery: "بقالة حلال", shisha_lounge: "مقهى شيشة",
-  travel_agency: "وكالة سفر", money_transfer: "تحويل أموال",
-  mosque: "مسجد", cultural_center: "مركز ثقافي",
-  car_dealer: "تاجر سيارات", repair_shop: "محل إصلاح",
-  other: "أخرى",
+const API_URL = "/api/trpc";
+const ADMIN_PASS = "Sindbad2024!Admin";
+
+const statusNames: Record<string, { label: string; color: string }> = {
+  active: { label: "نشط", color: "text-emerald-400" },
+  pending: { label: "قيد المراجعة", color: "text-yellow-400" },
+  suspended: { label: "موقوف", color: "text-red-400" },
+  rejected: { label: "مرفوض", color: "text-gray-400" },
 };
 
-const statusColors: Record<string, string> = {
-  active: "bg-emerald-100 text-emerald-700",
-  pending: "bg-amber-100 text-amber-700",
-  suspended: "bg-red-100 text-red-700",
-  rejected: "bg-gray-100 text-gray-500",
-  claimed: "bg-purple-100 text-purple-700",
-};
+const skillCategories = [
+  { value: "cooking", label: "طبخ" },
+  { value: "driving", label: "سياقة" },
+  { value: "photography", label: "تصوير" },
+  { value: "painting", label: "دهان" },
+  { value: "plumbing", label: "سباكة" },
+  { value: "electrician", label: "كهرباء" },
+  { value: "carpentry", label: "نجارة" },
+  { value: "cleaning", label: "تنظيف" },
+  { value: "it", label: "تقنية" },
+  { value: "translation", label: "ترجمة" },
+  { value: "accounting", label: "محاسبة" },
+  { value: "medical", label: "طب/تمريض" },
+  { value: "education", label: "تعليم" },
+  { value: "construction", label: "بناء" },
+  { value: "other", label: "أخرى" },
+];
 
-type Section = "dashboard" | "stores" | "pending" | "jobs" | "claims" | "subscriptions" | "users";
+const merchantCategories = [
+  { value: "restaurant", label: "مطعم" },
+  { value: "supermarket", label: "سوبرماركت" },
+  { value: "sweets", label: "حلويات" },
+  { value: "barber", label: "صالون حلاقة" },
+  { value: "butcher", label: "جزار" },
+  { value: "bakery", label: "مخبز" },
+  { value: "cafe", label: "مقهى" },
+  { value: "clothing", label: "ملابس" },
+  { value: "pharmacy", label: "صيدلية" },
+  { value: "mosque", label: "مسجد" },
+  { value: "other", label: "أخرى" },
+];
 
-export default function AdminDashboard() {
-  const navigate = useNavigate();
-  const [section, setSection] = useState<Section>("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
-  const [storeFilter, setStoreFilter] = useState<string>("all");
-
-  // Auth check
-  useEffect(() => {
-    const token = localStorage.getItem("admin_token");
-    if (!token) navigate("/admin/login");
-  }, [navigate]);
-
-  const logout = () => {
-    localStorage.removeItem("admin_token");
-    navigate("/admin/login");
-  };
-
-  // Queries
-  const { data: stats } = trpc.admin.stats.useQuery(undefined, { retry: false });
-  const { data: merchantData, refetch: refetchMerchants } = trpc.admin.merchants.useQuery(
-    { search: search || undefined, status: storeFilter !== "all" ? storeFilter : undefined, limit: 100 }, 
-    { retry: false }
-  );
-  const { data: pendingData, refetch: refetchPending } = trpc.admin.merchants.useQuery(
-    { status: "pending", limit: 100 }, { retry: false, enabled: section === "pending" }
-  );
-  const { data: jobData, refetch: refetchJobs } = trpc.admin.jobs.useQuery(
-    { search: search || undefined, limit: 100 }, { retry: false });
-  const { data: claimsData, refetch: refetchClaims } = trpc.claim.list.useQuery(
-    { status: "pending" }, { retry: false });
-  const { data: subscriptionsData } = trpc.subscription.list.useQuery(
-    undefined, { retry: false });
-  const { data: userData } = trpc.admin.users.useQuery(
-    { limit: 100 }, { retry: false });
-  const { data: recentActivity } = trpc.admin.recentActivity.useQuery(
-    undefined, { retry: false }
-  );
-
-  // Mutations
-  const deleteMerchant = trpc.admin.deleteMerchant.useMutation({ onSuccess: () => refetchMerchants() });
-  const deleteJob = trpc.admin.deleteJob.useMutation({ onSuccess: () => refetchJobs() });
-  const updateMerchantStatus = trpc.admin.updateMerchantStatus.useMutation({ 
-    onSuccess: () => { refetchMerchants(); refetchPending(); }
-  });
-  const approveClaim = trpc.claim.approve.useMutation({ onSuccess: () => refetchClaims() });
-  const rejectClaim = trpc.claim.reject.useMutation({ onSuccess: () => refetchClaims() });
-  const cancelSubscription = trpc.subscription.cancel.useMutation({});
-
-  const sidebarItems = [
-    { id: "dashboard" as Section, label: "لوحة المعلومات", icon: LayoutDashboard },
-    { id: "stores" as Section, label: "المتاجر", icon: Store, badge: stats?.merchants },
-    { id: "pending" as Section, label: "بانتظار القبول", icon: Clock, badge: stats?.pendingMerchants, alert: true },
-    { id: "jobs" as Section, label: "الوظائف", icon: Briefcase },
-    { id: "claims" as Section, label: "طلبات المطالبة", icon: Hand, badge: claimsData?.length },
-    { id: "subscriptions" as Section, label: "الاشتراكات", icon: CreditCard },
-    { id: "users" as Section, label: "المستخدمين", icon: Users },
-  ];
-
-  const handleApproveMerchant = (id: number) => {
-    if (confirm("قبول هذا المتجر؟")) {
-      updateMerchantStatus.mutate({ id, status: "active" });
-    }
-  };
-
-  const handleRejectMerchant = (id: number) => {
-    if (confirm("رفض هذا المتجر؟")) {
-      updateMerchantStatus.mutate({ id, status: "rejected" });
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 flex" dir="rtl">
-      {/* Sidebar */}
-      <div className={`${sidebarOpen ? "w-72" : "w-16"} bg-slate-900 text-white transition-all duration-300 flex flex-col flex-shrink-0`}>
-        <div className="p-4 flex items-center justify-between border-b border-slate-700">
-          {sidebarOpen && (
-            <div>
-              <h1 className="font-bold text-lg text-emerald-400">سندباد</h1>
-              <p className="text-xs text-slate-400">لوحة التحكم</p>
-            </div>
-          )}
-          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-400 hover:text-white">
-            <Menu className="h-5 w-5" />
-          </Button>
-        </div>
-        <nav className="flex-1 p-3 space-y-1">
-          {sidebarItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button key={item.id} onClick={() => setSection(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-                  section === item.id ? "bg-emerald-600 text-white" : "text-slate-300 hover:bg-slate-800"
-                }`}>
-                <Icon className="h-5 w-5" />
-                {sidebarOpen && (
-                  <>
-                    <span className="text-sm font-medium flex-1 text-right">{item.label}</span>
-                    {item.badge ? (
-                      <Badge className={`${item.alert ? "bg-red-500" : "bg-slate-600"} text-white text-xs px-1.5`}>{item.badge}</Badge>
-                    ) : null}
-                  </>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="p-3 border-t border-slate-700">
-          <button onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-slate-800 transition-colors">
-            <LogOut className="h-5 w-5" />
-            {sidebarOpen && <span className="text-sm font-medium">تسجيل الخروج</span>}
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto min-w-0">
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-          <h2 className="text-xl font-bold text-slate-800">
-            {sidebarItems.find((i) => i.id === section)?.label}
-          </h2>
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input placeholder="بحث..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pr-10 w-64" />
-            </div>
-            {(section === "stores" || section === "pending") && (
-              <Button onClick={() => { setEditingItem(null); setShowForm(true); }}
-                className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="h-4 w-4 ml-1" />إضافة متجر
-              </Button>
-            )}
-          </div>
-        </header>
-
-        <div className="p-6">
-          {/* ============ DASHBOARD ============ */}
-          {section === "dashboard" && (
-            <div className="space-y-6">
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {[
-                  { label: "المستخدمين", value: stats?.users || 0, icon: Users, color: "bg-blue-500", sub: "مستخدم نشط" },
-                  { label: "المتاجر", value: stats?.merchants || 0, icon: Store, color: "bg-emerald-500", sub: `${stats?.pendingMerchants || 0} معلق` },
-                  { label: "الوظائف", value: stats?.jobs || 0, icon: Briefcase, color: "bg-purple-500", sub: `${stats?.openJobs || 0} مفتوحة` },
-                  { label: "طلبات المطالبة", value: claimsData?.length || 0, icon: Hand, color: "bg-amber-500", sub: "بانتظار الموافقة" },
-                ].map((stat) => {
-                  const Icon = stat.icon;
-                  return (
-                    <Card key={stat.label} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => {
-                      if (stat.label === "المتاجر") setSection("stores");
-                      if (stat.label === "المستخدمين") setSection("users");
-                      if (stat.label === "الوظائف") setSection("jobs");
-                      if (stat.label === "طلبات المطالبة") setSection("claims");
-                    }}>
-                      <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-slate-500">{stat.label}</p>
-                            <p className="text-3xl font-bold text-slate-900 mt-1">{stat.value}</p>
-                            <p className="text-xs text-slate-400 mt-1">{stat.sub}</p>
-                          </div>
-                          <div className={`w-12 h-12 rounded-xl ${stat.color} flex items-center justify-center`}>
-                            <Icon className="h-6 w-6 text-white" />
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-
-              {/* Pending Alert */}
-              {(stats?.pendingMerchants || 0) > 0 && (
-                <Card className="border-amber-300 bg-amber-50 cursor-pointer" onClick={() => setSection("pending")}>
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-6 w-6 text-amber-600" />
-                      <div>
-                        <p className="font-bold text-amber-800">{stats?.pendingMerchants} متجر بانتظار الموافقة</p>
-                        <p className="text-sm text-amber-600">انقر لمراجعة المتاجر المعلقة</p>
-                      </div>
-                    </div>
-                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700">مراجعة</Button>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Recent Activity */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-emerald-500" />آخر المتاجر المضافة
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {recentActivity?.merchants?.slice(0, 5).map((m: any) => (
-                      <div key={m.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                        <div>
-                          <p className="font-medium text-sm">{m.businessNameAr || m.businessName}</p>
-                          <p className="text-xs text-slate-400">{m.city}</p>
-                        </div>
-                        <Badge className={statusColors[m.status] || "bg-gray-100 text-gray-600"}>
-                          {m.status === "active" ? "نشط" : m.status === "pending" ? "معلق" : m.status}
-                        </Badge>
-                      </div>
-                    )) || <p className="text-sm text-slate-400">لا توجد بيانات</p>}
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Users className="h-4 w-4 text-blue-500" />آخر المستخدمين
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {recentActivity?.users?.slice(0, 5).map((u: any) => (
-                      <div key={u.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                        <div className="flex items-center gap-2">
-                          {u.avatar ? <img src={u.avatar} alt="" className="w-7 h-7 rounded-full" /> :
-                            <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center"><Users className="h-3 w-3 text-slate-500" /></div>}
-                          <p className="font-medium text-sm">{u.name || "بدون اسم"}</p>
-                        </div>
-                        <Badge className={u.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}>
-                          {u.role === "admin" ? "أدمن" : "مستخدم"}
-                        </Badge>
-                      </div>
-                    )) || <p className="text-sm text-slate-400">لا توجد بيانات</p>}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          )}
-
-          {/* ============ STORES ============ */}
-          {section === "stores" && (
-            <div className="space-y-4">
-              {showForm && (
-                <MerchantForm onClose={() => { setShowForm(false); setEditingItem(null); }}
-                  editingItem={editingItem} onSuccess={() => { refetchMerchants(); setShowForm(false); }} />
-              )}
-
-              {/* Filters */}
-              <Tabs value={storeFilter} onValueChange={setStoreFilter} className="mb-4">
-                <TabsList>
-                  <TabsTrigger value="all">الكل</TabsTrigger>
-                  <TabsTrigger value="active">نشط</TabsTrigger>
-                  <TabsTrigger value="pending">معلق</TabsTrigger>
-                  <TabsTrigger value="suspended">موقوف</TabsTrigger>
-                  <TabsTrigger value="claimed">مطالب</TabsTrigger>
-                </TabsList>
-              </Tabs>
-
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">المتجر</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">التصنيف</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">المدينة</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">الحالة</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600 w-20"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {merchantData?.items.map((m: any) => (
-                      <>
-                        <tr key={m.id} className="hover:bg-slate-50 cursor-pointer"
-                          onClick={() => setExpandedRow(expandedRow === m.id ? null : m.id)}>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              {m.logo ? <img src={m.logo} alt="" className="w-8 h-8 rounded-lg object-cover" /> :
-                                <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center"><Store className="h-4 w-4 text-slate-400" /></div>}
-                              <div>
-                                <div className="font-medium text-slate-900">{m.businessNameAr || m.businessName}</div>
-                                {m.isFeatured && <Badge className="bg-yellow-100 text-yellow-700 text-[10px] mt-0.5"><Star className="h-2 w-2 mr-0.5" />مميز</Badge>}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge variant="outline" className="border-emerald-200 text-emerald-700 text-xs">
-                              {categoryNamesAr[m.category] || m.category}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">{m.city}</td>
-                          <td className="px-4 py-3">
-                            <Badge className={`${statusColors[m.status]} text-xs`}>
-                              {m.status === "active" ? "نشط" : m.status === "pending" ? "معلق" : m.status === "claimed" ? "مطالب" : m.status === "suspended" ? "موقوف" : "مرفوض"}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600"
-                                onClick={() => { setEditingItem(m); setShowForm(true); }}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600"
-                                onClick={() => { if (confirm("هل أنت متأكد من الحذف؟")) deleteMerchant.mutate({ id: m.id }); }}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                        {expandedRow === m.id && (
-                          <tr className="bg-slate-50">
-                            <td colSpan={5} className="px-6 py-4">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                                {m.description && <div><span className="text-slate-500">الوصف:</span> <span className="text-slate-800">{m.description}</span></div>}
-                                {m.phone && <div className="flex items-center gap-1"><Phone className="h-4 w-4 text-slate-400" /><span>{m.phone}</span></div>}
-                                {m.email && <div className="flex items-center gap-1"><Globe className="h-4 w-4 text-slate-400" /><span>{m.email}</span></div>}
-                                {m.address && <div className="flex items-center gap-1"><MapPin className="h-4 w-4 text-slate-400" /><span>{m.address}</span></div>}
-                                {m.website && <div className="flex items-center gap-1"><Globe className="h-4 w-4 text-blue-500" /><a href={m.website} target="_blank" rel="noopener noreferrer" className="text-blue-600">{m.website}</a></div>}
-                                {m.facebookUrl && <div className="flex items-center gap-1"><Facebook className="h-4 w-4 text-blue-600" /><span>فيسبوك</span></div>}
-                                {m.instagramUrl && <div className="flex items-center gap-1"><Instagram className="h-4 w-4 text-pink-500" /><span>انستغرام</span></div>}
-                                {m.rating && <div><Star className="h-4 w-4 text-yellow-500 inline" /> {m.rating} ({m.reviewCount} تقييم)</div>}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    ))}
-                  </tbody>
-                </table>
-                {(!merchantData?.items || merchantData.items.length === 0) && (
-                  <div className="text-center py-16 text-slate-400">
-                    <Store className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>لا توجد متاجر حالياً</p>
-                    <Button onClick={() => setShowForm(true)} variant="outline" className="mt-3">
-                      <Plus className="h-4 w-4 ml-1" />أضف أول متجر
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ============ PENDING MERCHANTS ============ */}
-          {section === "pending" && (
-            <div className="space-y-4">
-              {showForm && (
-                <MerchantForm onClose={() => { setShowForm(false); setEditingItem(null); }}
-                  editingItem={editingItem} onSuccess={() => { refetchPending(); setShowForm(false); }} />
-              )}
-
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-                <p className="text-amber-800 font-medium">📋 المتاجر التالية بانتظار مراجعتك وموافقتك لتظهر على الموقع</p>
-              </div>
-
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">المتجر</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">التصنيف</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">المدينة</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">التاريخ</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600 w-40">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {pendingData?.items.map((m: any) => (
-                      <>
-                        <tr key={m.id} className="hover:bg-slate-50 cursor-pointer"
-                          onClick={() => setExpandedRow(expandedRow === m.id ? null : m.id)}>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              {m.logo ? <img src={m.logo} alt="" className="w-8 h-8 rounded-lg object-cover" /> :
-                                <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center"><Clock className="h-4 w-4 text-amber-500" /></div>}
-                              <div>
-                                <div className="font-medium text-slate-900">{m.businessNameAr || m.businessName}</div>
-                                {m.phone && <div className="text-xs text-slate-400">{m.phone}</div>}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge variant="outline" className="border-amber-200 text-amber-700 text-xs">
-                              {categoryNamesAr[m.category] || m.category}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-slate-600">{m.city}</td>
-                          <td className="px-4 py-3 text-slate-500">
-                            {m.createdAt ? new Date(m.createdAt).toLocaleDateString("ar-SA") : "-"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8"
-                                onClick={() => handleApproveMerchant(m.id)}
-                                disabled={updateMerchantStatus.isPending}>
-                                <CheckCircle className="h-4 w-4 ml-1" />قبول
-                              </Button>
-                              <Button size="sm" variant="outline" className="text-red-600 border-red-200 h-8"
-                                onClick={() => handleRejectMerchant(m.id)}
-                                disabled={updateMerchantStatus.isPending}>
-                                <XCircle className="h-4 w-4 ml-1" />رفض
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                        {expandedRow === m.id && (
-                          <tr className="bg-slate-50">
-                            <td colSpan={5} className="px-6 py-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                {m.descriptionAr && <div><span className="text-slate-500">الوصف:</span> <span className="text-slate-800">{m.descriptionAr}</span></div>}
-                                {m.description && <div><span className="text-slate-500">Description:</span> <span className="text-slate-800">{m.description}</span></div>}
-                                {m.address && <div className="flex items-center gap-1"><MapPin className="h-4 w-4 text-slate-400" /><span>{m.address}</span></div>}
-                                {m.email && <div className="flex items-center gap-1"><Globe className="h-4 w-4 text-slate-400" /><span>{m.email}</span></div>}
-                                {m.whatsapp && <div className="flex items-center gap-1"><Phone className="h-4 w-4 text-green-500" /><span>واتساب: {m.whatsapp}</span></div>}
-                                {m.website && <div className="flex items-center gap-1"><Globe className="h-4 w-4 text-blue-500" /><a href={m.website} target="_blank" className="text-blue-600">{m.website}</a></div>}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    ))}
-                  </tbody>
-                </table>
-                {(!pendingData?.items || pendingData.items.length === 0) && (
-                  <div className="text-center py-16 text-slate-400">
-                    <CheckCircle className="h-12 w-12 mx-auto mb-3 text-emerald-400" />
-                    <p className="font-medium">لا توجد متاجر معلقة!</p>
-                    <p className="text-sm">جميع المتاجر تمت مراجعتها</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ============ CLAIMS ============ */}
-          {section === "claims" && (
-            <div className="space-y-4">
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">صاحب الطلب</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">رقم المتجر</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">الحالة</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">التاريخ</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600 w-32">إجراءات</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {claimsData?.map((c: any) => (
-                      <tr key={c.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-slate-900">{c.fullName}</div>
-                          <div className="text-xs text-slate-500">{c.email}</div>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">#{c.merchantId}</td>
-                        <td className="px-4 py-3">
-                          <Badge className={c.status === "pending" ? "bg-amber-100 text-amber-700" :
-                            c.status === "approved" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}>
-                            {c.status === "pending" ? "معلق" : c.status === "approved" ? "موافق" : "مرفوض"}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-slate-500">
-                          {c.createdAt ? new Date(c.createdAt).toLocaleDateString("ar-SA") : "-"}
-                        </td>
-                        <td className="px-4 py-3">
-                          {c.status === "pending" && (
-                            <div className="flex items-center gap-1">
-                              <Button variant="ghost" size="sm" className="text-emerald-600 h-8"
-                                onClick={() => approveClaim.mutate({ id: c.id, reviewedBy: 1 })}>
-                                <CheckCircle className="h-4 w-4 ml-1" />موافقة
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-red-600 h-8"
-                                onClick={() => {
-                                  const reason = prompt("سبب الرفض:");
-                                  if (reason) rejectClaim.mutate({ id: c.id, reviewedBy: 1, rejectionReason: reason });
-                                }}>
-                                <XCircle className="h-4 w-4 ml-1" />رفض
-                              </Button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {(!claimsData || claimsData.length === 0) && (
-                  <div className="text-center py-16 text-slate-400">
-                    <Hand className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>لا توجد طلبات مطالبة</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ============ JOBS ============ */}
-          {section === "jobs" && (
-            <div className="space-y-4">
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">الوظيفة</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">التصنيف</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">المدينة</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">الحالة</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600 w-20"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {jobData?.items.map((j: any) => (
-                      <tr key={j.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-3">
-                          <div className="font-medium text-slate-900">{j.titleAr || j.title}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant="outline" className="border-blue-200 text-blue-700 text-xs">{j.category}</Badge>
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">{j.city}</td>
-                        <td className="px-4 py-3">
-                          <Badge className={j.status === "open" ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-700"}>
-                            {j.status === "open" ? "مفتوح" : "مغلق"}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600"
-                            onClick={() => { if (confirm("هل أنت متأكد؟")) deleteJob.mutate({ id: j.id }); }}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {(!jobData?.items || jobData.items.length === 0) && (
-                  <div className="text-center py-16 text-slate-400">
-                    <Briefcase className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>لا توجد وظائف</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ============ SUBSCRIPTIONS ============ */}
-          {section === "subscriptions" && (
-            <div className="space-y-4">
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">رقم</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">الخطة</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">الحالة</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">السعر</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">ينتهي</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600 w-20"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {subscriptionsData?.map((s: any) => (
-                      <tr key={s.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-3 font-medium">#{s.id}</td>
-                        <td className="px-4 py-3">
-                          <Badge variant="outline" className={s.plan === "premium" ? "border-purple-200 text-purple-700" : s.plan === "featured" ? "border-yellow-200 text-yellow-700" : "border-blue-200 text-blue-700"}>
-                            {s.plan === "basic" ? "أساسي" : s.plan === "premium" ? "مميز" : "VIP"}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge className={s.status === "active" ? "bg-emerald-100 text-emerald-700" : s.status === "expired" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"}>
-                            {s.status === "active" ? "نشط" : s.status === "expired" ? "منتهي" : s.status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">&euro;{s.price}</td>
-                        <td className="px-4 py-3 text-slate-500">
-                          {s.expiresAt ? new Date(s.expiresAt).toLocaleDateString("ar-SA") : "-"}
-                        </td>
-                        <td className="px-4 py-3">
-                          {s.status === "active" && (
-                            <Button variant="ghost" size="sm" className="text-red-600 h-8"
-                              onClick={() => { if (confirm("إلغاء الاشتراك؟")) cancelSubscription.mutate({ id: s.id }); }}>
-                              إلغاء
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {(!subscriptionsData || subscriptionsData.length === 0) && (
-                  <div className="text-center py-16 text-slate-400">
-                    <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>لا توجد اشتراكات</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ============ USERS ============ */}
-          {section === "users" && (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-600">المستخدم</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-600">الإيميل</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-600">الدور</th>
-                    <th className="px-4 py-3 text-right font-semibold text-slate-600">التسجيل</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {userData?.items.map((u: any) => (
-                    <tr key={u.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 flex items-center gap-2">
-                        {u.avatar ? <img src={u.avatar} alt="" className="w-8 h-8 rounded-full" /> :
-                          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center"><Users className="h-4 w-4 text-slate-500" /></div>}
-                        <span className="font-medium">{u.name || "بدون اسم"}</span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-600">{u.email || "-"}</td>
-                      <td className="px-4 py-3">
-                        <Badge className={u.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}>
-                          {u.role === "admin" ? "أدمن" : "مستخدم"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-slate-500">
-                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString("ar-SA") : "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+// ─── NOTIFICATION SYSTEM ───
+interface Notification {
+  id: string;
+  type: "merchant" | "skill" | "system";
+  title: string;
+  message: string;
+  createdAt: string;
+  read: boolean;
 }
 
-// ==================== MERCHANT FORM (COMPLETE) ====================
-function MerchantForm({ onClose, editingItem, onSuccess }: { onClose: () => void; editingItem: any; onSuccess: () => void }) {
-  const [form, setForm] = useState({
-    businessName: editingItem?.businessName || "",
-    businessNameAr: editingItem?.businessNameAr || "",
-    shortDescription: editingItem?.shortDescription || "",
-    description: editingItem?.description || "",
-    descriptionAr: editingItem?.descriptionAr || "",
-    category: editingItem?.category || "restaurant",
-    subcategory: editingItem?.subcategory || "",
-    country: editingItem?.country || "",
-    city: editingItem?.city || "",
-    address: editingItem?.address || "",
-    addressAr: editingItem?.addressAr || "",
-    neighborhood: editingItem?.neighborhood || "",
-    postalCode: editingItem?.postalCode || "",
-    phone: editingItem?.phone || "",
-    whatsapp: editingItem?.whatsapp || "",
-    email: editingItem?.email || "",
-    website: editingItem?.website || "",
-    facebookUrl: editingItem?.facebookUrl || "",
-    instagramUrl: editingItem?.instagramUrl || "",
-    youtubeUrl: editingItem?.youtubeUrl || "",
-    latitude: editingItem?.latitude || "",
-    longitude: editingItem?.longitude || "",
-    googleMapsUrl: editingItem?.googleMapsUrl || "",
-    priceRange: editingItem?.priceRange || "$$",
-    isFeatured: editingItem?.isFeatured || false,
-    acceptsCash: editingItem?.acceptsCash ?? true,
-    acceptsCard: editingItem?.acceptsCard || false,
-    isOpen24Hours: editingItem?.isOpen24Hours || false,
-    logo: editingItem?.logo || "",
-    coverImage: editingItem?.coverImage || "",
-    galleryImages: editingItem?.galleryImages || [],
-    amenities: editingItem?.amenities || [],
-    features: editingItem?.features || [],
-    tags: editingItem?.tags || "",
-    metaTitle: editingItem?.metaTitle || "",
-    metaDescription: editingItem?.metaDescription || "",
+function useNotifications() {
+  const [notifications, setNotifications] = useState<Notification[]>(() => {
+    const saved = localStorage.getItem("admin-notifications");
+    return saved ? JSON.parse(saved) : [];
   });
 
-  const createMerchant = trpc.merchant.create.useMutation({ onSuccess });
-  const updateMerchant = trpc.admin.updateMerchant.useMutation({ onSuccess });
+  useEffect(() => {
+    localStorage.setItem("admin-notifications", JSON.stringify(notifications));
+  }, [notifications]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const addNotification = (n: Omit<Notification, "id" | "createdAt" | "read">) => {
+    const newN: Notification = {
+      ...n,
+      id: Date.now().toString() + Math.random().toString(36).slice(2),
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+    setNotifications((prev) => [newN, ...prev].slice(0, 100));
+  };
+
+  const markRead = (id: string) => {
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  };
+
+  const clearAll = () => setNotifications([]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  return { notifications, addNotification, markRead, clearAll, unreadCount };
+}
+
+// ═══════════════════════════════════════════
+// MAIN ADMIN DASHBOARD
+// ═══════════════════════════════════════════
+export default function AdminDashboard() {
+  const [password, setPassword] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [activeTab, setActiveTab] = useState<"merchants" | "skills" | "notifications">("merchants");
+  const [subTab, setSubTab] = useState<"list" | "pending" | "add">("list");
+
+  // Notifications
+  const { notifications, addNotification, markRead, clearAll, unreadCount } = useNotifications();
+
+  // Merchants state
+  const [merchants, setMerchants] = useState<any[]>([]);
+  const [pendingMerchants, setPendingMerchants] = useState<any[]>([]);
+  const [mStats, setMStats] = useState({ total: 0, active: 0, pending: 0, featured: 0 });
+  const [mSearch, setMSearch] = useState("");
+  const [editingMerchant, setEditingMerchant] = useState<any>(null);
+  const [showNotif, setShowNotif] = useState(false);
+
+  // Skills state
+  const [skills, setSkills] = useState<any[]>([]);
+  const [pendingSkills, setPendingSkills] = useState<any[]>([]);
+  const [sStats, setSStats] = useState({ total: 0, active: 0, pending: 0, featured: 0 });
+  const [sSearch, setSSearch] = useState("");
+  const [editingSkill, setEditingSkill] = useState<any>(null);
+
+  // Form states
+  const [mForm, setMForm] = useState({ businessName: "", businessNameAr: "", category: "restaurant", description: "", city: "Paris", country: "France", address: "", phone: "", email: "", website: "", isFeatured: false });
+  const [sForm, setSForm] = useState({ fullName: "", fullNameAr: "", serviceType: "", serviceTypeAr: "", category: "cooking", description: "", city: "Paris", country: "France", phone: "", email: "", yearsOfExperience: 0, isFeatured: false });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  // ─── Load Data ───
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    loadMerchants();
+    loadSkills();
+  }, [isAuthenticated]);
+
+  async function loadMerchants() {
+    try {
+      const [statsRes, listRes, pendingRes] = await Promise.all([
+        fetch(`${API_URL}/merchant.adminStats`),
+        fetch(`${API_URL}/merchant.adminList?input=${encodeURIComponent(JSON.stringify({ json: { limit: 100 } }))}`),
+        fetch(`${API_URL}/pendingMerchant.list?input=${encodeURIComponent(JSON.stringify({ json: { status: "pending", limit: 50 } }))}`),
+      ]);
+      if (statsRes.ok) setMStats((await statsRes.json())?.result?.data?.json || { total: 0, active: 0, pending: 0, featured: 0 });
+      if (listRes.ok) setMerchants((await listRes.json())?.result?.data?.json?.items || []);
+      if (pendingRes.ok) setPendingMerchants((await pendingRes.json())?.result?.data?.json || []);
+    } catch (e) { console.error("loadMerchants:", e); }
+  }
+
+  async function loadSkills() {
+    try {
+      const [statsRes, listRes] = await Promise.all([
+        fetch(`${API_URL}/skills.adminStats`),
+        fetch(`${API_URL}/skills.adminList?input=${encodeURIComponent(JSON.stringify({ json: { limit: 100 } }))}`),
+      ]);
+      if (statsRes.ok) setSStats((await statsRes.json())?.result?.data?.json || { total: 0, active: 0, pending: 0, featured: 0 });
+      if (listRes.ok) {
+        const allSkills = (await listRes.json())?.result?.data?.json || [];
+        setSkills(allSkills.filter((s: any) => s.status === "active"));
+        setPendingSkills(allSkills.filter((s: any) => s.status === "pending"));
+      }
+    } catch (e) { console.error("loadSkills:", e); }
+  }
+
+  // ─── Merchant Actions ───
+  async function createMerchant(e: React.FormEvent) {
     e.preventDefault();
-    if (editingItem) {
-      updateMerchant.mutate({ id: editingItem.id, ...form });
-    } else {
-      createMerchant.mutate(form);
-    }
-  };
+    if (!mForm.businessName || !mForm.businessNameAr) { setError("اسم المتجر مطلوب"); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/merchant.create`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { ...mForm } }),
+      });
+      const data = await res.json();
+      if (data?.result?.data?.json?.id) {
+        setSuccess("تم إضافة المتجر بنجاح!");
+        addNotification({ type: "merchant", title: "متجر جديد مضاف", message: `أضفت ${mForm.businessNameAr} يدوياً` });
+        setMForm({ businessName: "", businessNameAr: "", category: "restaurant", description: "", city: "Paris", country: "France", address: "", phone: "", email: "", website: "", isFeatured: false });
+        loadMerchants();
+      } else {
+        setError(data?.result?.data?.json?.error || "فشل الإضافة");
+      }
+    } catch { setError("خطأ في الاتصال"); }
+    setLoading(false);
+    setTimeout(() => { setError(""); setSuccess(""); }, 4000);
+  }
 
-  const handleAmenityToggle = (amenity: string) => {
-    const current = form.amenities || [];
-    const updated = current.includes(amenity)
-      ? current.filter((a: string) => a !== amenity)
-      : [...current, amenity];
-    setForm({ ...form, amenities: updated });
-  };
+  async function approveMerchant(id: number) {
+    try {
+      const res = await fetch(`${API_URL}/pendingMerchant.approve`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { id } }),
+      });
+      const data = await res.json();
+      if (data?.result?.data?.json?.success) {
+        setSuccess("تمت الموافقة ونشر المتجر!");
+        addNotification({ type: "merchant", title: "موافقة على متجر", message: `تمت الموافقة على متجر #${id}` });
+        loadMerchants();
+      } else { setError(data?.result?.data?.json?.error || "فشل"); }
+    } catch { setError("خطأ"); }
+    setTimeout(() => { setError(""); setSuccess(""); }, 4000);
+  }
 
-  const handleFeatureToggle = (feature: string) => {
-    const current = form.features || [];
-    const updated = current.includes(feature)
-      ? current.filter((f: string) => f !== feature)
-      : [...current, feature];
-    setForm({ ...form, features: updated });
-  };
+  async function updateMerchant() {
+    if (!editingMerchant) return;
+    try {
+      const res = await fetch(`${API_URL}/merchant.adminUpdate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { id: editingMerchant.id, ...editingMerchant } }),
+      });
+      if (res.ok) {
+        setSuccess("تم التعديل بنجاح!");
+        setEditingMerchant(null);
+        loadMerchants();
+      }
+    } catch { setError("خطأ في التعديل"); }
+    setTimeout(() => { setError(""); setSuccess(""); }, 4000);
+  }
 
-  const isSubmitting = createMerchant.isPending || updateMerchant.isPending;
+  async function deleteMerchant(id: number, name: string) {
+    if (!window.confirm(`حذف ${name} نهائياً؟`)) return;
+    try {
+      await fetch(`${API_URL}/merchant.adminDelete`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { id } }),
+      });
+      setSuccess("تم الحذف");
+        addNotification({ type: "merchant", title: "متجر محذوف", message: `تم حذف ${name}` });
+      loadMerchants();
+    } catch { setError("خطأ في الحذف"); }
+    setTimeout(() => { setError(""); setSuccess(""); }, 4000);
+  }
 
+  async function toggleFeatured(id: number, current: boolean) {
+    try {
+      await fetch(`${API_URL}/merchant.adminUpdate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { id, isFeatured: !current } }),
+      });
+      setSuccess(current ? "تم إزالة التمييز" : "تم التمييز كمميز!");
+      loadMerchants();
+    } catch { setError("خطأ"); }
+    setTimeout(() => { setError(""); setSuccess(""); }, 3000);
+  }
+
+  // ─── Skill Actions ───
+  async function createSkill(e: React.FormEvent) {
+    e.preventDefault();
+    if (!sForm.fullName || !sForm.serviceType) { setError("الاسم ونوع الخدمة مطلوبان"); return; }
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/skills.adminCreate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { ...sForm } }),
+      });
+      const data = await res.json();
+      if (data?.result?.data?.json?.id) {
+        setSuccess("تم إضافة المهارة بنجاح!");
+        addNotification({ type: "skill", title: "مهارة جديدة", message: `أضفت ${sForm.fullNameAr || sForm.fullName}` });
+        setSForm({ fullName: "", fullNameAr: "", serviceType: "", serviceTypeAr: "", category: "cooking", description: "", city: "Paris", country: "France", phone: "", email: "", yearsOfExperience: 0, isFeatured: false });
+        loadSkills();
+      } else { setError("فشل الإضافة"); }
+    } catch { setError("خطأ في الاتصال"); }
+    setLoading(false);
+    setTimeout(() => { setError(""); setSuccess(""); }, 4000);
+  }
+
+  async function approveSkill(id: number, name: string) {
+    try {
+      await fetch(`${API_URL}/skills.updateStatus`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { id, status: "active" } }),
+      });
+      setSuccess("تمت الموافقة على المهارة!");
+      addNotification({ type: "skill", title: "مهارة مقبولة", message: `تمت الموافقة على ${name}` });
+      loadSkills();
+    } catch { setError("خطأ"); }
+    setTimeout(() => { setError(""); setSuccess(""); }, 4000);
+  }
+
+  async function updateSkill() {
+    if (!editingSkill) return;
+    try {
+      const res = await fetch(`${API_URL}/skills.adminUpdate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { id: editingSkill.id, ...editingSkill } }),
+      });
+      if (res.ok) {
+        setSuccess("تم تعديل المهارة!");
+        setEditingSkill(null);
+        loadSkills();
+      }
+    } catch { setError("خطأ"); }
+    setTimeout(() => { setError(""); setSuccess(""); }, 4000);
+  }
+
+  async function deleteSkill(id: number, name: string) {
+    if (!window.confirm(`حذف ${name} نهائياً؟`)) return;
+    try {
+      await fetch(`${API_URL}/skills.adminDelete`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { id } }),
+      });
+      setSuccess("تم الحذف");
+      addNotification({ type: "skill", title: "مهارة محذوفة", message: `تم حذف ${name}` });
+      loadSkills();
+    } catch { setError("خطأ"); }
+    setTimeout(() => { setError(""); setSuccess(""); }, 4000);
+  }
+
+  async function toggleSkillFeatured(id: number, current: boolean) {
+    try {
+      await fetch(`${API_URL}/skills.adminUpdate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ json: { id, isFeatured: !current } }),
+      });
+      setSuccess(current ? "تم إزالة التمييز" : "تم التمييز!");
+      loadSkills();
+    } catch { setError("خطأ"); }
+    setTimeout(() => { setError(""); setSuccess(""); }, 3000);
+  }
+
+  // ─── Login Screen ───
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0a1628" }}>
+        <div className="text-center p-8 max-w-sm w-full">
+          <div className="w-16 h-16 rounded-full bg-[#c9a227]/20 flex items-center justify-center mx-auto mb-6">
+            <Shield className="h-8 w-8 text-[#c9a227]" />
+          </div>
+          <h2 className="text-white text-xl font-bold mb-4">لوحة الإدارة</h2>
+          <p className="text-white/40 text-sm mb-6">Admin Panel</p>
+          <input type="password" value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && password === ADMIN_PASS) setIsAuthenticated(true); }}
+            placeholder="كلمة المرور..."
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/20 text-white text-center placeholder:text-white/30 focus:border-[#c9a227] focus:outline-none mb-4" />
+          <button onClick={() => { if (password === ADMIN_PASS) setIsAuthenticated(true); }}
+            className="w-full py-3 rounded-xl bg-[#c9a227] text-[#0a1628] font-bold hover:bg-[#e8b923] transition">
+            دخول
+          </button>
+          <Link to="/" className="text-white/30 text-xs mt-4 inline-block hover:text-white/50">← رجوع</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════
+  // MAIN DASHBOARD
+  // ═══════════════════════════════════════════
   return (
-    <Card className="border-emerald-200 shadow-lg mb-6">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 bg-emerald-50 rounded-t-lg">
-        <CardTitle className="text-lg text-emerald-800">
-          {editingItem ? "تعديل متجر" : "إضافة متجر جديد"}
-        </CardTitle>
-        <Button variant="ghost" size="icon" onClick={onClose}><X className="h-5 w-5" /></Button>
-      </CardHeader>
-      <CardContent className="p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Section: Basic Info */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-700 mb-3 pb-2 border-b flex items-center gap-2">
-              <BadgeCheck className="h-4 w-4 text-emerald-500" />معلومات أساسية
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">الاسم (عربي) *</label>
-                <Input value={form.businessNameAr} onChange={(e) => setForm({ ...form, businessNameAr: e.target.value })} required
-                  placeholder="مثال: مطعم الشام" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">الاسم (إنجليزي)</label>
-                <Input value={form.businessName} onChange={(e) => setForm({ ...form, businessName: e.target.value })}
-                  placeholder="Al-Sham Restaurant" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">وصف مختصر</label>
-                <Input value={form.shortDescription} onChange={(e) => setForm({ ...form, shortDescription: e.target.value })}
-                  placeholder="وصف قصير يظهر في نتائج البحث" maxLength={160} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">الوصف (عربي)</label>
-                <textarea value={form.descriptionAr || ""} onChange={(e) => setForm({ ...form, descriptionAr: e.target.value })}
-                  className="w-full border rounded-md px-3 py-2 h-24 text-sm" placeholder="وصف تفصيلي بالعربية" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">الوصف (إنجليزي)</label>
-                <textarea value={form.description || ""} onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full border rounded-md px-3 py-2 h-24 text-sm" placeholder="Detailed description in English" />
-              </div>
-            </div>
+    <div className="min-h-screen" style={{ background: "#0a1628" }} dir="rtl">
+      {/* Header */}
+      <div className="border-b border-white/10 bg-[#0a1628]/90 backdrop-blur-md sticky top-0 z-50">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
+          <Logo size="sm" />
+          <div className="flex items-center gap-3">
+            {/* Notifications Bell */}
+            <button onClick={() => setShowNotif(!showNotif)} className="relative p-2 rounded-lg hover:bg-white/5 transition">
+              <Bell className="h-5 w-5 text-white/60" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">{unreadCount}</span>
+              )}
+            </button>
+            <button onClick={() => setIsAuthenticated(false)} className="text-white/40 text-xs hover:text-white flex items-center gap-1">
+              <LogOut className="h-3 w-3" /> خروج
+            </button>
           </div>
+        </div>
+      </div>
 
-          {/* Section: Category & Pricing */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-700 mb-3 pb-2 border-b flex items-center gap-2">
-              <Store className="h-4 w-4 text-blue-500" />التصنيف والتسعير
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">التصنيف الرئيسي *</label>
-                <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="w-full border rounded-md px-3 py-2 text-sm bg-white">
-                  {Object.entries(categoryNamesAr).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
+      {/* Notifications Dropdown */}
+      {showNotif && (
+        <div className="fixed top-16 left-4 z-50 w-80 bg-[#1a2744] border border-white/10 rounded-xl shadow-2xl max-h-96 overflow-y-auto">
+          <div className="flex items-center justify-between p-3 border-b border-white/10">
+            <h3 className="text-white font-bold text-sm">الإشعارات ({unreadCount} جديد)</h3>
+            <button onClick={clearAll} className="text-white/40 text-xs hover:text-red-400">مسح الكل</button>
+          </div>
+          {notifications.length === 0 ? (
+            <p className="text-white/30 text-center py-4 text-sm">لا توجد إشعارات</p>
+          ) : (
+            notifications.map((n) => (
+              <button key={n.id} onClick={() => markRead(n.id)}
+                className={`w-full text-right p-3 border-b border-white/5 hover:bg-white/5 transition ${!n.read ? "bg-[#c9a227]/5" : ""}`}>
+                <p className={`text-xs font-bold ${!n.read ? "text-[#c9a227]" : "text-white/50"}`}>{n.title}</p>
+                <p className="text-white/40 text-xs">{n.message}</p>
+                <p className="text-white/20 text-[10px] mt-1">{new Date(n.createdAt).toLocaleTimeString("ar-SA")}</p>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        {/* Alerts */}
+        {error && <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4 text-red-400 text-sm"><AlertTriangle className="h-4 w-4 inline ml-2" />{error}</div>}
+        {success && <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 mb-4 text-emerald-400 text-sm"><CheckCircle className="h-4 w-4 inline ml-2" />{success}</div>}
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1"><Store className="h-4 w-4 text-[#c9a227]" /><span className="text-white/40 text-xs">متاجر</span></div>
+            <p className="text-xl font-bold text-white">{mStats.total} <span className="text-emerald-400 text-xs">({mStats.active} نشط)</span></p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1"><Wrench className="h-4 w-4 text-[#c9a227]" /><span className="text-white/40 text-xs">مهارات</span></div>
+            <p className="text-xl font-bold text-white">{sStats.total} <span className="text-emerald-400 text-xs">({sStats.active} نشط)</span></p>
+          </div>
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1"><Clock className="h-4 w-4 text-yellow-400" /><span className="text-yellow-400/60 text-xs">قيد المراجعة</span></div>
+            <p className="text-xl font-bold text-yellow-400">{mStats.pending + sStats.pending}</p>
+          </div>
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-1"><Star className="h-4 w-4 text-purple-400" /><span className="text-purple-400/60 text-xs">مميز</span></div>
+            <p className="text-xl font-bold text-purple-400">{mStats.featured + sStats.featured}</p>
+          </div>
+        </div>
+
+        {/* Main Tabs */}
+        <div className="flex items-center gap-1 mb-6 border-b border-white/10">
+          {[
+            { key: "merchants", label: "المتاجر", icon: Store },
+            { key: "skills", label: "المهارات", icon: Wrench },
+            { key: "notifications", label: `الإشعارات ${unreadCount > 0 ? `(${unreadCount})` : ""}`, icon: Bell },
+          ].map((t) => (
+            <button key={t.key} onClick={() => { setActiveTab(t.key as any); setSubTab("list"); setEditingMerchant(null); setEditingSkill(null); }}
+              className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition border-b-2 ${activeTab === t.key ? "text-[#c9a227] border-[#c9a227]" : "text-white/40 border-transparent hover:text-white/70"}`}>
+              <t.icon className="h-4 w-4" /> {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ═══ MERCHANTS TAB ═══ */}
+        {activeTab === "merchants" && !editingMerchant && (
+          <>
+            {/* Sub Tabs */}
+            <div className="flex gap-2 mb-4">
+              {[
+                { key: "list", label: "المتاجر النشطة" },
+                { key: "pending", label: `قيد المراجعة ${pendingMerchants.length > 0 ? `(${pendingMerchants.length})` : ""}` },
+                { key: "add", label: "+ إضافة متجر" },
+              ].map((t) => (
+                <button key={t.key} onClick={() => setSubTab(t.key as any)}
+                  className={`px-4 py-2 rounded-lg text-sm transition ${subTab === t.key ? "bg-[#c9a227] text-[#0a1628] font-bold" : "bg-white/5 text-white/60 hover:bg-white/10"}`}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* LIST */}
+            {subTab === "list" && (
+              <>
+                <div className="relative mb-4 max-w-md">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                  <input type="text" value={mSearch} onChange={(e) => setMSearch(e.target.value)}
+                    placeholder="بحث..." className="w-full pr-10 pl-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/25 focus:border-[#c9a227] focus:outline-none" />
+                </div>
+                <div className="space-y-2">
+                  {merchants.filter((m) => !mSearch || (m.businessNameAr || "").includes(mSearch) || (m.city || "").includes(mSearch)).map((m) => (
+                    <div key={m.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-white font-bold">{m.businessNameAr || m.businessName}</h3>
+                            {m.isFeatured && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">⭐ مميز</span>}
+                            {m.isVerified && <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">✓ موثق</span>}
+                          </div>
+                          <div className="flex flex-wrap gap-3 text-xs text-white/50">
+                            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {m.city}</span>
+                            <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {m.phone}</span>
+                            {m.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {m.email}</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-1 mr-2">
+                          <button onClick={() => setEditingMerchant(m)} className="p-2 rounded-lg bg-white/5 hover:bg-blue-500/20 text-white/30 hover:text-blue-400 transition" title="تعديل"><Edit3 className="h-4 w-4" /></button>
+                          <button onClick={() => toggleFeatured(m.id, m.isFeatured)} className={`p-2 rounded-lg transition ${m.isFeatured ? "bg-purple-500/20 text-purple-400" : "bg-white/5 text-white/30 hover:text-purple-400"}`} title="تمييز"><Star className="h-4 w-4" /></button>
+                          <button onClick={() => deleteMerchant(m.id, m.businessNameAr || m.businessName)} className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 transition" title="حذف"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </select>
+                  {merchants.length === 0 && <div className="text-center py-16 text-white/20"><Store className="h-12 w-12 mx-auto mb-3" /><p>لا توجد متاجر</p></div>}
+                </div>
+              </>
+            )}
+
+            {/* PENDING */}
+            {subTab === "pending" && (
+              <div className="space-y-2">
+                {pendingMerchants.map((m) => (
+                  <div key={m.id} className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-white font-bold">{m.businessNameAr || m.businessName}</h3>
+                        <div className="flex flex-wrap gap-3 text-xs text-white/50 mt-1">
+                          <span>{m.city} • {m.phone} • {m.email}</span>
+                          {m.businessRegistrationPhoto && <span className="text-emerald-400">✓ سجل تجاري</span>}
+                          {m.ownerIdPhoto && <span className="text-emerald-400">✓ هوية</span>}
+                        </div>
+                      </div>
+                      <div className="flex gap-1 mr-2">
+                        <button onClick={() => approveMerchant(m.id)} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition text-sm"><CheckCircle className="h-4 w-4" /> موافقة</button>
+                        <button onClick={() => { /* reject */ }} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition text-sm"><XCircle className="h-4 w-4" /> رفض</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {pendingMerchants.length === 0 && <div className="text-center py-16 text-white/20"><Clock className="h-12 w-12 mx-auto mb-3" /><p>لا توجد طلبات</p></div>}
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">التصنيف الفرعي</label>
-                <Input value={form.subcategory} onChange={(e) => setForm({ ...form, subcategory: e.target.value })}
-                  placeholder="مثال: مطاعم سورية" />
+            )}
+
+            {/* ADD FORM */}
+            {subTab === "add" && (
+              <div className="max-w-2xl mx-auto bg-white/5 border border-white/10 rounded-xl p-6">
+                <h2 className="text-white font-bold text-lg mb-4">+ إضافة متجر جديد</h2>
+                <form onSubmit={createMerchant} className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label className="text-white text-sm mb-1 block">اسم المتجر (عربي) *</label><input value={mForm.businessNameAr} onChange={(e) => setMForm((p) => ({ ...p, businessNameAr: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="مثال: سوبرماركت الأمل" required /></div>
+                    <div><label className="text-white text-sm mb-1 block">Store Name (English) *</label><input value={mForm.businessName} onChange={(e) => setMForm((p) => ({ ...p, businessName: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="e.g. Al-Amal" required dir="ltr" /></div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label className="text-white text-sm mb-1 block">التصنيف</label><select value={mForm.category} onChange={(e) => setMForm((p) => ({ ...p, category: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none">{merchantCategories.map((c) => <option key={c.value} value={c.value} className="bg-[#1a2744]">{c.label}</option>)}</select></div>
+                    <div><label className="text-white text-sm mb-1 block">المدينة *</label><input value={mForm.city} onChange={(e) => setMForm((p) => ({ ...p, city: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="باريس" required /></div>
+                  </div>
+                  <div><label className="text-white text-sm mb-1 block">الهاتف</label><input value={mForm.phone} onChange={(e) => setMForm((p) => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="+33 1 23 45 67 89" /></div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label className="text-white text-sm mb-1 block">البريد (اختياري)</label><input value={mForm.email} onChange={(e) => setMForm((p) => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="info@example.com" dir="ltr" /></div>
+                    <div><label className="text-white text-sm mb-1 block">الموقع (اختياري)</label><input value={mForm.website} onChange={(e) => setMForm((p) => ({ ...p, website: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="https://..." dir="ltr" /></div>
+                  </div>
+                  <div><label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={mForm.isFeatured} onChange={(e) => setMForm((p) => ({ ...p, isFeatured: e.target.checked }))} className="accent-[#c9a227]" /><span className="text-white text-sm">متجر مميز ⭐</span></label></div>
+                  <button type="submit" disabled={loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#c9a227] to-[#e8b923] text-[#0a1628] font-bold hover:shadow-lg transition disabled:opacity-50">{loading ? "جاري..." : "+ إضافة المتجر"}</button>
+                </form>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">نطاق السعر</label>
-                <select value={form.priceRange} onChange={(e) => setForm({ ...form, priceRange: e.target.value })}
-                  className="w-full border rounded-md px-3 py-2 text-sm bg-white">
-                  <option value="$">$ - رخيص</option>
-                  <option value="$$">$$ - متوسط</option>
-                  <option value="$$$">$$$ - مرتفع</option>
-                  <option value="$$$$">$$$$ - فاخر</option>
-                </select>
+            )}
+          </>
+        )}
+
+        {/* ═══ EDIT MERCHANT ═══ */}
+        {activeTab === "merchants" && editingMerchant && (
+          <div className="max-w-2xl mx-auto bg-white/5 border border-white/10 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white font-bold text-lg">تعديل متجر</h2>
+              <button onClick={() => setEditingMerchant(null)} className="text-white/40 hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><label className="text-white text-sm mb-1 block">الاسم (عربي)</label><input value={editingMerchant.businessNameAr || ""} onChange={(e) => setEditingMerchant((p: any) => ({ ...p, businessNameAr: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" /></div>
+                <div><label className="text-white text-sm mb-1 block">الاسم (English)</label><input value={editingMerchant.businessName || ""} onChange={(e) => setEditingMerchant((p: any) => ({ ...p, businessName: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" dir="ltr" /></div>
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><label className="text-white text-sm mb-1 block">المدينة</label><input value={editingMerchant.city || ""} onChange={(e) => setEditingMerchant((p: any) => ({ ...p, city: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" /></div>
+                <div><label className="text-white text-sm mb-1 block">الهاتف</label><input value={editingMerchant.phone || ""} onChange={(e) => setEditingMerchant((p: any) => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" /></div>
+              </div>
+              <div><label className="text-white text-sm mb-1 block">الوصف</label><textarea value={editingMerchant.description || ""} onChange={(e) => setEditingMerchant((p: any) => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm h-20 resize-none focus:border-[#c9a227] focus:outline-none" /></div>
+              <button onClick={updateMerchant} className="w-full py-3 rounded-xl bg-[#c9a227] text-[#0a1628] font-bold hover:bg-[#e8b923] transition flex items-center justify-center gap-2"><Save className="h-4 w-4" /> حفظ التعديلات</button>
             </div>
           </div>
+        )}
 
-          {/* Section: Location */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-700 mb-3 pb-2 border-b flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-red-500" />الموقع
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">الدولة *</label>
-                <Input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} required
-                  placeholder="مثال: فرنسا" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">المدينة *</label>
-                <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} required
-                  placeholder="مثال: باريس" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">الحي</label>
-                <Input value={form.neighborhood} onChange={(e) => setForm({ ...form, neighborhood: e.target.value })}
-                  placeholder="مثال: الدائرة 10" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">العنوان (عربي)</label>
-                <Input value={form.addressAr} onChange={(e) => setForm({ ...form, addressAr: e.target.value })}
-                  placeholder="العنوان بالعربية" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">العنوان (إنجليزي)</label>
-                <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
-                  placeholder="Address in English" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">الرمز البريدي</label>
-                <Input value={form.postalCode} onChange={(e) => setForm({ ...form, postalCode: e.target.value })}
-                  placeholder="75001" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">خط العرض (Latitude)</label>
-                <Input value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-                  placeholder="48.8566" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">خط الطول (Longitude)</label>
-                <Input value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-                  placeholder="2.3522" />
-              </div>
-              <div className="md:col-span-1">
-                <label className="block text-sm font-medium mb-1">رابط Google Maps</label>
-                <Input value={form.googleMapsUrl} onChange={(e) => setForm({ ...form, googleMapsUrl: e.target.value })}
-                  placeholder="https://maps.google.com/..." />
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Contact & Social */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-700 mb-3 pb-2 border-b flex items-center gap-2">
-              <Phone className="h-4 w-4 text-green-500" />التواصل
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">الهاتف</label>
-                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="+33 1 23 45 67 89" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">واتساب</label>
-                <Input value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
-                  placeholder="+33 6 12 34 56 78" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">البريد الإلكتروني</label>
-                <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="info@restaurant.com" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">الموقع الإلكتروني</label>
-                <Input value={form.website} onChange={(e) => setForm({ ...form, website: e.target.value })}
-                  placeholder="https://www.restaurant.com" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">فيسبوك</label>
-                <Input value={form.facebookUrl} onChange={(e) => setForm({ ...form, facebookUrl: e.target.value })}
-                  placeholder="https://facebook.com/..." />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">انستغرام</label>
-                <Input value={form.instagramUrl} onChange={(e) => setForm({ ...form, instagramUrl: e.target.value })}
-                  placeholder="https://instagram.com/..." />
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Images */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-700 mb-3 pb-2 border-b flex items-center gap-2">
-              <Image className="h-4 w-4 text-purple-500" />الصور
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">رابط الشعار (Logo)</label>
-                <Input value={form.logo} onChange={(e) => setForm({ ...form, logo: e.target.value })}
-                  placeholder="https://.../logo.png" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">رابط صورة الغلاف (Cover)</label>
-                <Input value={form.coverImage} onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
-                  placeholder="https://.../cover.jpg" />
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Amenities */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-700 mb-3 pb-2 border-b flex items-center gap-2">
-              <Settings className="h-4 w-4 text-slate-500" />المرافق والخدمات
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {["توصيل", "حجز طاولات", "دفع إلكتروني", "واي فاي", "موقف سيارات", "مكيف",
-                "منطقة عائلات", "موسيقى حية", "تراس خارجي", "wheelchair accessible", "Halal certified",
-                "Prayer room", "Private rooms", "Delivery apps"].map((amenity) => (
-                <button key={amenity} type="button"
-                  onClick={() => handleAmenityToggle(amenity)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    (form.amenities || []).includes(amenity)
-                      ? "bg-emerald-500 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}>
-                  {amenity}
+        {/* ═══ SKILLS TAB ═══ */}
+        {activeTab === "skills" && !editingSkill && (
+          <>
+            <div className="flex gap-2 mb-4">
+              {[
+                { key: "list", label: "المهارات النشطة" },
+                { key: "pending", label: `قيد المراجعة ${pendingSkills.length > 0 ? `(${pendingSkills.length})` : ""}` },
+                { key: "add", label: "+ إضافة مهارة" },
+              ].map((t) => (
+                <button key={t.key} onClick={() => setSubTab(t.key as any)}
+                  className={`px-4 py-2 rounded-lg text-sm transition ${subTab === t.key ? "bg-[#c9a227] text-[#0a1628] font-bold" : "bg-white/5 text-white/60 hover:bg-white/10"}`}>
+                  {t.label}
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Section: Features */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-700 mb-3 pb-2 border-b flex items-center gap-2">
-              <Star className="h-4 w-4 text-yellow-500" />المميزات
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {["مسجل في Google Maps", "موثق", "مميز", "متجر شهير", "أفضل تقييمات",
-                "عروض خاصة", "جديد", "مفتوح 24 ساعة"].map((feature) => (
-                <button key={feature} type="button"
-                  onClick={() => handleFeatureToggle(feature)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    (form.features || []).includes(feature)
-                      ? "bg-blue-500 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}>
-                  {feature}
-                </button>
-              ))}
+            {subTab === "list" && (
+              <>
+                <div className="relative mb-4 max-w-md">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+                  <input type="text" value={sSearch} onChange={(e) => setSSearch(e.target.value)} placeholder="بحث..." className="w-full pr-10 pl-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/25 focus:border-[#c9a227] focus:outline-none" />
+                </div>
+                <div className="space-y-2">
+                  {skills.filter((s) => !sSearch || (s.fullNameAr || s.fullName).includes(sSearch) || (s.city || "").includes(sSearch)).map((s) => (
+                    <div key={s.id} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-white font-bold">{s.fullNameAr || s.fullName}</h3>
+                            {s.isFeatured && <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">⭐ مميز</span>}
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">{s.serviceTypeAr || s.serviceType}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-3 text-xs text-white/50">
+                            <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {s.city}</span>
+                            <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {s.phone}</span>
+                            <span>{s.category} • {s.yearsOfExperience || 0} سنوات خبرة</span>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 mr-2">
+                          <button onClick={() => setEditingSkill(s)} className="p-2 rounded-lg bg-white/5 hover:bg-blue-500/20 text-white/30 hover:text-blue-400 transition" title="تعديل"><Edit3 className="h-4 w-4" /></button>
+                          <button onClick={() => toggleSkillFeatured(s.id, s.isFeatured)} className={`p-2 rounded-lg transition ${s.isFeatured ? "bg-purple-500/20 text-purple-400" : "bg-white/5 text-white/30 hover:text-purple-400"}`} title="تمييز"><Star className="h-4 w-4" /></button>
+                          <button onClick={() => deleteSkill(s.id, s.fullNameAr || s.fullName)} className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/30 hover:text-red-400 transition" title="حذف"><Trash2 className="h-4 w-4" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {skills.length === 0 && <div className="text-center py-16 text-white/20"><Wrench className="h-12 w-12 mx-auto mb-3" /><p>لا توجد مهارات</p></div>}
+                </div>
+              </>
+            )}
+
+            {subTab === "pending" && (
+              <div className="space-y-2">
+                {pendingSkills.map((s) => (
+                  <div key={s.id} className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="text-white font-bold">{s.fullNameAr || s.fullName}</h3>
+                        <p className="text-white/50 text-xs">{s.serviceTypeAr || s.serviceType} • {s.city} • {s.phone}</p>
+                      </div>
+                      <button onClick={() => approveSkill(s.id, s.fullNameAr || s.fullName)} className="flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition text-sm"><CheckCircle className="h-4 w-4" /> موافقة</button>
+                    </div>
+                  </div>
+                ))}
+                {pendingSkills.length === 0 && <div className="text-center py-16 text-white/20"><Clock className="h-12 w-12 mx-auto mb-3" /><p>لا توجد طلبات</p></div>}
+              </div>
+            )}
+
+            {subTab === "add" && (
+              <div className="max-w-2xl mx-auto bg-white/5 border border-white/10 rounded-xl p-6">
+                <h2 className="text-white font-bold text-lg mb-4">+ إضافة مهارة جديدة</h2>
+                <form onSubmit={createSkill} className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label className="text-white text-sm mb-1 block">الاسم الكامل (عربي) *</label><input value={sForm.fullNameAr} onChange={(e) => setSForm((p) => ({ ...p, fullNameAr: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="أحمد محمد" required /></div>
+                    <div><label className="text-white text-sm mb-1 block">Full Name (English) *</label><input value={sForm.fullName} onChange={(e) => setSForm((p) => ({ ...p, fullName: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="Ahmad Muhammad" required dir="ltr" /></div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label className="text-white text-sm mb-1 block">نوع الخدمة (عربي) *</label><input value={sForm.serviceTypeAr} onChange={(e) => setSForm((p) => ({ ...p, serviceTypeAr: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="شيف سوري" required /></div>
+                    <div><label className="text-white text-sm mb-1 block">Service Type (English) *</label><input value={sForm.serviceType} onChange={(e) => setSForm((p) => ({ ...p, serviceType: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="Syrian Chef" required dir="ltr" /></div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div><label className="text-white text-sm mb-1 block">التصنيف</label><select value={sForm.category} onChange={(e) => setSForm((p) => ({ ...p, category: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none">{skillCategories.map((c) => <option key={c.value} value={c.value} className="bg-[#1a2744]">{c.label}</option>)}</select></div>
+                    <div><label className="text-white text-sm mb-1 block">المدينة *</label><input value={sForm.city} onChange={(e) => setSForm((p) => ({ ...p, city: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="باريس" required /></div>
+                    <div><label className="text-white text-sm mb-1 block">الهاتف</label><input value={sForm.phone} onChange={(e) => setSForm((p) => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" placeholder="+33 6 12 34 56 78" /></div>
+                  </div>
+                  <div><label className="text-white text-sm mb-1 block">الوصف</label><textarea value={sForm.description} onChange={(e) => setSForm((p) => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm h-20 resize-none focus:border-[#c9a227] focus:outline-none" placeholder="وصف الخدمة..." /></div>
+                  <div><label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={sForm.isFeatured} onChange={(e) => setSForm((p) => ({ ...p, isFeatured: e.target.checked }))} className="accent-[#c9a227]" /><span className="text-white text-sm">مهارة مميزة ⭐</span></label></div>
+                  <button type="submit" disabled={loading} className="w-full py-3 rounded-xl bg-gradient-to-r from-[#c9a227] to-[#e8b923] text-[#0a1628] font-bold hover:shadow-lg transition disabled:opacity-50">{loading ? "جاري..." : "+ إضافة المهارة"}</button>
+                </form>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ═══ EDIT SKILL ═══ */}
+        {activeTab === "skills" && editingSkill && (
+          <div className="max-w-2xl mx-auto bg-white/5 border border-white/10 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white font-bold text-lg">تعديل مهارة</h2>
+              <button onClick={() => setEditingSkill(null)} className="text-white/40 hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><label className="text-white text-sm mb-1 block">الاسم (عربي)</label><input value={editingSkill.fullNameAr || ""} onChange={(e) => setEditingSkill((p: any) => ({ ...p, fullNameAr: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" /></div>
+                <div><label className="text-white text-sm mb-1 block">نوع الخدمة</label><input value={editingSkill.serviceTypeAr || editingSkill.serviceType || ""} onChange={(e) => setEditingSkill((p: any) => ({ ...p, serviceTypeAr: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" /></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div><label className="text-white text-sm mb-1 block">المدينة</label><input value={editingSkill.city || ""} onChange={(e) => setEditingSkill((p: any) => ({ ...p, city: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" /></div>
+                <div><label className="text-white text-sm mb-1 block">الهاتف</label><input value={editingSkill.phone || ""} onChange={(e) => setEditingSkill((p: any) => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm focus:border-[#c9a227] focus:outline-none" /></div>
+              </div>
+              <div><label className="text-white text-sm mb-1 block">الوصف</label><textarea value={editingSkill.description || ""} onChange={(e) => setEditingSkill((p: any) => ({ ...p, description: e.target.value }))} className="w-full px-3 py-2.5 rounded-lg bg-white/5 border border-white/20 text-white text-sm h-20 resize-none focus:border-[#c9a227] focus:outline-none" /></div>
+              <button onClick={updateSkill} className="w-full py-3 rounded-xl bg-[#c9a227] text-[#0a1628] font-bold hover:bg-[#e8b923] transition flex items-center justify-center gap-2"><Save className="h-4 w-4" /> حفظ التعديلات</button>
             </div>
           </div>
+        )}
 
-          {/* Section: SEO */}
-          <div>
-            <h3 className="text-sm font-bold text-slate-700 mb-3 pb-2 border-b flex items-center gap-2">
-              <Globe className="h-4 w-4 text-indigo-500" />SEO (تحسين محركات البحث)
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">عنوان الصفحة (Meta Title)</label>
-                <Input value={form.metaTitle} onChange={(e) => setForm({ ...form, metaTitle: e.target.value })}
-                  placeholder="مطعم الشام - أفضل مطعم سوري في باريس" maxLength={60} />
+        {/* ═══ NOTIFICATIONS TAB ═══ */}
+        {activeTab === "notifications" && (
+          <div className="max-w-2xl">
+            <h2 className="text-white font-bold mb-4">سجل الإشعارات ({notifications.length})</h2>
+            {notifications.length === 0 ? (
+              <div className="text-center py-16 text-white/20"><Bell className="h-12 w-12 mx-auto mb-3" /><p>لا توجد إشعارات</p></div>
+            ) : (
+              <div className="space-y-2">
+                {notifications.map((n) => (
+                  <div key={n.id} className={`p-4 rounded-xl border ${!n.read ? "bg-[#c9a227]/5 border-[#c9a227]/20" : "bg-white/5 border-white/10"}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-xs font-bold ${!n.read ? "text-[#c9a227]" : "text-white/50"}`}>{n.title}</span>
+                      <span className="text-[10px] text-white/30">{new Date(n.createdAt).toLocaleDateString("ar-SA")}</span>
+                    </div>
+                    <p className="text-white/60 text-sm">{n.message}</p>
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">وصف الصفحة (Meta Description)</label>
-                <Input value={form.metaDescription} onChange={(e) => setForm({ ...form, metaDescription: e.target.value })}
-                  placeholder="وصف قصير يظهر في نتائج جوجل" maxLength={160} />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium mb-1">الكلمات المفتاحية (Tags)</label>
-                <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                  placeholder="مطعم عربي, باريس, حلال, سوري, شاورما" />
-              </div>
-            </div>
+            )}
           </div>
-
-          {/* Submit */}
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={onClose} size="lg">إلغاء</Button>
-            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" size="lg"
-              disabled={isSubmitting}>
-              <Save className="h-5 w-5 ml-2" />
-              {isSubmitting ? "جاري الحفظ..." : (editingItem ? "حفظ التعديلات" : "إضافة المتجر")}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+        )}
+      </div>
+    </div>
   );
 }

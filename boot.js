@@ -32819,9 +32819,9 @@ var pendingMerchantRouter = createRouter({
 });
 
 // api/skills-router.ts
-import { eq as eq12, desc as desc10 } from "drizzle-orm";
+import { eq as eq12, desc as desc10, sql as sql10 } from "drizzle-orm";
 var skillsRouter = createRouter({
-  // Submit new skill/freelancer registration
+  // Submit new skill/freelancer registration (public)
   submit: publicQuery.input(
     external_exports.object({
       fullName: external_exports.string().min(1),
@@ -32834,7 +32834,7 @@ var skillsRouter = createRouter({
       descriptionAr: external_exports.string().optional(),
       yearsOfExperience: external_exports.number().optional(),
       phone: external_exports.string().min(1),
-      email: external_exports.string().email(),
+      email: external_exports.string().optional().or(external_exports.literal("")),
       whatsapp: external_exports.string().optional(),
       country: external_exports.string().min(1),
       city: external_exports.string().min(1),
@@ -32880,21 +32880,91 @@ var skillsRouter = createRouter({
     }
     return { success: true, id: skill.id };
   }),
-  // List skills (for admin)
-  list: publicQuery.input(
+  // Admin: create skill directly
+  adminCreate: publicQuery.input(
     external_exports.object({
-      status: external_exports.string().optional(),
-      city: external_exports.string().optional(),
-      category: external_exports.string().optional(),
-      limit: external_exports.number().min(1).max(100).default(50)
-    }).optional()
-  ).query(async ({ input }) => {
+      fullName: external_exports.string().min(1),
+      fullNameAr: external_exports.string().optional(),
+      serviceType: external_exports.string().min(1),
+      serviceTypeAr: external_exports.string().optional(),
+      category: external_exports.string().min(1),
+      subcategory: external_exports.string().optional(),
+      description: external_exports.string().optional(),
+      descriptionAr: external_exports.string().optional(),
+      yearsOfExperience: external_exports.number().optional(),
+      phone: external_exports.string().optional().or(external_exports.literal("")),
+      email: external_exports.string().optional().or(external_exports.literal("")),
+      whatsapp: external_exports.string().optional(),
+      country: external_exports.string().min(1),
+      city: external_exports.string().min(1),
+      address: external_exports.string().optional(),
+      hourlyRate: external_exports.number().optional(),
+      fixedPrice: external_exports.number().optional(),
+      isFeatured: external_exports.boolean().optional()
+    })
+  ).mutation(async ({ input }) => {
+    const db = getDb();
+    const result = await db.insert(skills).values({
+      ...input,
+      status: "active",
+      subscriptionStatus: "active",
+      subscriptionPlan: "basic",
+      subscriptionPrice: "5.00"
+    }).returning();
+    return { success: true, id: result[0]?.id };
+  }),
+  // Admin: list all skills
+  adminList: publicQuery.input(external_exports.object({
+    status: external_exports.string().optional(),
+    city: external_exports.string().optional(),
+    limit: external_exports.number().min(1).max(200).default(50)
+  }).optional()).query(async ({ input }) => {
     const db = getDb();
     let query = db.select().from(skills);
     if (input?.status) {
-      return query.where(eq12(skills.status, input.status)).orderBy(desc10(skills.createdAt)).limit(input.limit);
+      query = query.where(eq12(skills.status, input.status));
+    }
+    if (input?.city) {
+      query = query.where(eq12(skills.city, input.city));
     }
     return query.orderBy(desc10(skills.createdAt)).limit(input?.limit || 50);
+  }),
+  // Admin: update skill
+  adminUpdate: publicQuery.input(external_exports.object({
+    id: external_exports.number(),
+    fullName: external_exports.string().optional(),
+    fullNameAr: external_exports.string().optional(),
+    serviceType: external_exports.string().optional(),
+    serviceTypeAr: external_exports.string().optional(),
+    category: external_exports.string().optional(),
+    description: external_exports.string().optional(),
+    descriptionAr: external_exports.string().optional(),
+    phone: external_exports.string().optional(),
+    email: external_exports.string().optional(),
+    city: external_exports.string().optional(),
+    country: external_exports.string().optional(),
+    status: external_exports.string().optional(),
+    isFeatured: external_exports.boolean().optional()
+  })).mutation(async ({ input }) => {
+    const { id, ...data } = input;
+    const db = getDb();
+    await db.update(skills).set(data).where(eq12(skills.id, id));
+    return { success: true };
+  }),
+  // Admin: delete skill
+  adminDelete: publicQuery.input(external_exports.object({ id: external_exports.number() })).mutation(async ({ input }) => {
+    const db = getDb();
+    await db.delete(skills).where(eq12(skills.id, input.id));
+    return { success: true };
+  }),
+  // Admin: stats
+  adminStats: publicQuery.query(async () => {
+    const db = getDb();
+    const total = await db.select({ count: sql10`count(*)` }).from(skills);
+    const active = await db.select({ count: sql10`count(*)` }).from(skills).where(eq12(skills.status, "active"));
+    const pending = await db.select({ count: sql10`count(*)` }).from(skills).where(eq12(skills.status, "pending"));
+    const featured = await db.select({ count: sql10`count(*)` }).from(skills).where(eq12(skills.isFeatured, true));
+    return { total: total[0]?.count || 0, active: active[0]?.count || 0, pending: pending[0]?.count || 0, featured: featured[0]?.count || 0 };
   }),
   // Get single skill
   getById: publicQuery.input(external_exports.object({ id: external_exports.number() })).query(async ({ input }) => {
@@ -32903,14 +32973,12 @@ var skillsRouter = createRouter({
     return result[0] || null;
   }),
   // Update status (approve/reject)
-  updateStatus: publicQuery.input(
-    external_exports.object({
-      id: external_exports.number(),
-      status: external_exports.enum(["pending", "active", "suspended", "rejected"]),
-      adminNotes: external_exports.string().optional(),
-      rejectionReason: external_exports.string().optional()
-    })
-  ).mutation(async ({ input }) => {
+  updateStatus: publicQuery.input(external_exports.object({
+    id: external_exports.number(),
+    status: external_exports.enum(["pending", "active", "suspended", "rejected"]),
+    adminNotes: external_exports.string().optional(),
+    rejectionReason: external_exports.string().optional()
+  })).mutation(async ({ input }) => {
     const db = getDb();
     await db.update(skills).set({
       status: input.status,

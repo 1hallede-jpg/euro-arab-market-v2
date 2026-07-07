@@ -27,8 +27,9 @@ export default function App() {
         <Route path="/sindbad" element={<Sindbad />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin/merchants" element={<AdminMerchants />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/merchants" element={<AdminDashboard />} />
+        <Route path="/admin/skills" element={<AdminDashboard />} />
+        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/sa" element={<SecretAdmin />} />
         <Route path="/city/:citySlug" element={<CityPage />} />
         <Route path="/add-store" element={<AddStore />} />
