@@ -232,10 +232,10 @@ export const merchantRouter = createRouter({
 
         await client.end();
 
-        return { id: result[0]?.id || 0, slug, status: "active" };
+        return { id: result[0]?.id || 0, slug, status: "active", version: "v3-fixed" };
       } catch (e: any) {
         console.error("[merchant.create] Error:", e?.message);
-        return { error: e?.message || "Insert failed" };
+        return { error: e?.message || "Insert failed", version: "v3-fixed" };
       }
     }),
 

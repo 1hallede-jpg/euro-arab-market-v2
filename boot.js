@@ -28332,10 +28332,10 @@ var merchantRouter = createRouter({
           RETURNING id
         `;
       await client.end();
-      return { id: result[0]?.id || 0, slug, status: "active" };
+      return { id: result[0]?.id || 0, slug, status: "active", version: "v3-fixed" };
     } catch (e) {
       console.error("[merchant.create] Error:", e?.message);
-      return { error: e?.message || "Insert failed" };
+      return { error: e?.message || "Insert failed", version: "v3-fixed" };
     }
   }),
   // Get featured merchants
