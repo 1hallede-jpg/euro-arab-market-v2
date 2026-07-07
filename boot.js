@@ -28305,32 +28305,25 @@ var merchantRouter = createRouter({
       const ratingVal = input.rating || 0;
       const reviews2 = ratingVal > 0 ? Math.floor(Math.random() * 30 + 5) : 0;
       const price = input.priceRange || "$$";
-      const result = await db.insert(merchants).values({
-        businessName: input.businessName,
-        businessNameAr: nameAr,
-        shortDescription: shortDesc,
-        description: desc11,
-        category: input.category,
-        subcategory: subcat,
-        tags: tagsVal,
-        country: input.country,
-        city: input.city,
-        address: input.address || input.city,
-        phone: input.phone || "",
-        email: input.email || null,
-        website: input.website || null,
-        status: "active",
-        slug,
-        isFeatured: false,
-        isVerified: true,
-        rating: String(ratingVal),
-        reviewCount: reviews2,
-        priceRange: price,
-        latitude: input.latitude,
-        longitude: input.longitude,
-        createdAt: /* @__PURE__ */ new Date(),
-        updatedAt: /* @__PURE__ */ new Date()
-      }).returning();
+      const result = await db.execute(sql`
+          INSERT INTO merchants (
+            business_name, business_name_ar, short_description,
+            description, category, subcategory,
+            tags, country, city, address,
+            phone, email, website, status, slug,
+            is_featured, is_verified, rating, review_count,
+            price_range, created_at, updated_at
+          ) VALUES (
+            ${input.businessName}, ${nameAr}, ${shortDesc},
+            ${desc11}, ${input.category}, ${subcat},
+            ${tagsVal}, ${input.country}, ${input.city}, ${input.address || input.city},
+            ${input.phone || ""}, ${input.email || null}, ${input.website || null},
+            'active', ${slug},
+            false, true, ${String(ratingVal)}, ${reviews2},
+            ${price}, NOW(), NOW()
+          )
+          RETURNING id
+        `);
       return { id: result[0]?.id || 0, slug, status: "active" };
     } catch (e) {
       console.error("[merchant.create] Error:", e?.message);
@@ -32352,7 +32345,7 @@ var emergencyRouter = createRouter({
 });
 
 // api/pending-merchant-router.ts
-import { eq as eq11, desc as desc9 } from "drizzle-orm";
+import { eq as eq11, desc as desc9, sql as sql10 } from "drizzle-orm";
 
 // api/lib/email.ts
 var import_nodemailer = __toESM(require_nodemailer(), 1);
@@ -32779,32 +32772,31 @@ var pendingMerchantRouter = createRouter({
       }
       const pm = pending[0];
       const slug = (pm.businessName || pm.businessNameAr || "store").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
-      const result = await db.insert(merchants).values({
-        businessName: pm.businessName,
-        businessNameAr: pm.businessNameAr || pm.businessName,
-        shortDescription: (pm.descriptionAr || pm.description || `${pm.businessNameAr} \u0641\u064A ${pm.city}`).slice(0, 160),
-        description: pm.description || "",
-        category: pm.category,
-        subcategory: pm.subcategory || pm.category,
-        tags: `${pm.category} ${pm.city} ${pm.businessNameAr} ${pm.businessName}`.slice(0, 200),
-        country: pm.country,
-        city: pm.city,
-        address: pm.address || pm.city,
-        phone: pm.phone || "",
-        email: pm.email || null,
-        website: pm.website || null,
-        status: "active",
-        slug,
-        logo: pm.logo || null,
-        coverImage: pm.businessRegistrationPhoto || null,
-        isFeatured: false,
-        isVerified: true,
-        rating: "0",
-        reviewCount: 0,
-        priceRange: "$$",
-        createdAt: /* @__PURE__ */ new Date(),
-        updatedAt: /* @__PURE__ */ new Date()
-      }).returning();
+      const desc11 = pm.description || "";
+      const shortDesc = (pm.descriptionAr || pm.description || `${pm.businessNameAr} \u0641\u064A ${pm.city}`).slice(0, 160);
+      const subcat = pm.subcategory || pm.category;
+      const tagsVal = `${pm.category} ${pm.city} ${pm.businessNameAr} ${pm.businessName}`.slice(0, 200);
+      const result = await db.execute(sql10`
+          INSERT INTO merchants (
+            business_name, business_name_ar, short_description,
+            description, category, subcategory,
+            tags, country, city, address,
+            phone, email, website, status, slug,
+            logo, cover_image,
+            is_featured, is_verified, rating, review_count,
+            price_range, created_at, updated_at
+          ) VALUES (
+            ${pm.businessName}, ${pm.businessNameAr || pm.businessName}, ${shortDesc},
+            ${desc11}, ${pm.category}, ${subcat},
+            ${tagsVal}, ${pm.country}, ${pm.city}, ${pm.address || pm.city},
+            ${pm.phone || ""}, ${pm.email || null}, ${pm.website || null},
+            'active', ${slug},
+            ${pm.logo || null}, ${pm.businessRegistrationPhoto || null},
+            false, true, '0', 0,
+            '$$', NOW(), NOW()
+          )
+          RETURNING id
+        `);
       await db.update(pendingMerchants).set({ status: "approved" }).where(eq11(pendingMerchants.id, input.id));
       return { success: true, merchantId: result[0]?.id, slug };
     } catch (e) {
@@ -32819,7 +32811,7 @@ var pendingMerchantRouter = createRouter({
 });
 
 // api/skills-router.ts
-import { eq as eq12, desc as desc10, sql as sql10 } from "drizzle-orm";
+import { eq as eq12, desc as desc10, sql as sql11 } from "drizzle-orm";
 var skillsRouter = createRouter({
   // Submit new skill/freelancer registration (public)
   submit: publicQuery.input(
@@ -32960,10 +32952,10 @@ var skillsRouter = createRouter({
   // Admin: stats
   adminStats: publicQuery.query(async () => {
     const db = getDb();
-    const total = await db.select({ count: sql10`count(*)` }).from(skills);
-    const active = await db.select({ count: sql10`count(*)` }).from(skills).where(eq12(skills.status, "active"));
-    const pending = await db.select({ count: sql10`count(*)` }).from(skills).where(eq12(skills.status, "pending"));
-    const featured = await db.select({ count: sql10`count(*)` }).from(skills).where(eq12(skills.isFeatured, true));
+    const total = await db.select({ count: sql11`count(*)` }).from(skills);
+    const active = await db.select({ count: sql11`count(*)` }).from(skills).where(eq12(skills.status, "active"));
+    const pending = await db.select({ count: sql11`count(*)` }).from(skills).where(eq12(skills.status, "pending"));
+    const featured = await db.select({ count: sql11`count(*)` }).from(skills).where(eq12(skills.isFeatured, true));
     return { total: total[0]?.count || 0, active: active[0]?.count || 0, pending: pending[0]?.count || 0, featured: featured[0]?.count || 0 };
   }),
   // Get single skill

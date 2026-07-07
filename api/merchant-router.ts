@@ -198,33 +198,26 @@ export const merchantRouter = createRouter({
         const reviews = ratingVal > 0 ? Math.floor(Math.random() * 30 + 5) : 0;
         const price = input.priceRange || "$$";
 
-        // Use Drizzle ORM (same as seed router) - handles column mapping automatically
-        const result = await db.insert(merchants).values({
-          businessName: input.businessName,
-          businessNameAr: nameAr,
-          shortDescription: shortDesc,
-          description: desc,
-          category: input.category as any,
-          subcategory: subcat,
-          tags: tagsVal,
-          country: input.country,
-          city: input.city,
-          address: input.address || input.city,
-          phone: input.phone || "",
-          email: input.email || null,
-          website: input.website || null,
-          status: "active",
-          slug,
-          isFeatured: false,
-          isVerified: true,
-          rating: String(ratingVal) as any,
-          reviewCount: reviews,
-          priceRange: price,
-          latitude: input.latitude as any,
-          longitude: input.longitude as any,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        } as any).returning();
+        // Use raw SQL to avoid Drizzle including schema columns that don't exist in DB
+        const result = await db.execute(sql`
+          INSERT INTO merchants (
+            business_name, business_name_ar, short_description,
+            description, category, subcategory,
+            tags, country, city, address,
+            phone, email, website, status, slug,
+            is_featured, is_verified, rating, review_count,
+            price_range, created_at, updated_at
+          ) VALUES (
+            ${input.businessName}, ${nameAr}, ${shortDesc},
+            ${desc}, ${input.category}, ${subcat},
+            ${tagsVal}, ${input.country}, ${input.city}, ${input.address || input.city},
+            ${input.phone || ""}, ${input.email || null}, ${input.website || null},
+            'active', ${slug},
+            false, true, ${String(ratingVal)}, ${reviews},
+            ${price}, NOW(), NOW()
+          )
+          RETURNING id
+        `);
 
         return { id: result[0]?.id || 0, slug, status: "active" };
       } catch (e: any) {

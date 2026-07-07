@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { pendingMerchants, merchants } from "../db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { sendMerchantRegistrationEmail, getEmailLogs } from "./lib/email";
 
 export const pendingMerchantRouter = createRouter({
@@ -144,33 +144,33 @@ export const pendingMerchantRouter = createRouter({
         const slug = (pm.businessName || pm.businessNameAr || "store")
           .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") + "-" + Date.now();
 
-        // 2. Insert into merchants table using Drizzle ORM
-        const result = await db.insert(merchants).values({
-          businessName: pm.businessName,
-          businessNameAr: pm.businessNameAr || pm.businessName,
-          shortDescription: (pm.descriptionAr || pm.description || `${pm.businessNameAr} في ${pm.city}`).slice(0, 160),
-          description: pm.description || "",
-          category: pm.category as any,
-          subcategory: pm.subcategory || pm.category,
-          tags: `${pm.category} ${pm.city} ${pm.businessNameAr} ${pm.businessName}`.slice(0, 200),
-          country: pm.country,
-          city: pm.city,
-          address: pm.address || pm.city,
-          phone: pm.phone || "",
-          email: pm.email || null,
-          website: pm.website || null,
-          status: "active",
-          slug,
-          logo: pm.logo || null,
-          coverImage: pm.businessRegistrationPhoto || null,
-          isFeatured: false,
-          isVerified: true,
-          rating: "0" as any,
-          reviewCount: 0,
-          priceRange: "$$",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        } as any).returning();
+        // 2. Insert into merchants table using raw SQL (avoid schema columns not in DB)
+        const desc = pm.description || "";
+        const shortDesc = (pm.descriptionAr || pm.description || `${pm.businessNameAr} في ${pm.city}`).slice(0, 160);
+        const subcat = pm.subcategory || pm.category;
+        const tagsVal = `${pm.category} ${pm.city} ${pm.businessNameAr} ${pm.businessName}`.slice(0, 200);
+
+        const result = await db.execute(sql`
+          INSERT INTO merchants (
+            business_name, business_name_ar, short_description,
+            description, category, subcategory,
+            tags, country, city, address,
+            phone, email, website, status, slug,
+            logo, cover_image,
+            is_featured, is_verified, rating, review_count,
+            price_range, created_at, updated_at
+          ) VALUES (
+            ${pm.businessName}, ${pm.businessNameAr || pm.businessName}, ${shortDesc},
+            ${desc}, ${pm.category}, ${subcat},
+            ${tagsVal}, ${pm.country}, ${pm.city}, ${pm.address || pm.city},
+            ${pm.phone || ""}, ${pm.email || null}, ${pm.website || null},
+            'active', ${slug},
+            ${pm.logo || null}, ${pm.businessRegistrationPhoto || null},
+            false, true, '0', 0,
+            '$$', NOW(), NOW()
+          )
+          RETURNING id
+        `);
 
         // 3. Update pending_merchants status to approved
         await db.update(pendingMerchants)
