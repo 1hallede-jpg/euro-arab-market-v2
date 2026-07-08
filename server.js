@@ -27688,7 +27688,11 @@ var env = {
   smtpUser: getEnv("SMTP_USER", ""),
   smtpPass: getEnv("SMTP_PASS", ""),
   fromEmail: getEnv("FROM_EMAIL", "info@euroarabmarket.com"),
-  adminEmail: getEnv("ADMIN_EMAIL", "info@euroarabmarket.com")
+  adminEmail: getEnv("ADMIN_EMAIL", "info@euroarabmarket.com"),
+  // Google OAuth
+  googleClientId: getEnv("GOOGLE_CLIENT_ID", ""),
+  googleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
+  sessionSecret: getEnv("SESSION_SECRET", "sindbad-secret-key-2024")
 };
 
 // db/schema.ts
@@ -33042,6 +33046,94 @@ var emailLogRouter = createRouter({
   })
 });
 
+// api/google-auth.ts
+import { eq as eq13 } from "drizzle-orm";
+var getSecret = () => new TextEncoder().encode(env.sessionSecret || "sindbad-secret-key-2024");
+var GOOGLE_CLIENT_ID = env.googleClientId || "";
+var GOOGLE_CLIENT_SECRET = env.googleClientSecret || "";
+var REDIRECT_URI = "https://www.euroarabmarket.com/api/auth/google/callback";
+var googleAuthRouter = createRouter({
+  getAuthUrl: publicQuery.query(() => {
+    if (!GOOGLE_CLIENT_ID) {
+      return { url: null, error: "Google OAuth not configured" };
+    }
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: "code",
+      scope: "openid email profile",
+      access_type: "offline",
+      prompt: "consent"
+    });
+    return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
+  }),
+  callback: publicQuery.input(external_exports.object({ code: external_exports.string() })).mutation(async ({ input }) => {
+    try {
+      const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code: input.code,
+          client_id: GOOGLE_CLIENT_ID,
+          client_secret: GOOGLE_CLIENT_SECRET,
+          redirect_uri: REDIRECT_URI,
+          grant_type: "authorization_code"
+        })
+      });
+      const tokens = await tokenRes.json();
+      if (!tokenRes.ok) {
+        console.error("[Google] Token error:", tokens);
+        return { success: false, error: "Token exchange failed" };
+      }
+      const userRes = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`);
+      const googleUser = await userRes.json();
+      if (!googleUser.email) {
+        return { success: false, error: "No email from Google" };
+      }
+      const db = getDb();
+      const existing = await db.select().from(users).where(eq13(users.email, googleUser.email)).limit(1);
+      let userId;
+      if (existing.length > 0) {
+        await db.update(users).set({
+          name: googleUser.name || googleUser.email.split("@")[0],
+          avatar: googleUser.picture || null,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq13(users.id, existing[0].id));
+        userId = existing[0].id;
+      } else {
+        const result = await db.insert(users).values({
+          unionId: `google_${googleUser.id}`,
+          email: googleUser.email,
+          name: googleUser.name || googleUser.email.split("@")[0],
+          avatar: googleUser.picture || null,
+          role: "user",
+          createdAt: /* @__PURE__ */ new Date(),
+          updatedAt: /* @__PURE__ */ new Date()
+        }).returning();
+        userId = result[0].id;
+      }
+      const token = await new SignJWT({ userId, email: googleUser.email, name: googleUser.name }).setProtectedHeader({ alg: "HS256" }).setExpirationTime("7d").sign(getSecret());
+      return {
+        success: true,
+        token,
+        user: { id: userId, name: googleUser.name, email: googleUser.email, avatar: googleUser.picture }
+      };
+    } catch (e) {
+      console.error("[Google Auth] Error:", e.message);
+      return { success: false, error: e.message };
+    }
+  }),
+  me: publicQuery.input(external_exports.object({ token: external_exports.string() }).optional()).query(async ({ input }) => {
+    if (!input?.token) return null;
+    try {
+      const { payload } = await jwtVerify(input.token, getSecret(), { clockTolerance: 60 });
+      return payload;
+    } catch {
+      return null;
+    }
+  })
+});
+
 // api/router.ts
 var appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now(), v: "admin-fix-2026-July08" })),
@@ -33063,7 +33155,8 @@ var appRouter = createRouter({
   emergency: emergencyRouter,
   pendingMerchant: pendingMerchantRouter,
   skills: skillsRouter,
-  emailLog: emailLogRouter
+  emailLog: emailLogRouter,
+  googleAuth: googleAuthRouter
 });
 
 // api/kimi/auth.ts
@@ -33134,9 +33227,9 @@ var users2 = {
 };
 
 // api/queries/users.ts
-import { eq as eq13 } from "drizzle-orm";
+import { eq as eq14 } from "drizzle-orm";
 async function findUserByUnionId(unionId) {
-  const rows = await getDb().select().from(users).where(eq13(users.unionId, unionId)).limit(1);
+  const rows = await getDb().select().from(users).where(eq14(users.unionId, unionId)).limit(1);
   return rows.at(0);
 }
 async function upsertUser(data) {
