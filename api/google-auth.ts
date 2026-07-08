@@ -4,9 +4,10 @@ import { getDb } from "./queries/connection";
 import { eq } from "drizzle-orm";
 import { users } from "../db/schema";
 import { env } from "./lib/env";
+
 import { SignJWT, jwtVerify } from "jose";
 
-const SECRET = new TextEncoder().encode(env.sessionSecret || "sindbad-secret-key-2024");
+const getSecret = () => new TextEncoder().encode(env.sessionSecret || "sindbad-secret-key-2024");
 const GOOGLE_CLIENT_ID = env.googleClientId || "";
 const GOOGLE_CLIENT_SECRET = env.googleClientSecret || "";
 const REDIRECT_URI = "https://www.euroarabmarket.com/api/auth/google/callback";
@@ -81,7 +82,7 @@ export const googleAuthRouter = createRouter({
         const token = await new SignJWT({ userId, email: googleUser.email, name: googleUser.name })
           .setProtectedHeader({ alg: "HS256" })
           .setExpirationTime("7d")
-          .sign(SECRET);
+          .sign(getSecret());
 
         return {
           success: true,
@@ -99,7 +100,7 @@ export const googleAuthRouter = createRouter({
     .query(async ({ input }) => {
       if (!input?.token) return null;
       try {
-        const { payload } = await jwtVerify(input.token, SECRET, { clockTolerance: 60 });
+        const { payload } = await jwtVerify(input.token, getSecret(), { clockTolerance: 60 });
         return payload;
       } catch {
         return null;
