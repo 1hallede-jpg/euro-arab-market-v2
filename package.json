@@ -8,8 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "NODE_ENV=production node boot.js",
-    "build:server": "esbuild api/boot.ts --bundle --platform=node --format=cjs --outfile=server.js --external:hono --external:drizzle-orm --external:postgres --external:@trpc/server --external:zod && cp server.js boot.js",
+    "start": "NODE_ENV=production node --eval \"require('./boot.cjs')\" ",
+    "build:server": "esbuild api/boot.ts --bundle --platform=node --format=cjs --outfile=boot.cjs --external:hono --external:drizzle-orm --external:postgres --external:@trpc/server --external:zod",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

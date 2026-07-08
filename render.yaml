@@ -3,8 +3,8 @@ services:
     name: euro-arab-market
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build && npm run build:server && rm -rf public && cp -r dist public && cp dist/search-static.html public/search.html
-    startCommand: npm start
+    buildCommand: npm install && npm run build && npm run build:server && rm -rf public && cp -r dist public && cp dist/search-static.html public/search.html && cp boot.cjs boot.js
+    startCommand: node --eval "require('./boot.cjs')"
     envVars:
       - key: NODE_ENV
         value: production
