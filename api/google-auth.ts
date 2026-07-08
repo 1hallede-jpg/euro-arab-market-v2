@@ -4,24 +4,18 @@ import { getDb } from "./queries/connection";
 import { eq } from "drizzle-orm";
 import { users } from "../db/schema";
 import { env } from "./lib/env";
-import { sign, verify as verifyJwt } from "jsonwebtoken";
+import { SignJWT, jwtVerify } from "jose";
 
-// Google OAuth Configuration
-// User needs to set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in Render env vars
+const SECRET = new TextEncoder().encode(env.sessionSecret || "sindbad-secret-key-2024");
 const GOOGLE_CLIENT_ID = env.googleClientId || "";
 const GOOGLE_CLIENT_SECRET = env.googleClientSecret || "";
 const REDIRECT_URI = "https://www.euroarabmarket.com/api/auth/google/callback";
 
 export const googleAuthRouter = createRouter({
-  // Get Google auth URL for frontend
   getAuthUrl: publicQuery.query(() => {
     if (!GOOGLE_CLIENT_ID) {
-      return {
-        url: null,
-        error: "Google OAuth not configured. Please set GOOGLE_CLIENT_ID in environment variables.",
-      };
+      return { url: null, error: "Google OAuth not configured" };
     }
-
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
       redirect_uri: REDIRECT_URI,
@@ -30,23 +24,14 @@ export const googleAuthRouter = createRouter({
       access_type: "offline",
       prompt: "consent",
     });
-
-    return {
-      url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`,
-    };
+    return { url: `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}` };
   }),
 
-  // Handle Google OAuth callback
   callback: publicQuery
-    .input(
-      z.object({
-        code: z.string(),
-      })
-    )
+    .input(z.object({ code: z.string() }))
     .mutation(async ({ input }) => {
       try {
-        // Exchange code for tokens
-        const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+        const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: new URLSearchParams({
@@ -57,81 +42,51 @@ export const googleAuthRouter = createRouter({
             grant_type: "authorization_code",
           }),
         });
-
-        const tokens = await tokenResponse.json();
-        if (!tokenResponse.ok) {
-          console.error("[Google Auth] Token error:", tokens);
-          return { success: false, error: "Failed to exchange code" };
+        const tokens = await tokenRes.json();
+        if (!tokenRes.ok) {
+          console.error("[Google] Token error:", tokens);
+          return { success: false, error: "Token exchange failed" };
         }
 
-        // Get user info from Google
-        const userResponse = await fetch(
-          `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`
-        );
-        const googleUser = await userResponse.json();
-
+        const userRes = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokens.access_token}`);
+        const googleUser = await userRes.json();
         if (!googleUser.email) {
           return { success: false, error: "No email from Google" };
         }
 
-        // Find or create user
         const db = getDb();
-        const existingUsers = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, googleUser.email))
-          .limit(1);
+        const existing = await db.select().from(users).where(eq(users.email, googleUser.email)).limit(1);
 
         let userId: number;
-
-        if (existingUsers.length > 0) {
-          // Update existing user
-          await db
-            .update(users)
-            .set({
-              name: googleUser.name || googleUser.email.split("@")[0],
-              avatar: googleUser.picture || null,
-              updatedAt: new Date(),
-            })
-            .where(eq(users.id, existingUsers[0].id));
-          userId = existingUsers[0].id;
+        if (existing.length > 0) {
+          await db.update(users).set({
+            name: googleUser.name || googleUser.email.split("@")[0],
+            avatar: googleUser.picture || null,
+            updatedAt: new Date(),
+          }).where(eq(users.id, existing[0].id));
+          userId = existing[0].id;
         } else {
-          // Create new user
-          const result = await db
-            .insert(users)
-            .values({
-              unionId: `google_${googleUser.id}`,
-              email: googleUser.email,
-              name: googleUser.name || googleUser.email.split("@")[0],
-              avatar: googleUser.picture || null,
-              role: "user",
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .returning();
+          const result = await db.insert(users).values({
+            unionId: `google_${googleUser.id}`,
+            email: googleUser.email,
+            name: googleUser.name || googleUser.email.split("@")[0],
+            avatar: googleUser.picture || null,
+            role: "user",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }).returning();
           userId = result[0].id;
         }
 
-        // Create JWT token
-        const token = sign(
-          {
-            userId,
-            email: googleUser.email,
-            name: googleUser.name,
-          },
-          env.sessionSecret || "sindbad-secret-key",
-          { expiresIn: "7d" }
-        );
+        const token = await new SignJWT({ userId, email: googleUser.email, name: googleUser.name })
+          .setProtectedHeader({ alg: "HS256" })
+          .setExpirationTime("7d")
+          .sign(SECRET);
 
         return {
           success: true,
           token,
-          user: {
-            id: userId,
-            name: googleUser.name,
-            email: googleUser.email,
-            avatar: googleUser.picture,
-          },
+          user: { id: userId, name: googleUser.name, email: googleUser.email, avatar: googleUser.picture },
         };
       } catch (e: any) {
         console.error("[Google Auth] Error:", e.message);
@@ -139,17 +94,13 @@ export const googleAuthRouter = createRouter({
       }
     }),
 
-  // Get current user from token
   me: publicQuery
     .input(z.object({ token: z.string() }).optional())
     .query(async ({ input }) => {
       if (!input?.token) return null;
       try {
-        const decoded = verifyJwt(
-          input.token,
-          env.sessionSecret || "sindbad-secret-key"
-        );
-        return decoded;
+        const { payload } = await jwtVerify(input.token, SECRET, { clockTolerance: 60 });
+        return payload;
       } catch {
         return null;
       }
