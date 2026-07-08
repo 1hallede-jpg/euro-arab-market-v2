@@ -1,7 +1,8 @@
-// BUILD_VERSION: 2026-07-08-002 (raw-sql-fix)
+// BUILD_VERSION: 2026-07-08-003 (cjs-fix)
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
+import { serve } from "@hono/node-server";
 import type { HttpBindings } from "@hono/node-server";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router";
@@ -129,7 +130,6 @@ if (!publicPath) {
 }
 
 // Start server
-const { serve } = await import("@hono/node-server");
 const port = parseInt(process.env.PORT || "3000");
 serve({ fetch: app.fetch, port }, () => {
   console.log(`Server running on http://localhost:${port}/`);
