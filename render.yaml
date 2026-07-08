@@ -3,10 +3,12 @@ services:
     name: euro-arab-market
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build && rm -rf public && cp -r dist public && cp dist/search-static.html public/search.html && cp server.js boot.js
+    buildCommand: npm install && npm run build && npx esbuild api/boot.ts --bundle --platform=node --format=esm --outfile=server.js --external:hono --external:drizzle-orm --external:postgres --external:@trpc/server --external:zod && cp server.js boot.js && rm -rf public && cp -r dist public && cp dist/search-static.html public/search.html
     startCommand: node boot.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+      - key: CACHE_BUST
+        value: "2026-07-08-v4-googleauth"
