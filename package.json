@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "start": "KIMI_OPEN_URL=https://kimi.moonshot.cn KIMI_AUTH_URL=https://kimi.moonshot.cn VITE_KIMI_AUTH_URL=https://kimi.moonshot.cn VITE_OPEN_URL=https://kimi.moonshot.cn VITE_APP_ID=euro-arab-market API_SECRET=sk-euro-arab-2024-secret APP_SECRET=sk-euro-arab-secret-2024 NODE_ENV=production node boot.js",
+    "start": "NODE_ENV=production node boot.js",
+    "build:server": "esbuild api/boot.ts --bundle --platform=node --format=esm --outfile=server.js --external:hono --external:drizzle-orm --external:postgres --external:@trpc/server --external:zod && cp server.js boot.js",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
